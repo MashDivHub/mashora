@@ -14,7 +14,7 @@ class LoginResponse(BaseModel):
     db: str
     username: str
     name: str
-    api_token: str  # base64(db:session_token) for v2 API use
+    api_token: str  # base64(db:session_token) for v1 API use
 
 class SessionInfo(BaseModel):
     uid: int
@@ -27,7 +27,7 @@ class SessionInfo(BaseModel):
 
 @router.post("/login", response_model=LoginResponse)
 async def login(body: LoginRequest):
-    """Authenticate and get API token for v2 endpoints."""
+    """Authenticate and get API token for endpoints."""
     try:
         import mashora
         from mashora.modules.registry import Registry

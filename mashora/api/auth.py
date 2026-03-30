@@ -1,4 +1,4 @@
-"""API key / Bearer token authentication for v2 endpoints."""
+"""API key / Bearer token authentication for endpoints."""
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 

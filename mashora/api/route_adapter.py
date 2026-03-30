@@ -69,10 +69,10 @@ def register_all_routes(app, wsgi_app) -> int:
     Register ALL existing Mashora controller routes into the FastAPI app.
 
     Instead of converting each controller, we create a catch-all route
-    that delegates non-/api/v2/ requests to the WSGI app. This achieves
+    that delegates non-/api/v1/ requests to the WSGI app. This achieves
     100% controller coverage with zero code changes.
 
-    For the v2 API routes we already have native FastAPI handlers.
+    For the v1 API routes we already have native FastAPI handlers.
     The WSGI app handles everything else through the a2wsgi middleware.
 
     Returns the count of routes that were registered.
@@ -118,7 +118,7 @@ def register_all_routes(app, wsgi_app) -> int:
 
 def get_route_stats() -> dict[str, Any]:
     """
-    Get statistics about registered routes for the /api/v2/routes endpoint.
+    Get statistics about registered routes for the /api/v1/routes endpoint.
     """
     try:
         from mashora.http import Controller

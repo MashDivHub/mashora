@@ -1,4 +1,4 @@
-"""Rate limiting middleware for v2 API."""
+"""Rate limiting middleware for v1 API."""
 import time
 from collections import defaultdict
 from fastapi import Request, HTTPException, status
@@ -12,8 +12,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests: dict[str, list[float]] = defaultdict(list)
 
     async def dispatch(self, request: Request, call_next):
-        # Only rate limit /api/v2/ routes
-        if not request.url.path.startswith("/api/v2/"):
+        # Only rate limit /api/v1/ routes
+        if not request.url.path.startswith("/api/v1/"):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"

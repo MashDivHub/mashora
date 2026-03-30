@@ -32,16 +32,16 @@ def create_asgi_app(wsgi_app=None) -> FastAPI:
     """
     Create a FastAPI ASGI application that wraps the existing WSGI app.
 
-    New /api/v2/ routes are handled by FastAPI directly.
+    New /api/v1/ routes are handled by FastAPI directly.
     All other routes fall through to the existing Mashora WSGI application.
     """
     app = FastAPI(
         title="Mashora ERP API",
         version="19.0",
         description="Mashora ERP - Modern ASGI Interface",
-        docs_url="/api/v2/docs",
-        redoc_url="/api/v2/redoc",
-        openapi_url="/api/v2/openapi.json",
+        docs_url="/api/v1/docs",
+        redoc_url="/api/v1/redoc",
+        openapi_url="/api/v1/openapi.json",
     )
 
     # CORS middleware
@@ -60,21 +60,21 @@ def create_asgi_app(wsgi_app=None) -> FastAPI:
     from mashora.api.rate_limit import RateLimitMiddleware
     app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
 
-    # Register v2 API routes
-    from mashora.asgi_routes import router as v2_router
-    app.include_router(v2_router, prefix="/api/v2")
+    # Register v1 API routes
+    from mashora.asgi_routes import router as api_router
+    app.include_router(api_router, prefix="/api/v1")
 
-    from mashora.api.v2_session import router as session_router
-    from mashora.api.v2_database import router as database_router
-    from mashora.api.v2_model import router as model_router
-    app.include_router(session_router, prefix="/api/v2")
-    app.include_router(database_router, prefix="/api/v2")
-    app.include_router(model_router, prefix="/api/v2")
+    from mashora.api.session import router as session_router
+    from mashora.api.database import router as database_router
+    from mashora.api.model import router as model_router
+    app.include_router(session_router, prefix="/api/v1")
+    app.include_router(database_router, prefix="/api/v1")
+    app.include_router(model_router, prefix="/api/v1")
 
     # Route adapter: enumerate and track all legacy controller routes
     from mashora.api.route_adapter import register_all_routes, get_route_stats
 
-    @app.get("/api/v2/routes", tags=["v2"])
+    @app.get("/api/v1/routes", tags=["v1"])
     async def list_routes():
         """List all registered controller routes and migration stats."""
         return get_route_stats()

@@ -1,6 +1,6 @@
 # Part of Mashora. See LICENSE file for full copyright and licensing details.
 """
-Mashora ERP v2 API Routes
+Mashora ERP v1 API Routes
 
 New REST API endpoints served directly by FastAPI.
 These run alongside the existing WSGI routes during the migration period.
@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
-router = APIRouter(tags=["v2"])
+router = APIRouter(tags=["v1"])
 
 
 @router.get("/health")
@@ -40,7 +40,7 @@ async def server_info():
         "product": mashora.release.product_name,
         "version": mashora.release.version,
         "series": mashora.release.series,
-        "api_version": "v2",
+        "api_version": "v1",
         "server_mode": "asgi",
         "addons_paths": config.get("addons_path", "").split(",") if isinstance(config.get("addons_path"), str) else [],
     }
