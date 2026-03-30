@@ -103,6 +103,11 @@ _CONST_OPCODES = set(to_opcodes([
     'RETURN_CONST',
     # 3.13
     'TO_BOOL',
+    # 3.14
+    'NOT_TAKEN', 'LOAD_SMALL_INT', 'LOAD_FAST_BORROW', 'LOAD_FAST_BORROW_LOAD_FAST_BORROW',
+    'POP_ITER', 'STORE_FAST_MAYBE_NULL', 'LOAD_COMMON_CONSTANT',
+    'BUILD_INTERPOLATION', 'BUILD_TEMPLATE',
+    'JUMP', 'JUMP_NO_INTERRUPT', 'JUMP_IF_TRUE', 'JUMP_IF_FALSE',
 ])) - _BLACKLIST
 
 # operations which are both binary and inplace, same order as in doc'

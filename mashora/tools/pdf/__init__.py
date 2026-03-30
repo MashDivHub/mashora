@@ -18,7 +18,7 @@ from mashora.tools.parse_version import parse_version
 from mashora.tools.misc import file_open, SENTINEL
 
 # ----------------------------------------------------------
-# PyPDF2 hack
+# PyPDF2
 # ensure that zlib does not throw error -5 when decompressing
 # because some pdf won't fit into allocated memory
 # https://docs.python.org/3/library/zlib.html#zlib.decompressobj
@@ -30,16 +30,22 @@ try:
         zobj = zlib.decompressobj()
         return zobj.decompress(data)
 
-    import PyPDF2.filters  # needed after PyPDF2 2.0.0 and before 2.11.0
-    PyPDF2.filters.decompress = _decompress
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning, message="PyPDF2 is deprecated")
+        try:
+            import PyPDF2.filters  # needed after PyPDF2 2.0.0 and before 2.11.0
+            PyPDF2.filters.decompress = _decompress
+        except ImportError:
+            pass
 except ImportError:
     pass  # no fix required
 
 
 # might be a good case for exception groups
 error = None
-# keep pypdf2 2.x first so noble uses that rather than pypdf 4.0
-for SUBMOD in ['._pypdf2_2', '._pypdf', '._pypdf2_1']:
+# prefer pypdf (modern) over deprecated PyPDF2
+for SUBMOD in ['._pypdf', '._pypdf2_2', '._pypdf2_1']:
     try:
         pypdf = importlib.import_module(SUBMOD, __spec__.name)
         break
@@ -66,7 +72,7 @@ except AttributeError:
     DependencyError = NotImplementedError
 
 # ----------------------------------------------------------
-# PyPDF2 hack
+# PyPDF2
 # ensure that zlib does not throw error -5 when decompressing
 # because some pdf won't fit into allocated memory
 # https://docs.python.org/3/library/zlib.html#zlib.decompressobj

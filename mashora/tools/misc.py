@@ -1086,6 +1086,9 @@ class OrderedSet(MutableSet[T], typing.Generic[T]):
     def __repr__(self):
         return f'{type(self).__name__}({list(self)!r})'
 
+    def copy(self):
+        return OrderedSet(self._map)
+
     def intersection(self, *others):
         return reduce(OrderedSet.__and__, others, self)
 
