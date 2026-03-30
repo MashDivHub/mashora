@@ -57,22 +57,22 @@ def create_asgi_app(wsgi_app=None) -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=500)
 
     # Rate limiting middleware
-    from mashora.api.rate_limit import RateLimitMiddleware
+    from mashora.rest.rate_limit import RateLimitMiddleware
     app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
 
     # Register v1 API routes
     from mashora.asgi_routes import router as api_router
     app.include_router(api_router, prefix="/api/v1")
 
-    from mashora.api.session import router as session_router
-    from mashora.api.database import router as database_router
-    from mashora.api.model import router as model_router
+    from mashora.rest.session import router as session_router
+    from mashora.rest.database import router as database_router
+    from mashora.rest.model import router as model_router
     app.include_router(session_router, prefix="/api/v1")
     app.include_router(database_router, prefix="/api/v1")
     app.include_router(model_router, prefix="/api/v1")
 
     # Route adapter: enumerate and track all legacy controller routes
-    from mashora.api.route_adapter import register_all_routes, get_route_stats
+    from mashora.rest.route_adapter import register_all_routes, get_route_stats
 
     @app.get("/api/v1/routes", tags=["v1"])
     async def list_routes():
