@@ -1,0 +1,151 @@
+# Translation of Mashora Server.
+# This file contains the translation of the following modules:
+# * board
+#
+# Translators:
+# Foldi Robert <foldirobert@nexterp.ro>, 2022
+# Hongu Cosmin <cosmin513@gmail.com>, 2022
+# Martin Trigaux, 2022
+# Dorin Hongu <dhongu@gmail.com>, 2023
+# Weblate <noreply-mt-weblate@weblate.org>, 2025.
+msgid ""
+msgstr ""
+"Project-Id-Version: Mashora Server 15.5alpha1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-25 18:37+0000\n"
+"PO-Revision-Date: 2025-11-16 15:06+0000\n"
+"Last-Translator: Weblate <noreply-mt-weblate@weblate.org>\n"
+"Language-Team: Romanian <https://translate.mashora.com/projects/mashora-19/board/"
+"ro/>\n"
+"Language: ro\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=3; plural=n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < "
+"20)) ? 1 : 2;\n"
+"X-Generator: Weblate 5.12.2\n"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid ""
+"\"Add to\n"
+"                  Dashboard\""
+msgstr ""
+"\"Adaugă la\n"
+"                  Tabloul de bord\""
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.xml:0
+msgid "Add"
+msgstr "Adaugă"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.xml:0
+msgid "Add to my dashboard"
+msgstr "Adaugă la tabloul meu de bord"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.js:0
+msgid "Are you sure that you want to remove this item?"
+msgstr "Sunteți sigur că doriți să eliminați acest element?"
+
+#. module: board
+#: model:ir.model,name:board.model_board_board
+msgid "Board"
+msgstr "Panou"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid "Change Layout"
+msgstr "Modifică aspect"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.js:0
+msgid "Could not add filter to dashboard"
+msgstr "Nu s-a putut adăuga filtru la tablou de bord"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.xml:0
+msgid "Dashboard"
+msgstr "Tablou de bord"
+
+#. module: board
+#: model:ir.model.fields,field_description:board.field_board_board__display_name
+msgid "Display Name"
+msgstr "Nume afișat"
+
+#. module: board
+#: model:ir.model.fields,field_description:board.field_board_board__id
+msgid "ID"
+msgstr "ID"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_action.xml:0
+msgid "Invalid action"
+msgstr "Acțiune nevalidă"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid "Layout"
+msgstr "Aspect"
+
+#. module: board
+#: model:ir.actions.act_window,name:board.open_board_my_dash_action
+#: model:ir.ui.menu,name:board.menu_board_my_dash
+#: model_terms:ir.ui.view,arch_db:board.board_my_dash_view
+msgid "My Dashboard"
+msgstr "Tabloul meu de bord"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.js:0
+msgid "Please refresh your browser for the changes to take effect."
+msgstr "Actualizați browserul pentru ca modificările să aibă efect."
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid ""
+"To add your first report into this dashboard, go to any\n"
+"                  menu, switch to list or graph view, and click"
+msgstr ""
+"Pentru a adăuga primul raport în acest tablou de bord, mergeți la orice\n"
+"                  meniu, comutați la vizualizarea listă sau grafic și faceți "
+"clic"
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid ""
+"You can filter and group data before inserting into the\n"
+"                  dashboard using the search options."
+msgstr ""
+"Puteți filtra și grupa date înainte de a le insera în\n"
+"                  tabloul de bord folosind opțiunile de căutare."
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid "Your personal dashboard is empty"
+msgstr "Tabloul de bord personal este gol."
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/board_controller.xml:0
+msgid "in the extended search options."
+msgstr "în opțiunile de căutare extinsă."
+
+#. module: board
+#. mashora-javascript
+#: code:addons/board/static/src/add_to_board/add_to_board.js:0
+msgid "“%s” added to dashboard"
+msgstr "„%s” adăugat la tabloul de bord"

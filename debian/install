@@ -1,0 +1,2 @@
+debian/mashora.conf /etc/mashora
+README.md /usr/share/doc/mashora

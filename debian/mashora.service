@@ -1,0 +1,13 @@
+[Unit]
+Description=Mashora Open Source ERP and CRM
+After=network.target
+
+[Service]
+Type=simple
+User=mashora
+Group=mashora
+ExecStart=/usr/bin/mashora --config /etc/mashora/mashora.conf --logfile /var/log/mashora/mashora-server.log
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
