@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Failed – Mashora</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#dc2626;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:28px;letter-spacing:-0.5px;">Mashora</h1>
+              <p style="margin:8px 0 0;color:#fecaca;font-size:14px;">Action Required</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <h2 style="margin:0 0 16px;color:#111827;font-size:22px;">Payment Failed for {{ org_name }}</h2>
+              <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+                We were unable to process the payment for your Mashora subscription. Please update your payment method to avoid service interruption.
+              </p>
+
+              <!-- Warning Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0;color:#991b1b;font-size:14px;line-height:1.5;">
+                      <strong>Next retry date:</strong> {{ retry_date }}<br />
+                      If payment continues to fail, your account may be suspended.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#dc2626;border-radius:6px;padding:12px 28px;">
+                    <a href="https://mashora.com/billing" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">
+                      Update Payment Method
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;color:#9ca3af;font-size:13px;">
+                &copy; 2026 Mashora Platform. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

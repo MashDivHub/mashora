@@ -459,6 +459,46 @@ class CommonServer(object):
                 _logger.warning("Exception in %s", func.__name__, exc_info=True)
 
 
+class UvicornServer(CommonServer):
+    """ASGI server using Uvicorn for FastAPI integration."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._uvicorn_server = None
+
+    def run(self, preload=None, stop=False):
+        import uvicorn
+
+        rc = preload_registries(preload)
+
+        if stop:
+            self.stop()
+            return rc
+
+        uvi_config = uvicorn.Config(
+            self.app,
+            host=self.interface,
+            port=self.port,
+            log_level="info",
+            access_log=True,
+        )
+        self._uvicorn_server = uvicorn.Server(uvi_config)
+        _logger.info("Uvicorn ASGI server starting on %s:%s", self.interface, self.port)
+
+        try:
+            self._uvicorn_server.run()
+        except KeyboardInterrupt:
+            pass
+
+        self.stop()
+        return rc if rc else 0
+
+    def stop(self):
+        if self._uvicorn_server:
+            self._uvicorn_server.should_exit = True
+        super().stop()
+
+
 class ThreadedServer(CommonServer):
     def __init__(self, app):
         super(ThreadedServer, self).__init__(app)
@@ -1610,7 +1650,19 @@ def start(preload=None, stop=False):
                 assert libc.mallopt(ctypes.c_int(M_ARENA_MAX), ctypes.c_int(2))
             except Exception:
                 _logger.warning("Could not set ARENA_MAX through mallopt()")
-        server = ThreadedServer(mashora.http.root)
+        # ASGI mode is the DEFAULT. Use MASHORA_WSGI=1 to fall back to legacy Werkzeug.
+        if os.environ.get('MASHORA_WSGI') == '1':
+            _logger.info("Starting in legacy WSGI mode (Werkzeug) — set by MASHORA_WSGI=1")
+            server = ThreadedServer(mashora.http.root)
+        else:
+            try:
+                from mashora.asgi import create_asgi_app
+                asgi_app = create_asgi_app(mashora.http.root)
+                server = UvicornServer(asgi_app)
+                _logger.info("Starting in ASGI mode (Uvicorn + FastAPI) — default")
+            except ImportError:
+                _logger.warning("Uvicorn not available, falling back to WSGI mode. Install uvicorn for better performance.")
+                server = ThreadedServer(mashora.http.root)
 
     watcher = None
     if 'reload' in config['dev_mode'] and not mashora.evented:
