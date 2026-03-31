@@ -1,0 +1,22 @@
+INFO:     Will watch for changes in these directories: ['C:\\xampp\\htdocs\\mashora\\mashora-site\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [62908] using WatchFiles
+INFO:     Started server process [64460]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app\routers\auth.py', 'app\routers\tenants.py', 'app\routers\support.py', 'app\routers\subscriptions.py', 'app\routers\admin.py', 'app\schemas\auth.py', 'app\services\minio_service.py', 'app\schemas\support.py', 'app\routers\publisher.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64460]
+INFO:     Started server process [61032]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app\routers\addons.py', 'app\routers\publisher.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [61032]
+INFO:     Started server process [63852]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

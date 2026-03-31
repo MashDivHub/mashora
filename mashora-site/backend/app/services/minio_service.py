@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 from typing import BinaryIO
 
 from app.config import get_settings
@@ -47,3 +48,38 @@ class MinioService:
         if self._client is None:
             raise RuntimeError("MinIO client is not available")
         self._client.remove_object(self._bucket, object_name)
+
+    @classmethod
+    def _local_root(cls) -> Path:
+        root = Path(__file__).resolve().parents[2] / "storage" / "addons"
+        root.mkdir(parents=True, exist_ok=True)
+        return root
+
+    @classmethod
+    async def upload_addon(
+        cls,
+        technical_name: str,
+        version: str,
+        data: bytes,
+        filename: str,
+    ) -> str:
+        object_name = f"{technical_name}/{version}/{filename}"
+        service = cls()
+        if service._client is not None:
+            return service.upload_file(object_name, data)
+
+        target = cls._local_root() / object_name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        return object_name
+
+    @classmethod
+    async def delete_addon(cls, object_name: str) -> None:
+        service = cls()
+        if service._client is not None:
+            service.delete_file(object_name)
+            return
+
+        target = cls._local_root() / object_name
+        if target.exists():
+            target.unlink()

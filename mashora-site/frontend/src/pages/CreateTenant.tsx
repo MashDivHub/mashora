@@ -1,52 +1,12 @@
-import { useState, FormEvent } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { ArrowLeft, DatabaseZap } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { createTenant } from '../api/tenants'
-
-const cardStyle: React.CSSProperties = {
-  maxWidth: '480px',
-  margin: '0 auto',
-  background: '#fff',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  padding: '32px',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '14px',
-  fontWeight: 500,
-  color: '#374151',
-  marginBottom: '4px',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid #d1d5db',
-  borderRadius: '6px',
-  fontSize: '14px',
-  marginBottom: '4px',
-}
-
-const hintStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: '#94a3b8',
-  marginBottom: '16px',
-  display: 'block',
-}
-
-const btnStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px',
-  background: '#2563eb',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  fontWeight: 600,
-  fontSize: '15px',
-  cursor: 'pointer',
-  marginBottom: '12px',
-}
+import { Notice } from '@/components/app/notice'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function CreateTenant() {
   const [dbName, setDbName] = useState('')
@@ -63,8 +23,7 @@ export default function CreateTenant() {
       await createTenant(dbName, subdomain)
       navigate('/dashboard')
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to create tenant. Please try again.'
+      const message = err instanceof Error ? err.message : 'Failed to create tenant. Please try again.'
       setError(message)
     } finally {
       setLoading(false)
@@ -72,67 +31,71 @@ export default function CreateTenant() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: '24px' }}>
-        <Link to="/dashboard" style={{ fontSize: '14px', color: '#64748b' }}>
-          &larr; Back to Dashboard
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <Button asChild variant="ghost" className="w-fit rounded-full px-0 hover:bg-transparent">
+        <Link to="/dashboard">
+          <ArrowLeft className="size-4" />
+          Back to dashboard
         </Link>
-      </div>
-      <div style={cardStyle}>
-        <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>
-          Create New Instance
-        </h2>
-        <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#64748b' }}>
-          Provision a new isolated ERP tenant database.
-        </p>
+      </Button>
 
-        {error && (
-          <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '10px 12px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-            {error}
+      <Card className="border-border/70 bg-card/90">
+        <CardHeader className="space-y-3">
+          <div className="inline-flex w-fit rounded-2xl border border-border/70 bg-muted/60 p-3">
+            <DatabaseZap className="size-5" />
           </div>
-        )}
+          <div className="space-y-2">
+            <CardTitle className="text-3xl">Create a new tenant instance</CardTitle>
+            <CardDescription>
+              Provision an isolated workspace with a clean database name and customer-facing subdomain.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {error ? <Notice tone="danger">{error}</Notice> : null}
 
-        <form onSubmit={handleSubmit}>
-          <label style={labelStyle}>Database Name</label>
-          <input
-            type="text"
-            value={dbName}
-            onChange={(e) => setDbName(e.target.value)}
-            style={inputStyle}
-            placeholder="e.g. acme_corp"
-            pattern="^[a-z][a-z0-9_]*$"
-            required
-          />
-          <span style={hintStyle}>Lowercase letters, numbers, and underscores only.</span>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="dbName">Database name</Label>
+              <Input
+                id="dbName"
+                type="text"
+                value={dbName}
+                onChange={(e) => setDbName(e.target.value)}
+                placeholder="acme_corp"
+                pattern="^[a-z][a-z0-9_]*$"
+                required
+              />
+              <p className="text-sm text-muted-foreground">Use lowercase letters, numbers, and underscores only.</p>
+            </div>
 
-          <label style={labelStyle}>Subdomain</label>
-          <input
-            type="text"
-            value={subdomain}
-            onChange={(e) => setSubdomain(e.target.value)}
-            style={inputStyle}
-            placeholder="e.g. acme"
-            pattern="^[a-z][a-z0-9-]*$"
-            required
-          />
-          <span style={hintStyle}>Will be used as: {subdomain || 'your-subdomain'}.mashora.app</span>
+            <div className="space-y-2">
+              <Label htmlFor="subdomain">Subdomain</Label>
+              <Input
+                id="subdomain"
+                type="text"
+                value={subdomain}
+                onChange={(e) => setSubdomain(e.target.value)}
+                placeholder="acme"
+                pattern="^[a-z][a-z0-9-]*$"
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                Customer URL preview: <span className="font-medium text-foreground">{subdomain || 'your-subdomain'}.mashora.app</span>
+              </p>
+            </div>
 
-          <button type="submit" style={btnStyle} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Instance'}
-          </button>
-          <Link
-            to="/dashboard"
-            style={{
-              display: 'block',
-              textAlign: 'center',
-              fontSize: '14px',
-              color: '#64748b',
-            }}
-          >
-            Cancel
-          </Link>
-        </form>
-      </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="rounded-2xl">
+                {loading ? 'Creating instance...' : 'Create instance'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

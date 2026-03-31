@@ -28,4 +28,6 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: str
     org_id: UUID
+    org_name: str
+    is_active: bool
     created_at: datetime

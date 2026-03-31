@@ -1,33 +1,17 @@
-import { useEffect, useState, useRef } from 'react'
-import {
-  getPublisherAddons,
-  submitAddon,
-  uploadVersion,
-  AddonResponse,
-  AddonVersionResponse,
-} from '../api/addons'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Upload } from 'lucide-react'
+import { getPublisherAddons, submitAddon, uploadVersion, type AddonResponse, type AddonVersionResponse } from '../api/addons'
 import StarRating from '../components/StarRating'
+import { Notice } from '@/components/app/notice'
+import { PageHeader } from '@/components/app/page-header'
+import { StatusBadge } from '@/components/app/status-badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
-const CATEGORIES = ['Accounting', 'CRM', 'Sales', 'HR', 'Website', 'Other']
-
-function statusBadge(status: string): React.CSSProperties {
-  const map: Record<string, { bg: string; color: string }> = {
-    pending:  { bg: '#FEF3C7', color: '#92400E' },
-    approved: { bg: '#DBEAFE', color: '#1E40AF' },
-    published:{ bg: '#D1FAE5', color: '#065F46' },
-    rejected: { bg: '#FEE2E2', color: '#991B1B' },
-  }
-  const style = map[status] ?? { bg: '#F3F4F6', color: '#374151' }
-  return {
-    display: 'inline-block',
-    padding: '2px 10px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: 600,
-    background: style.bg,
-    color: style.color,
-  }
-}
+const categories = ['Accounting', 'CRM', 'Sales', 'HR', 'Website', 'Other']
 
 interface UploadFormState {
   version: string
@@ -39,22 +23,18 @@ export default function PublisherDashboard() {
   const [addons, setAddons] = useState<AddonResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  // Submit new addon form
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [submitData, setSubmitData] = useState({
     technical_name: '',
     display_name: '',
     summary: '',
     description: '',
-    category: CATEGORIES[0],
+    category: categories[0],
     price_cents: 0,
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitMsg, setSubmitMsg] = useState('')
   const [submitError, setSubmitError] = useState('')
-
-  // Upload version per addon (keyed by technical_name)
   const [uploadForms, setUploadForms] = useState<Record<string, UploadFormState>>({})
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
   const [uploadMsg, setUploadMsg] = useState<Record<string, string>>({})
@@ -87,9 +67,16 @@ export default function PublisherDashboard() {
     try {
       const newAddon = await submitAddon(submitData)
       setAddons((prev) => [newAddon, ...prev])
-      setSubmitMsg('Addon submitted for review!')
+      setSubmitMsg('Addon submitted for review.')
       setShowSubmitForm(false)
-      setSubmitData({ technical_name: '', display_name: '', summary: '', description: '', category: CATEGORIES[0], price_cents: 0 })
+      setSubmitData({
+        technical_name: '',
+        display_name: '',
+        summary: '',
+        description: '',
+        category: categories[0],
+        price_cents: 0,
+      })
     } catch {
       setSubmitError('Failed to submit addon. Check all fields and try again.')
     } finally {
@@ -105,12 +92,12 @@ export default function PublisherDashboard() {
     setUploadMsg((prev) => ({ ...prev, [technicalName]: '' }))
     setUploadError((prev) => ({ ...prev, [technicalName]: '' }))
     try {
-      const fd = new FormData()
-      fd.append('version', form.version)
-      fd.append('changelog', form.changelog)
-      fd.append('file', form.file)
-      const result: AddonVersionResponse = await uploadVersion(technicalName, fd)
-      setUploadMsg((prev) => ({ ...prev, [technicalName]: `Version ${result.version} uploaded!` }))
+      const formData = new FormData()
+      formData.append('version', form.version)
+      formData.append('changelog', form.changelog)
+      formData.append('file', form.file)
+      const result: AddonVersionResponse = await uploadVersion(technicalName, formData)
+      setUploadMsg((prev) => ({ ...prev, [technicalName]: `Version ${result.version} uploaded.` }))
       setUploadForms((prev) => ({ ...prev, [technicalName]: { version: '', changelog: '', file: null } }))
       if (fileInputRefs.current[technicalName]) {
         fileInputRefs.current[technicalName]!.value = ''
@@ -123,282 +110,219 @@ export default function PublisherDashboard() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 700, color: '#1E293B' }}>
-            Publisher Dashboard
-          </h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>
-            Manage and publish your addons to the Mashora Marketplace
-          </p>
-        </div>
-        <button
-          onClick={() => { setShowSubmitForm((v) => !v); setSubmitMsg(''); setSubmitError('') }}
-          style={{
-            padding: '9px 18px',
-            background: '#7C3AED',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '7px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {showSubmitForm ? 'Cancel' : '+ Submit New Addon'}
-        </button>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Publisher"
+        title="Publish and iterate on addons"
+        description="Submit new marketplace packages, track approval status, and push fresh versions through a cleaner workflow."
+        actions={
+          <Button
+            className="rounded-2xl"
+            onClick={() => {
+              setShowSubmitForm((value) => !value)
+              setSubmitMsg('')
+              setSubmitError('')
+            }}
+          >
+            <Plus className="size-4" />
+            {showSubmitForm ? 'Hide form' : 'Submit addon'}
+          </Button>
+        }
+      />
 
-      {/* Submit new addon form */}
-      {showSubmitForm && (
-        <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '24px', marginBottom: '24px' }}>
-          <h2 style={{ margin: '0 0 18px', fontSize: '17px', fontWeight: 700, color: '#1E293B' }}>
-            Submit New Addon
-          </h2>
-          <form onSubmit={handleSubmitAddon}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-              <div>
-                <label style={labelStyle}>Technical Name *</label>
-                <input
+      {submitMsg ? <Notice tone="success">{submitMsg}</Notice> : null}
+      {submitError ? <Notice tone="danger">{submitError}</Notice> : null}
+      {error ? <Notice tone="danger">{error}</Notice> : null}
+
+      {showSubmitForm ? (
+        <div className="rounded-3xl border border-border/70 bg-card/90 p-6">
+          <form onSubmit={handleSubmitAddon} className="space-y-5">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="technicalName">Technical name</Label>
+                <Input
+                  id="technicalName"
                   required
                   value={submitData.technical_name}
-                  onChange={(e) => setSubmitData((p) => ({ ...p, technical_name: e.target.value }))}
-                  placeholder="e.g. my_crm_addon"
-                  style={inputStyle}
+                  onChange={(e) => setSubmitData((prev) => ({ ...prev, technical_name: e.target.value }))}
+                  placeholder="my_crm_addon"
                 />
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>
-                  Lowercase, underscores only. Cannot be changed later.
-                </div>
               </div>
-              <div>
-                <label style={labelStyle}>Display Name *</label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display name</Label>
+                <Input
+                  id="displayName"
                   required
                   value={submitData.display_name}
-                  onChange={(e) => setSubmitData((p) => ({ ...p, display_name: e.target.value }))}
-                  placeholder="e.g. My CRM Addon"
-                  style={inputStyle}
+                  onChange={(e) => setSubmitData((prev) => ({ ...prev, display_name: e.target.value }))}
+                  placeholder="My CRM Addon"
                 />
               </div>
-              <div>
-                <label style={labelStyle}>Category *</label>
-                <select
-                  value={submitData.category}
-                  onChange={(e) => setSubmitData((p) => ({ ...p, category: e.target.value }))}
-                  style={inputStyle}
-                >
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
+              <div className="space-y-2">
+                <Label htmlFor="addonSummary">Summary</Label>
+                <Input
+                  id="addonSummary"
+                  required
+                  value={submitData.summary}
+                  onChange={(e) => setSubmitData((prev) => ({ ...prev, summary: e.target.value }))}
+                  placeholder="One-line description shown in marketplace cards"
+                />
               </div>
-              <div>
-                <label style={labelStyle}>Price (cents, 0 = Free)</label>
-                <input
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={submitData.category} onValueChange={(value) => setSubmitData((prev) => ({ ...prev, category: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
+              <div className="space-y-2">
+                <Label htmlFor="addonDescription">Description</Label>
+                <Textarea
+                  id="addonDescription"
+                  required
+                  value={submitData.description}
+                  onChange={(e) => setSubmitData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Full marketplace description..."
+                  rows={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addonPrice">Price (cents)</Label>
+                <Input
+                  id="addonPrice"
                   type="number"
                   min={0}
                   value={submitData.price_cents}
-                  onChange={(e) => setSubmitData((p) => ({ ...p, price_cents: Number(e.target.value) }))}
+                  onChange={(e) => setSubmitData((prev) => ({ ...prev, price_cents: Number(e.target.value) }))}
                   placeholder="0"
-                  style={inputStyle}
                 />
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>
-                  e.g. 999 = $9.99/month
-                </div>
               </div>
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Summary *</label>
-              <input
-                required
-                value={submitData.summary}
-                onChange={(e) => setSubmitData((p) => ({ ...p, summary: e.target.value }))}
-                placeholder="One-line description shown in marketplace cards"
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ marginBottom: '18px' }}>
-              <label style={labelStyle}>Description *</label>
-              <textarea
-                required
-                value={submitData.description}
-                onChange={(e) => setSubmitData((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Full description shown on the addon detail page..."
-                rows={5}
-                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{
-                  padding: '9px 20px',
-                  background: submitting ? '#C4B5FD' : '#7C3AED',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '7px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: submitting ? 'default' : 'pointer',
-                }}
-              >
-                {submitting ? 'Submitting...' : 'Submit for Review'}
-              </button>
-              {submitMsg && <span style={{ fontSize: '13px', color: '#065F46' }}>{submitMsg}</span>}
-              {submitError && <span style={{ fontSize: '13px', color: '#B91C1C' }}>{submitError}</span>}
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Submitting...' : 'Submit for review'}
+              </Button>
             </div>
           </form>
         </div>
-      )}
+      ) : null}
 
-      {/* Error */}
-      {error && (
-        <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '10px 14px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Addons list */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6B7280' }}>Loading your addons...</div>
+        <div className="rounded-3xl border border-border/70 bg-card/90 p-6 text-sm text-muted-foreground">Loading your addons...</div>
       ) : addons.length === 0 ? (
-        <div style={{
-          background: '#fff',
-          border: '1px solid #E5E7EB',
-          borderRadius: '10px',
-          padding: '48px',
-          textAlign: 'center',
-          color: '#6B7280',
-          fontSize: '15px',
-        }}>
-          You haven't submitted any addons yet.
+        <div className="rounded-3xl border border-border/70 bg-card/90 p-6 text-sm text-muted-foreground">
+          You have not submitted any addons yet.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="space-y-6">
           {addons.map((addon) => {
             const form = getUploadForm(addon.technical_name)
             const isUploading = uploadingFor === addon.technical_name
             return (
-              <div
-                key={addon.id}
-                style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden' }}
-              >
-                {/* Addon header */}
-                <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '8px',
-                      background: addon.icon_url ? undefined : '#EDE9FE',
-                      backgroundImage: addon.icon_url ? `url(${addon.icon_url})` : undefined,
-                      backgroundSize: 'cover',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '24px',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {!addon.icon_url && '🧩'}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>{addon.display_name}</span>
-                      <span style={statusBadge(addon.status)}>{addon.status}</span>
-                      <span style={{ fontSize: '12px', color: '#6B7280' }}>v{addon.version}</span>
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>{addon.summary}</div>
-                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                      {/* Analytics */}
-                      <div style={statBox}>
-                        <div style={statValue}>{addon.download_count.toLocaleString()}</div>
-                        <div style={statLabel}>Downloads</div>
-                      </div>
-                      <div style={statBox}>
-                        <div style={{ ...statValue, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <StarRating rating={addon.rating_avg} readonly size={14} />
-                          <span>{addon.rating_avg.toFixed(1)}</span>
-                        </div>
-                        <div style={statLabel}>{addon.rating_count} reviews</div>
-                      </div>
-                      <div style={statBox}>
-                        <div style={statValue}>
-                          {addon.price_cents === 0 ? 'Free' : `$${(addon.price_cents / 100).toFixed(2)}/mo`}
-                        </div>
-                        <div style={statLabel}>Price</div>
-                      </div>
-                      <div style={statBox}>
-                        <div style={statValue}>{addon.category}</div>
-                        <div style={statLabel}>Category</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upload version section */}
-                <div style={{ borderTop: '1px solid #F3F4F6', background: '#F9FAFB', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '12px' }}>
-                    Upload New Version
-                  </div>
-                  <form onSubmit={(e) => handleUploadVersion(addon.technical_name, e)}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '10px', marginBottom: '10px' }}>
-                      <div>
-                        <label style={labelStyle}>Version *</label>
-                        <input
-                          required
-                          value={form.version}
-                          onChange={(e) => setUploadFormField(addon.technical_name, 'version', e.target.value)}
-                          placeholder="e.g. 1.2.0"
-                          style={inputStyle}
-                        />
-                      </div>
-                      <div>
-                        <label style={labelStyle}>Changelog</label>
-                        <input
-                          value={form.changelog}
-                          onChange={(e) => setUploadFormField(addon.technical_name, 'changelog', e.target.value)}
-                          placeholder="What changed in this version..."
-                          style={inputStyle}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: '10px' }}>
-                      <label style={labelStyle}>Addon File (.zip) *</label>
-                      <input
-                        type="file"
-                        accept=".zip"
-                        required
-                        ref={(el) => { fileInputRefs.current[addon.technical_name] = el }}
-                        onChange={(e) => setUploadFormField(addon.technical_name, 'file', e.target.files?.[0] ?? null)}
-                        style={{ fontSize: '13px', display: 'block' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button
-                        type="submit"
-                        disabled={isUploading || !form.file}
-                        style={{
-                          padding: '7px 16px',
-                          background: isUploading || !form.file ? '#C4B5FD' : '#7C3AED',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          cursor: isUploading || !form.file ? 'default' : 'pointer',
-                        }}
+              <div key={addon.id} className="rounded-3xl border border-border/70 bg-card/90 p-6">
+                <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="flex size-16 items-center justify-center rounded-3xl border border-border/70 bg-muted/60 text-xl"
+                        style={addon.icon_url ? { backgroundImage: `url(${addon.icon_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                       >
-                        {isUploading ? 'Uploading...' : 'Upload Version'}
-                      </button>
-                      {uploadMsg[addon.technical_name] && (
-                        <span style={{ fontSize: '13px', color: '#065F46' }}>{uploadMsg[addon.technical_name]}</span>
-                      )}
-                      {uploadError[addon.technical_name] && (
-                        <span style={{ fontSize: '13px', color: '#B91C1C' }}>{uploadError[addon.technical_name]}</span>
-                      )}
+                        {!addon.icon_url ? 'A' : null}
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-xl font-semibold">{addon.display_name}</h2>
+                          <StatusBadge value={addon.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">{addon.summary}</p>
+                      </div>
                     </div>
-                  </form>
+
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <MetricCard label="Downloads" value={addon.download_count.toLocaleString()} />
+                      <MetricCard
+                        label="Rating"
+                        value={
+                          <div className="flex items-center gap-2">
+                            <StarRating rating={addon.rating_avg} readonly size={15} />
+                            <span className="font-semibold">{addon.rating_avg.toFixed(1)}</span>
+                          </div>
+                        }
+                      />
+                      <MetricCard label="Price" value={addon.price_cents === 0 ? 'Free' : `$${(addon.price_cents / 100).toFixed(2)}/mo`} />
+                      <MetricCard label="Category" value={addon.category} />
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-xl rounded-3xl border border-border/70 bg-background/60 p-5">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="rounded-2xl border border-border/70 bg-muted/60 p-3">
+                        <Upload className="size-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">Upload new version</div>
+                        <div className="text-sm text-muted-foreground">Ship changelog and package updates.</div>
+                      </div>
+                    </div>
+
+                    <form onSubmit={(e) => handleUploadVersion(addon.technical_name, e)} className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+                        <div className="space-y-2">
+                          <Label htmlFor={`version-${addon.technical_name}`}>Version</Label>
+                          <Input
+                            id={`version-${addon.technical_name}`}
+                            required
+                            value={form.version}
+                            onChange={(e) => setUploadFormField(addon.technical_name, 'version', e.target.value)}
+                            placeholder="1.2.0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`changelog-${addon.technical_name}`}>Changelog</Label>
+                          <Input
+                            id={`changelog-${addon.technical_name}`}
+                            value={form.changelog}
+                            onChange={(e) => setUploadFormField(addon.technical_name, 'changelog', e.target.value)}
+                            placeholder="What changed in this release..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`file-${addon.technical_name}`}>Addon package (.zip)</Label>
+                        <Input
+                          id={`file-${addon.technical_name}`}
+                          type="file"
+                          accept=".zip"
+                          required
+                          ref={(el) => { fileInputRefs.current[addon.technical_name] = el }}
+                          onChange={(e) => setUploadFormField(addon.technical_name, 'file', e.target.files?.[0] ?? null)}
+                        />
+                      </div>
+
+                      {uploadMsg[addon.technical_name] ? <Notice tone="success">{uploadMsg[addon.technical_name]}</Notice> : null}
+                      {uploadError[addon.technical_name] ? <Notice tone="danger">{uploadError[addon.technical_name]}</Notice> : null}
+
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={isUploading || !form.file}>
+                          {isUploading ? 'Uploading...' : 'Upload version'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             )
@@ -409,42 +333,11 @@ export default function PublisherDashboard() {
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '12px',
-  fontWeight: 600,
-  color: '#374151',
-  marginBottom: '4px',
-  textTransform: 'uppercase',
-  letterSpacing: '0.4px',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 10px',
-  borderRadius: '6px',
-  border: '1px solid #D1D5DB',
-  fontSize: '13px',
-  background: '#fff',
-  boxSizing: 'border-box',
-  outline: 'none',
-}
-
-const statBox: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2px',
-}
-
-const statValue: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: 700,
-  color: '#1E293B',
-}
-
-const statLabel: React.CSSProperties = {
-  fontSize: '11px',
-  color: '#9CA3AF',
-  textTransform: 'uppercase',
-  letterSpacing: '0.4px',
+function MetricCard({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+      <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+      <div className="mt-2 text-lg font-semibold">{value}</div>
+    </div>
+  )
 }

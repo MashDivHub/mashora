@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.middleware.auth import get_current_user
-from app.models import Subscription, User
+from app.models import License, Subscription, User
 from app.schemas.subscription import (
     CheckoutResponse,
     PlanInfo,
@@ -16,6 +17,7 @@ from app.schemas.subscription import (
 )
 from app.services.plans import PLANS, get_plan
 from app.services.stripe_service import StripeService
+from app.config import get_settings
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
@@ -40,6 +42,7 @@ async def list_plans() -> list[PlanInfo]:
 async def create_checkout(
     body: SubscriptionCreate,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> CheckoutResponse:
     """Create a Stripe checkout session for the authenticated user's org."""
     plan_config = get_plan(body.plan)
@@ -48,6 +51,70 @@ async def create_checkout(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown plan: {body.plan}",
         )
+
+    settings = get_settings()
+
+    if not settings.stripe_secret_key:
+        now = datetime.now(timezone.utc)
+        period_end = now + timedelta(days=30)
+
+        result = await db.execute(
+            select(Subscription)
+            .where(Subscription.org_id == current_user.org_id)
+            .order_by(Subscription.created_at.desc())
+            .limit(1)
+        )
+        subscription = result.scalar_one_or_none()
+
+        if subscription is None:
+            subscription = Subscription(
+                org_id=current_user.org_id,
+                plan=body.plan,
+                amount_cents=plan_config["price_cents"],
+                currency="usd",
+                interval="month",
+                status="active",
+                current_period_start=now,
+                current_period_end=period_end,
+            )
+            db.add(subscription)
+        else:
+            subscription.plan = body.plan
+            subscription.amount_cents = plan_config["price_cents"]
+            subscription.currency = "usd"
+            subscription.interval = "month"
+            subscription.status = "active"
+            subscription.current_period_start = now
+            subscription.current_period_end = period_end
+
+        license_result = await db.execute(
+            select(License)
+            .where(License.org_id == current_user.org_id)
+            .order_by(License.created_at.desc())
+            .limit(1)
+        )
+        license_ = license_result.scalar_one_or_none()
+        if license_ is None:
+            license_ = License(
+                org_id=current_user.org_id,
+                license_key=f"mock-{current_user.org_id.hex[:24]}",
+                plan=body.plan,
+                max_users=plan_config["max_users"],
+                max_apps=plan_config["max_apps"],
+                features=plan_config["features"],
+                valid_from=now,
+                status="active",
+            )
+            db.add(license_)
+        else:
+            license_.plan = body.plan
+            license_.max_users = plan_config["max_users"]
+            license_.max_apps = plan_config["max_apps"]
+            license_.features = plan_config["features"]
+            license_.status = "active"
+
+        await db.flush()
+        return CheckoutResponse(checkout_url=body.success_url)
 
     try:
         checkout_url = await StripeService.create_checkout_session(
@@ -65,6 +132,7 @@ async def create_checkout(
     return CheckoutResponse(checkout_url=checkout_url)
 
 
+@router.get("", response_model=list[SubscriptionResponse])
 @router.get("/", response_model=list[SubscriptionResponse])
 async def list_subscriptions(
     db: AsyncSession = Depends(get_db),
@@ -84,6 +152,12 @@ async def create_portal_session(
     current_user: User = Depends(get_current_user),
 ) -> PortalResponse:
     """Return a Stripe billing portal URL for the authenticated user's org."""
+    settings = get_settings()
+    if not settings.stripe_secret_key:
+        return PortalResponse(
+            portal_url=f"{settings.public_web_url}/dashboard/billing?mock_portal=true"
+        )
+
     result = await db.execute(
         select(Subscription)
         .where(
@@ -104,7 +178,7 @@ async def create_portal_session(
     try:
         portal_url = await StripeService.create_customer_portal_session(
             stripe_customer_id=subscription.stripe_customer_id,
-            return_url="http://localhost:3000/dashboard/billing",
+            return_url=f"{settings.public_web_url}/dashboard/billing",
         )
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(

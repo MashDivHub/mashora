@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mashora_modern_ui.WebClient">
+        <div class="msh_shell" t-att-class="{ 'msh_shell_fullscreen': state.fullscreen }">
+            <t t-if="!state.fullscreen">
+                <NavBar/>
+            </t>
+            <div class="msh_shell_main">
+                <ActionContainer/>
+            </div>
+            <MainComponentsContainer/>
+        </div>
+    </t>
+
+    <t t-name="mashora_modern_ui.NavBar">
+        <t t-if="env.isSmall">
+            <header class="msh_mobilebar d-print-none" t-ref="root" data-command-category="disabled">
+                <button class="msh_mobilebar_toggle" title="Open navigation" t-on-click.prevent="_openAppMenuSidebar">
+                    <i class="fa fa-bars"/>
+                </button>
+                <button class="msh_mobilebar_brand" accesskey="h" title="Command Center" t-on-click="openCommandCenter">
+                    <span class="msh_mobilebar_mark">M</span>
+                    <div class="msh_mobilebar_copy">
+                        <span class="msh_mobilebar_title">Mashora</span>
+                        <small t-esc="currentApp ? currentApp.name : 'Command Center'"/>
+                    </div>
+                </button>
+                <div class="o_navbar_breadcrumbs d-contents"/>
+                <div class="msh_mobilebar_tools o_menu_systray d-flex align-items-center gap-1 ms-auto">
+                    <button
+                        class="msh_theme_toggle msh_theme_toggle_mobile"
+                        t-att-class="{ 'is-dark': currentTheme === 'dark' }"
+                        t-att-title="currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+                        t-on-click="toggleColorMode"
+                    >
+                        <i t-att-class="currentTheme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o'"/>
+                    </button>
+                    <t t-foreach="systrayItems" t-as="item" t-key="item.key">
+                        <div t-att-data-index="item.index"/>
+                        <ErrorHandler onError="error => this.handleItemError(error, item)">
+                            <t t-component="item.Component" t-props="item.props"/>
+                        </ErrorHandler>
+                    </t>
+                </div>
+                <t t-set="apps" t-value="menuService.getApps()"/>
+                <t t-call="web.NavBar.AppsMenu.Sidebar"/>
+            </header>
+        </t>
+        <t t-else="">
+            <aside class="msh_sidebar d-print-none" t-ref="root" data-command-category="disabled">
+                <div class="msh_sidebar_inner">
+                    <div class="msh_sidebar_topbar">
+                        <button class="msh_brand" accesskey="h" title="Command Center" t-on-click="openCommandCenter">
+                            <span class="msh_brand_mark">M</span>
+                            <div class="msh_brand_copy">
+                                <span class="msh_brand_title">Mashora</span>
+                                <span class="msh_brand_subtitle">Business command center</span>
+                            </div>
+                        </button>
+                        <button
+                            class="msh_theme_toggle"
+                            t-att-class="{ 'is-dark': currentTheme === 'dark' }"
+                            t-att-title="currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+                            t-on-click="toggleColorMode"
+                        >
+                            <i t-att-class="currentTheme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o'"/>
+                        </button>
+                    </div>
+
+                    <section class="msh_sidebar_hero">
+                        <span class="msh_sidebar_eyebrow">Workspace</span>
+                        <h2 t-esc="currentApp ? currentApp.name : 'Executive overview'"/>
+                        <p>Navigate business apps, keep teams aligned, and reach the data that matters faster.</p>
+                        <button class="btn btn-primary msh_sidebar_hero_button" t-on-click="openCommandCenter">
+                            Command Center
+                        </button>
+                    </section>
+
+                    <section class="msh_sidebar_group">
+                        <div class="msh_sidebar_group_head">
+                            <span>Apps</span>
+                        </div>
+                        <div class="msh_app_grid">
+                            <button
+                                t-foreach="menuService.getApps()"
+                                t-as="app"
+                                t-key="app.id"
+                                class="msh_app_tile"
+                                t-att-class="{ 'is-active': currentApp and currentApp.id === app.id }"
+                                t-on-click="() => this.onNavBarDropdownItemSelection(app)"
+                            >
+                                <span class="msh_app_tile_icon">
+                                    <img t-if="app.webIconData" t-attf-src="{{app.webIconData}}" t-att-alt="app.name"/>
+                                    <span t-else="" t-esc="app.name[0]"/>
+                                </span>
+                                <span class="msh_app_tile_label" t-esc="app.name"/>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="msh_sidebar_group">
+                        <div class="msh_sidebar_group_head">
+                            <span>Navigation</span>
+                        </div>
+                        <div t-if="currentAppSections.length" class="msh_sidebar_sections">
+                            <ul class="list-unstyled m-0">
+                                <t t-foreach="currentAppSections" t-as="subMenu" t-key="subMenu_index">
+                                    <t t-call="web.SectionMenu">
+                                        <t t-set="section" t-value="subMenu"/>
+                                    </t>
+                                </t>
+                            </ul>
+                        </div>
+                        <div t-else="" class="msh_sidebar_empty">
+                            <strong>Command Center ready</strong>
+                            <span>Pick an app to reveal its menus and work areas in this sidebar.</span>
+                        </div>
+                    </section>
+
+                    <section class="msh_sidebar_group">
+                        <div class="msh_sidebar_group_head">
+                            <span>Live tools</span>
+                        </div>
+                        <div class="o_navbar_breadcrumbs d-contents"/>
+                        <div class="msh_sidebar_systray o_menu_systray d-flex flex-column gap-2" role="menu">
+                            <t t-foreach="systrayItems" t-as="item" t-key="item.key">
+                                <div t-att-data-index="item.index"/>
+                                <ErrorHandler onError="error => this.handleItemError(error, item)">
+                                    <t t-component="item.Component" t-props="item.props"/>
+                                </ErrorHandler>
+                            </t>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+        </t>
+    </t>
+
+</templates>

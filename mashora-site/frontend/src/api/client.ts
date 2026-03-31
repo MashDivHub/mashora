@@ -20,7 +20,14 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = String(error.config?.url ?? '')
+    const isAuthRequest =
+      url.includes('/auth/token') ||
+      url.includes('/auth/login') ||
+      url.includes('/auth/register')
+
+    if (status === 401 && !isAuthRequest) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }

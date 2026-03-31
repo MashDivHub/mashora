@@ -1,100 +1,269 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { LayoutDashboard, LifeBuoy, Package2, Receipt, Rocket, Settings2, Sparkles, Store, UserRoundPlus, Waypoints } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 
 interface LayoutProps {
   children: React.ReactNode
 }
 
-const navStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0 24px',
-  height: '56px',
-  background: '#1e293b',
-  color: '#fff',
-}
+const dashboardNavigation = [
+  { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { to: '/addons', label: 'Marketplace', icon: Store },
+  { to: '/dashboard/billing', label: 'Billing', icon: Receipt },
+  { to: '/dashboard/upgrades', label: 'Upgrades', icon: Rocket },
+  { to: '/dashboard/support', label: 'Support', icon: LifeBuoy },
+  { to: '/dashboard/publisher', label: 'Publisher', icon: Package2 },
+  { to: '/dashboard/admin', label: 'Admin', icon: Settings2 },
+]
 
-const logoStyle: React.CSSProperties = {
-  fontSize: '20px',
-  fontWeight: 700,
-  color: '#fff',
-  textDecoration: 'none',
-  letterSpacing: '-0.5px',
-}
+const marketingNavigation = [
+  { to: '/', label: 'Platform' },
+  { to: '/pricing', label: 'Pricing' },
+  { to: '/addons', label: 'Marketplace' },
+]
 
-const navLinksStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '16px',
-  alignItems: 'center',
-}
-
-const navLinkStyle: React.CSSProperties = {
-  color: '#cbd5e1',
-  textDecoration: 'none',
-  fontSize: '14px',
-}
-
-const navLinkAccentStyle: React.CSSProperties = {
-  color: '#a78bfa',
-  textDecoration: 'none',
-  fontSize: '14px',
-  fontWeight: 500,
-}
-
-const logoutBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: '1px solid #475569',
-  color: '#cbd5e1',
-  padding: '4px 12px',
-  borderRadius: '4px',
-  fontSize: '14px',
-  cursor: 'pointer',
-}
-
-const mainStyle: React.CSSProperties = {
-  maxWidth: '960px',
-  margin: '0 auto',
-  padding: '32px 24px',
+const lightPillStyle = {
+  backgroundColor: '#fafafa',
+  color: '#09090b',
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18)',
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { isAuthenticated, logout } = useAuthStore()
+  const location = useLocation()
+  const { isAuthenticated, logout, user, initFromStorage } = useAuthStore()
   const navigate = useNavigate()
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    initFromStorage().finally(() => {
+      if (!cancelled) {
+        setReady(true)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [initFromStorage])
 
   function handleLogout() {
     logout()
     navigate('/login')
   }
 
-  return (
-    <>
-      <nav style={navStyle}>
-        <Link to="/" style={logoStyle}>Mashora</Link>
-        <div style={navLinksStyle}>
-          <Link to="/" style={navLinkStyle}>Home</Link>
-          <Link to="/pricing" style={navLinkStyle}>Pricing</Link>
-          <Link to="/addons" style={navLinkAccentStyle}>Addons</Link>
-          {isAuthenticated ? (
-            <>
-              <Link to="/dashboard" style={navLinkStyle}>Dashboard</Link>
-              <Link to="/dashboard/upgrades" style={navLinkStyle}>Upgrades</Link>
-              <Link to="/dashboard/support" style={navLinkStyle}>Support</Link>
-              <Link to="/dashboard/publisher" style={navLinkStyle}>Publisher</Link>
-              <Link to="/dashboard/admin" style={navLinkStyle}>Admin</Link>
-              <button onClick={handleLogout} style={logoutBtnStyle}>Logout</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" style={navLinkStyle}>Login</Link>
-              <Link to="/register" style={navLinkStyle}>Register</Link>
-            </>
-          )}
+  const isDashboardRoute = location.pathname.startsWith('/dashboard')
+  const initials = (user?.org_name || user?.email || 'Mashora')
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="rounded-3xl border border-border bg-card/90 px-6 py-4 text-sm text-muted-foreground shadow-xl">
+          Loading workspace...
         </div>
-      </nav>
-      <main style={mainStyle}>
+      </div>
+    )
+  }
+
+  if (isDashboardRoute) {
+    return (
+      <div className="relative min-h-screen">
+        <div className="relative flex min-h-screen">
+          <aside className="hidden w-72 shrink-0 border-r border-border/70 bg-background/80 backdrop-blur xl:flex xl:flex-col">
+            <div className="border-b border-border/70 px-6 py-6">
+              <Link to="/" className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/20 dark:bg-zinc-100 dark:text-zinc-900">
+                  M
+                </div>
+                <div>
+                  <div className="text-lg font-semibold tracking-tight">Mashora</div>
+                  <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Business OS</div>
+                </div>
+              </Link>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <div className="mb-6 rounded-3xl border border-border/70 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 text-white shadow-xl shadow-zinc-950/15 dark:from-zinc-100 dark:to-zinc-200 dark:text-zinc-950">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="rounded-2xl bg-white/12 p-3 dark:bg-zinc-900/10">
+                    <Waypoints className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{user?.org_name || 'Workspace'}</p>
+                    <p className="text-xs text-zinc-300 dark:text-zinc-600">{user?.email || 'Connected account'}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-zinc-300 dark:text-zinc-700">
+                  One shell for provisioning, marketplace ops, upgrades, support, and platform control.
+                </p>
+              </div>
+
+              <nav className="space-y-2">
+                {dashboardNavigation.map(({ to, label, icon: Icon }) => {
+                  const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      className={cn(
+                        'group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all',
+                        active
+                          ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-950/15 dark:bg-zinc-100 dark:text-zinc-900'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="size-4" />
+                      <span>{label}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur">
+              <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 lg:px-10">
+                <div className="xl:hidden">
+                  <Link to="/" className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                      M
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold">Mashora</div>
+                      <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Business OS</div>
+                    </div>
+                  </Link>
+                </div>
+
+                <div className="hidden flex-1 items-center gap-2 overflow-x-auto xl:flex">
+                  {dashboardNavigation.map(({ to, label }) => {
+                    const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
+                    return (
+                      <Link
+                        key={to}
+                        to={to}
+                        className={cn(
+                          'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                          active ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        {label}
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                <div className="ml-auto flex items-center gap-3">
+                  <ThemeToggle />
+                  <div className="hidden items-center gap-3 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 sm:flex">
+                    <Avatar className="size-9">
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{user?.org_name || 'Mashora'}</div>
+                      <div className="truncate text-xs text-muted-foreground">{user?.email || 'Signed in'}</div>
+                    </div>
+                  </div>
+                  <Button variant="outline" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto">
+              <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+                {children}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-10">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/15 dark:bg-zinc-100 dark:text-zinc-900">
+              M
+            </div>
+            <div>
+              <div className="text-lg font-semibold tracking-tight">Mashora</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Shadcn Workspace</div>
+            </div>
+          </Link>
+
+          <nav className="hidden items-center gap-2 md:flex">
+            {marketingNavigation.map(({ to, label }) => {
+              const active = location.pathname === to
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={active ? 'page' : undefined}
+                  style={active ? lightPillStyle : undefined}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    active
+                      ? ''
+                      : 'text-muted-foreground hover:bg-zinc-100 hover:text-zinc-950 dark:hover:bg-zinc-900/70 dark:hover:text-zinc-50'
+                  )}
+                >
+                  {label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/dashboard">
+                    <Sparkles className="size-4" />
+                    Dashboard
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={handleLogout}>
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Link
+                  to="/register"
+                  style={lightPillStyle}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:brightness-95"
+                >
+                  <UserRoundPlus className="size-4" />
+                  Start Free
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
         {children}
       </main>
-    </>
+    </div>
   )
 }

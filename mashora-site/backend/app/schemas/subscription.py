@@ -1,13 +1,23 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.config import get_settings
+
+
+def default_success_url() -> str:
+    return f"{get_settings().public_web_url}/dashboard/billing?success=true"
+
+
+def default_cancel_url() -> str:
+    return f"{get_settings().public_web_url}/dashboard/billing?cancelled=true"
 
 
 class SubscriptionCreate(BaseModel):
     plan: str  # starter, professional, enterprise
-    success_url: str = "http://localhost:3000/dashboard/billing?success=true"
-    cancel_url: str = "http://localhost:3000/dashboard/billing?cancelled=true"
+    success_url: str = Field(default_factory=default_success_url)
+    cancel_url: str = Field(default_factory=default_cancel_url)
 
 
 class SubscriptionResponse(BaseModel):

@@ -1,8 +1,10 @@
 import hashlib
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -12,6 +14,26 @@ from app.schemas.addon import AddonCreate, AddonResponse, AddonVersionCreate, Ad
 from app.services.minio_service import MinioService
 
 router = APIRouter(prefix="/publisher", tags=["publisher"])
+
+
+def _addon_response(addon: Addon) -> AddonResponse:
+    return AddonResponse(
+        id=addon.id,
+        technical_name=addon.technical_name,
+        display_name=addon.display_name,
+        summary=addon.summary,
+        author_name=addon.author.name if addon.author else None,
+        category=addon.category,
+        version=addon.version,
+        price_cents=addon.price_cents,
+        currency=addon.currency,
+        icon_url=addon.icon_url,
+        download_count=addon.download_count,
+        rating_avg=addon.rating_avg,
+        rating_count=addon.rating_count,
+        status=addon.status,
+        created_at=addon.created_at,
+    )
 
 
 @router.post("/addons", response_model=AddonResponse, status_code=status.HTTP_201_CREATED)
@@ -40,7 +62,8 @@ async def submit_addon(
     )
     db.add(addon)
     await db.flush()
-    return AddonResponse.model_validate(addon)
+    await db.refresh(addon, attribute_names=["author"])
+    return _addon_response(addon)
 
 
 @router.get("/addons", response_model=list[AddonResponse])
@@ -49,10 +72,10 @@ async def list_publisher_addons(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Addon).where(Addon.author_id == current_user.org_id)
+        select(Addon).where(Addon.author_id == current_user.org_id).options(selectinload(Addon.author))
     )
     addons = result.scalars().all()
-    return [AddonResponse.model_validate(a) for a in addons]
+    return [_addon_response(a) for a in addons]
 
 
 @router.post(
@@ -101,6 +124,7 @@ async def upload_version(
         file_hash=file_hash,
         file_size=len(file_data),
         mashora_version_compat=mashora_version_compat,
+        published_at=datetime.now(timezone.utc),
     )
     db.add(addon_version)
 

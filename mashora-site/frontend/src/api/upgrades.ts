@@ -18,22 +18,40 @@ export interface AvailableUpgradeResponse {
   available: boolean
 }
 
+function normalizeUpgrade(data: any): UpgradeResponse {
+  return {
+    id: String(data.id),
+    tenant_id: String(data.tenant_id),
+    from_version: data.from_version ?? '',
+    to_version: data.to_version ?? '',
+    status: data.status ?? 'pending',
+    started_at: data.started_at ?? null,
+    completed_at: data.completed_at ?? null,
+    log: data.log ?? null,
+    created_at: data.created_at ?? new Date().toISOString(),
+  }
+}
+
 export async function checkAvailableUpgrade(tenantId: string): Promise<AvailableUpgradeResponse> {
-  const response = await client.get<AvailableUpgradeResponse>(`/upgrades/check/${tenantId}`)
+  const response = await client.get<AvailableUpgradeResponse>('/upgrades/available', {
+    params: { tenant_id: tenantId },
+  })
   return response.data
 }
 
 export async function startUpgrade(tenantId: string, toVersion: string): Promise<UpgradeResponse> {
   const response = await client.post<UpgradeResponse>('/upgrades', { tenant_id: tenantId, to_version: toVersion })
-  return response.data
+  return normalizeUpgrade(response.data)
 }
 
 export async function getUpgradeStatus(upgradeId: string): Promise<UpgradeResponse> {
-  const response = await client.get<UpgradeResponse>(`/upgrades/${upgradeId}`)
-  return response.data
+  const response = await client.get<UpgradeResponse>(`/upgrades/${upgradeId}/status`)
+  return normalizeUpgrade(response.data)
 }
 
 export async function listUpgrades(tenantId: string): Promise<UpgradeResponse[]> {
-  const response = await client.get<UpgradeResponse[]>(`/upgrades?tenant_id=${tenantId}`)
-  return response.data
+  const response = await client.get<UpgradeResponse[]>('/upgrades', {
+    params: { tenant_id: tenantId },
+  })
+  return response.data.map(normalizeUpgrade)
 }

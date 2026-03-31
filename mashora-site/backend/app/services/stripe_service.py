@@ -26,7 +26,7 @@ class StripeService:
         if not settings.stripe_secret_key:
             # Mock mode: return a fake checkout URL for local development
             return (
-                f"http://localhost:3000/dashboard/billing"
+                f"{settings.public_web_url}/dashboard/billing"
                 f"?mock_checkout=true&plan={plan}&org_id={org_id}"
             )
 
@@ -66,7 +66,7 @@ class StripeService:
         settings = get_settings()
 
         if not settings.stripe_secret_key:
-            return f"http://localhost:3000/dashboard/billing?mock_portal=true"
+            return f"{settings.public_web_url}/dashboard/billing?mock_portal=true"
 
         try:
             session = stripe.billing_portal.Session.create(

@@ -53,12 +53,21 @@ async def platform_stats(
             select(func.count()).select_from(Subscription).where(Subscription.status == "active")
         )
     ).scalar() or 0
+    monthly_revenue_cents = (
+        await db.execute(
+            select(func.coalesce(func.sum(Subscription.amount_cents), 0)).where(
+                Subscription.status.in_(("active", "trialing"))
+            )
+        )
+    ).scalar() or 0
 
     return {
+        "total_orgs": total_orgs,
         "total_organizations": total_orgs,
         "total_users": total_users,
         "total_tenants": total_tenants,
         "active_subscriptions": active_subs,
+        "monthly_revenue_cents": int(monthly_revenue_cents),
     }
 
 
@@ -71,23 +80,30 @@ async def list_all_tenants(
 ) -> dict:
     _require_admin(current_user)
 
-    query = select(Tenant).order_by(Tenant.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    query = (
+        select(Tenant, Organization.name)
+        .join(Organization, Tenant.org_id == Organization.id)
+        .order_by(Tenant.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     result = await db.execute(query)
-    tenants = result.scalars().all()
+    tenants = result.all()
     total = (await db.execute(select(func.count()).select_from(Tenant))).scalar() or 0
 
     return {
         "tenants": [
             {
-                "id": str(t.id),
-                "org_id": str(t.org_id),
-                "db_name": t.db_name,
-                "subdomain": t.subdomain,
-                "status": t.status,
-                "mashora_version": t.mashora_version,
-                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "id": str(tenant.id),
+                "org_id": str(tenant.org_id),
+                "org_name": org_name,
+                "db_name": tenant.db_name,
+                "subdomain": tenant.subdomain,
+                "status": tenant.status,
+                "mashora_version": tenant.mashora_version,
+                "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
             }
-            for t in tenants
+            for tenant, org_name in tenants
         ],
         "total": total,
         "page": page,
@@ -179,6 +195,34 @@ async def admin_update_addon_status(
     addon.status = addon_status
     await db.commit()
     return {"id": str(addon.id), "status": addon.status, "message": f"Addon status updated to {addon_status}"}
+
+
+@router.get("/addons/pending")
+async def list_pending_addons(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    _require_admin(current_user)
+
+    result = await db.execute(
+        select(Addon, Organization.name)
+        .join(Organization, Addon.author_id == Organization.id, isouter=True)
+        .where(Addon.status == "pending")
+        .order_by(Addon.created_at.desc())
+    )
+    rows = result.all()
+    return [
+        {
+            "id": str(addon.id),
+            "technical_name": addon.technical_name,
+            "display_name": addon.display_name,
+            "category": addon.category,
+            "created_at": addon.created_at.isoformat() if addon.created_at else None,
+            "org_name": org_name,
+            "publisher": org_name,
+        }
+        for addon, org_name in rows
+    ]
 
 
 @router.get("/users")

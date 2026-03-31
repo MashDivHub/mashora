@@ -13,6 +13,7 @@ from app.models.support_ticket import SupportTicket
 from app.models.ticket_message import TicketMessage
 from app.schemas.support import (
     TicketCreate,
+    TicketDetailResponse,
     TicketList,
     TicketMessageCreate,
     TicketMessageResponse,
@@ -46,6 +47,7 @@ def _message_response(msg: TicketMessage, user_email: str | None = None) -> Tick
         user_email=user_email,
         message=msg.message,
         is_staff=msg.is_staff,
+        sender="support" if msg.is_staff else "user",
         created_at=msg.created_at,
     )
 
@@ -98,22 +100,28 @@ async def list_tickets(
     )
 
 
-@router.get("/tickets/{ticket_id}", response_model=TicketResponse)
+@router.get("/tickets/{ticket_id}", response_model=TicketDetailResponse)
 async def get_ticket(
     ticket_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> TicketResponse:
+) -> TicketDetailResponse:
     result = await db.execute(
         select(SupportTicket)
         .where(SupportTicket.id == ticket_id, SupportTicket.org_id == current_user.org_id)
-        .options(selectinload(SupportTicket.messages))
+        .options(selectinload(SupportTicket.messages).selectinload(TicketMessage.user))
     )
     ticket = result.scalar_one_or_none()
     if ticket is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
 
-    return _ticket_response(ticket, current_user.email if ticket.user_id == current_user.id else None)
+    return TicketDetailResponse(
+        **_ticket_response(ticket, current_user.email if ticket.user_id == current_user.id else None).model_dump(),
+        messages=[
+            _message_response(message, message.user.email if message.user else None)
+            for message in sorted(ticket.messages, key=lambda item: item.created_at)
+        ],
+    )
 
 
 @router.post("/tickets/{ticket_id}/messages", response_model=TicketMessageResponse, status_code=status.HTTP_201_CREATED)

@@ -1,3 +1,5 @@
+import { Star } from 'lucide-react'
+
 interface StarRatingProps {
   rating: number
   onChange?: (rating: number) => void
@@ -9,22 +11,22 @@ export default function StarRating({ rating, onChange, readonly = false, size = 
   const stars = [1, 2, 3, 4, 5]
 
   return (
-    <span style={{ display: 'inline-flex', gap: '2px', lineHeight: 1 }}>
+    <span className="inline-flex items-center gap-1 leading-none">
       {stars.map((star) => (
-        <span
+        <button
+          type="button"
           key={star}
           onClick={() => !readonly && onChange && onChange(star)}
-          style={{
-            fontSize: `${size}px`,
-            color: star <= Math.round(rating) ? '#F59E0B' : '#D1D5DB',
-            cursor: readonly ? 'default' : 'pointer',
-            userSelect: 'none',
-            transition: 'color 0.1s',
-          }}
+          className="inline-flex items-center justify-center rounded-sm transition-transform hover:scale-105 disabled:pointer-events-none"
+          style={{ cursor: readonly ? 'default' : 'pointer' }}
           title={readonly ? undefined : `${star} star${star !== 1 ? 's' : ''}`}
+          disabled={readonly}
         >
-          {star <= Math.round(rating) ? '\u2605' : '\u2606'}
-        </span>
+          <Star
+            size={size}
+            className={star <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}
+          />
+        </button>
       ))}
     </span>
   )

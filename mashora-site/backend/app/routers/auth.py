@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -9,7 +10,7 @@ from app.middleware.auth import (
     get_current_user,
     verify_token,
 )
-from app.models import User
+from app.models import Organization, User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.services.auth_service import AuthService
 
@@ -21,6 +22,25 @@ def _build_tokens(user: User) -> TokenResponse:
     access_token = create_access_token({"sub": subject})
     refresh_token = create_refresh_token({"sub": subject})
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+def _invalid_credentials_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def _authenticate_or_401(
+    db: AsyncSession,
+    email: str,
+    password: str,
+) -> User:
+    user = await AuthService.authenticate(db, email, password)
+    if user is None:
+        raise _invalid_credentials_exception()
+    return user
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -53,13 +73,7 @@ async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    user = await AuthService.authenticate(db, body.email, body.password)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user = await _authenticate_or_401(db, body.email, body.password)
     return _build_tokens(user)
 
 
@@ -69,13 +83,17 @@ async def login_form(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """OAuth2 password flow used by the OpenAPI docs 'Authorize' button."""
-    user = await AuthService.authenticate(db, form.username, form.password)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user = await _authenticate_or_401(db, form.username, form.password)
+    return _build_tokens(user)
+
+
+@router.post("/token", response_model=TokenResponse, include_in_schema=False)
+async def token(
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Compatibility alias for frontend and OAuth2 password flows."""
+    user = await _authenticate_or_401(db, form.username, form.password)
     return _build_tokens(user)
 
 
@@ -112,5 +130,20 @@ async def refresh(
 @router.get("/me", response_model=UserResponse)
 async def me(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+    result = await db.execute(
+        select(Organization.name, Organization.status).where(Organization.id == current_user.org_id)
+    )
+    org = result.one_or_none()
+    org_name = org.name if org else "Workspace"
+    org_status = org.status if org else "active"
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role,
+        org_id=current_user.org_id,
+        org_name=org_name,
+        is_active=org_status == "active",
+        created_at=current_user.created_at,
+    )

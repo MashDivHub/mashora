@@ -1,103 +1,130 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Check, Sparkles } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { createCheckout, getPlans, type PlanInfo } from '../api/subscriptions'
 import { useAuthStore } from '../store/authStore'
-import { createCheckout } from '../api/subscriptions'
+import { Notice } from '@/components/app/notice'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 interface Plan {
   name: string
   slug: string
-  price_cents: number
+  priceCents: number
   interval: string
   description: string
   features: string[]
-  max_users: number
-  max_apps: number
+  maxUsers: number
+  maxApps: number
   highlight?: boolean
 }
 
-const PLANS: Plan[] = [
+const fallbackPlans: Plan[] = [
   {
     name: 'Free',
     slug: 'free',
-    price_cents: 0,
+    priceCents: 0,
     interval: 'mo',
-    description: 'Perfect for individuals and small projects.',
-    features: [
-      'Up to 1 user',
-      'Up to 2 apps',
-      'Community support',
-      'Basic analytics',
-    ],
-    max_users: 1,
-    max_apps: 2,
+    description: 'Perfect for small teams validating their first operational workspace.',
+    features: ['5 users', '1 app', 'Community support', 'Basic analytics'],
+    maxUsers: 5,
+    maxApps: 1,
   },
   {
     name: 'Starter',
     slug: 'starter',
-    price_cents: 2900,
+    priceCents: 2900,
     interval: 'mo',
-    description: 'Great for growing teams.',
-    features: [
-      'Up to 5 users',
-      'Up to 10 apps',
-      'Email support',
-      'Advanced analytics',
-      'Custom subdomain',
-    ],
-    max_users: 5,
-    max_apps: 10,
+    description: 'A strong base for companies moving off fragmented admin tools.',
+    features: ['15 users', '5 apps', 'Email support', 'Custom subdomain'],
+    maxUsers: 15,
+    maxApps: 5,
   },
   {
     name: 'Professional',
     slug: 'professional',
-    price_cents: 7900,
+    priceCents: 7900,
     interval: 'mo',
-    description: 'Built for professional teams that need more power.',
-    features: [
-      'Up to 25 users',
-      'Up to 50 apps',
-      'Priority support',
-      'Advanced analytics',
-      'Custom subdomain',
-      'SSO integration',
-      'Audit logs',
-    ],
-    max_users: 25,
-    max_apps: 50,
+    description: 'For teams that want serious tenant operations and better control surfaces.',
+    features: ['50 users', '20 apps', 'Priority support', 'API access'],
+    maxUsers: 50,
+    maxApps: 20,
     highlight: true,
   },
   {
     name: 'Enterprise',
     slug: 'enterprise',
-    price_cents: 19900,
+    priceCents: 19900,
     interval: 'mo',
-    description: 'For large organizations with demanding requirements.',
-    features: [
-      'Unlimited users',
-      'Unlimited apps',
-      'Dedicated support',
-      'Advanced analytics',
-      'Custom subdomain',
-      'SSO integration',
-      'Audit logs',
-      'Custom SLA',
-      'On-premise option',
-    ],
-    max_users: 999,
-    max_apps: 999,
+    description: 'For larger organizations running complex platform and customer workflows.',
+    features: ['Unlimited users', 'Unlimited apps', 'Dedicated support', 'SLA'],
+    maxUsers: 999,
+    maxApps: 999,
   },
 ]
 
-function formatPrice(cents: number): string {
+const planContent: Partial<Record<string, Pick<Plan, 'description' | 'features' | 'highlight'>>> = {
+  free: {
+    description: 'Perfect for small teams validating their first operational workspace.',
+    features: ['Community support', 'Basic analytics'],
+  },
+  starter: {
+    description: 'A strong base for companies moving off fragmented admin tools.',
+    features: ['Email support', 'Custom subdomain'],
+  },
+  professional: {
+    description: 'For teams that want serious tenant operations and better control surfaces.',
+    features: ['Priority support', 'API access'],
+    highlight: true,
+  },
+  enterprise: {
+    description: 'For larger organizations running complex platform and customer workflows.',
+    features: ['Dedicated support', 'SLA'],
+  },
+}
+
+function formatPrice(cents: number) {
   if (cents === 0) return 'Free'
   return `$${(cents / 100).toFixed(0)}`
+}
+
+function toDisplayPlan(plan: PlanInfo): Plan {
+  return {
+    name: plan.name,
+    slug: plan.slug,
+    priceCents: plan.price_cents,
+    interval: 'mo',
+    description: planContent[plan.slug]?.description ?? 'Flexible plan for business operations teams.',
+    features: [
+      `${plan.max_users < 0 ? 'Unlimited' : plan.max_users} users`,
+      `${plan.max_apps < 0 ? 'Unlimited' : plan.max_apps} apps`,
+      ...(planContent[plan.slug]?.features ?? []),
+    ],
+    maxUsers: plan.max_users < 0 ? 999 : plan.max_users,
+    maxApps: plan.max_apps < 0 ? 999 : plan.max_apps,
+    highlight: planContent[plan.slug]?.highlight,
+  }
 }
 
 export default function Pricing() {
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
+  const [plans, setPlans] = useState<Plan[]>(fallbackPlans)
   const [loadingSlug, setLoadingSlug] = useState<string | null>(null)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    getPlans()
+      .then((apiPlans) => {
+        if (apiPlans.length) {
+          setPlans(apiPlans.map(toDisplayPlan))
+        }
+      })
+      .catch(() => {
+        // Keep the local fallback cards so the page still renders cleanly.
+      })
+  }, [])
 
   async function handleSubscribe(slug: string) {
     if (!isAuthenticated) {
@@ -107,8 +134,8 @@ export default function Pricing() {
     setLoadingSlug(slug)
     setError('')
     try {
-      const { checkout_url } = await createCheckout(slug)
-      window.location.href = checkout_url
+      const { checkout_url: checkoutUrl } = await createCheckout(slug)
+      window.location.href = checkoutUrl
     } catch {
       setError('Failed to start checkout. Please try again.')
       setLoadingSlug(null)
@@ -116,166 +143,93 @@ export default function Pricing() {
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: 800, color: '#1e293b', margin: '0 0 12px' }}>
-          Simple, Transparent Pricing
-        </h1>
-        <p style={{ fontSize: '18px', color: '#64748b', margin: 0 }}>
-          Choose the plan that fits your team. Upgrade or downgrade at any time.
+    <div className="space-y-8">
+      <div className="mx-auto max-w-3xl space-y-4 text-center">
+        <Badge variant="outline" className="rounded-full px-4 py-1 text-[11px] uppercase tracking-[0.28em]">
+          Pricing
+        </Badge>
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Simple plans for a sharper business platform.</h1>
+        <p className="text-base text-muted-foreground">
+          Choose the right control surface for your team, then upgrade as your tenant and addon operations grow.
         </p>
       </div>
 
-      {error && (
-        <div style={{
-          background: '#fee2e2',
-          color: '#b91c1c',
-          padding: '12px 16px',
-          borderRadius: '6px',
-          marginBottom: '24px',
-          fontSize: '14px',
-          textAlign: 'center',
-        }}>
-          {error}
-        </div>
-      )}
+      {error ? <Notice tone="danger">{error}</Notice> : null}
 
-      {/* Plan Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-        gap: '24px',
-        alignItems: 'stretch',
-      }}>
-        {PLANS.map((plan) => (
-          <div
+      <div className="grid gap-6 xl:grid-cols-4">
+        {plans.map((plan) => (
+          <Card
             key={plan.slug}
-            style={{
-              background: '#fff',
-              border: plan.highlight ? '2px solid #7C3AED' : '1px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '28px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              boxShadow: plan.highlight ? '0 4px 24px rgba(124,58,237,0.12)' : '0 1px 4px rgba(0,0,0,0.05)',
-            }}
+            className={`relative overflow-hidden ${plan.highlight ? 'border-zinc-900 dark:border-zinc-100' : 'border-border/70'} bg-card/90`}
           >
-            {plan.highlight && (
-              <div style={{
-                position: 'absolute',
-                top: '-13px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: '#7C3AED',
-                color: '#fff',
-                fontSize: '12px',
-                fontWeight: 700,
-                padding: '3px 14px',
-                borderRadius: '20px',
-                letterSpacing: '0.5px',
-                whiteSpace: 'nowrap',
-              }}>
-                MOST POPULAR
+            <CardHeader className="space-y-4">
+              {plan.highlight ? (
+                <Badge className="w-fit rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                  <Sparkles className="mr-1 size-3" />
+                  Most popular
+                </Badge>
+              ) : null}
+              <div className="space-y-2">
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.description}</CardDescription>
               </div>
-            )}
-
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', margin: '0 0 6px' }}>
-                {plan.name}
-              </h2>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px', minHeight: '36px' }}>
-                {plan.description}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontSize: '36px', fontWeight: 800, color: plan.highlight ? '#7C3AED' : '#1e293b' }}>
-                  {formatPrice(plan.price_cents)}
-                </span>
-                {plan.price_cents > 0 && (
-                  <span style={{ fontSize: '14px', color: '#94a3b8' }}>/{plan.interval}</span>
-                )}
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-semibold tracking-tight">{formatPrice(plan.priceCents)}</span>
+                {plan.priceCents > 0 ? <span className="pb-1 text-sm text-muted-foreground">/{plan.interval}</span> : null}
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-3 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Users</div>
+                  <div className="mt-1 font-semibold">{plan.maxUsers === 999 ? 'Unlimited' : plan.maxUsers}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Apps</div>
+                  <div className="mt-1 font-semibold">{plan.maxApps === 999 ? 'Unlimited' : plan.maxApps}</div>
+                </div>
+              </div>
 
-            <div style={{ marginBottom: '20px', fontSize: '12px', color: '#64748b', display: 'flex', gap: '16px' }}>
-              <span>
-                <strong style={{ color: '#1e293b' }}>{plan.max_users === 999 ? 'Unlimited' : plan.max_users}</strong> users
-              </span>
-              <span>
-                <strong style={{ color: '#1e293b' }}>{plan.max_apps === 999 ? 'Unlimited' : plan.max_apps}</strong> apps
-              </span>
-            </div>
+              <div className="space-y-3">
+                {plan.features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-3 text-sm text-muted-foreground">
+                    <div className="mt-0.5 rounded-full bg-zinc-900 p-1 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                      <Check className="size-3" />
+                    </div>
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
 
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', flex: 1 }}>
-              {plan.features.map((f) => (
-                <li key={f} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '14px',
-                  color: '#374151',
-                  marginBottom: '8px',
-                }}>
-                  <span style={{ color: '#7C3AED', fontWeight: 700, fontSize: '16px', lineHeight: 1 }}>&#10003;</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            {plan.slug === 'free' ? (
-              <Link
-                to="/register"
-                style={{
-                  display: 'block',
-                  textAlign: 'center',
-                  padding: '10px 0',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  background: '#F3F4F6',
-                  color: '#1e293b',
-                  textDecoration: 'none',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                Get Started
-              </Link>
-            ) : (
-              <button
-                onClick={() => handleSubscribe(plan.slug)}
-                disabled={loadingSlug === plan.slug}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '10px 0',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '15px',
-                  background: plan.highlight ? '#7C3AED' : '#1e293b',
-                  color: '#fff',
-                  border: 'none',
-                  cursor: loadingSlug === plan.slug ? 'not-allowed' : 'pointer',
-                  opacity: loadingSlug === plan.slug ? 0.7 : 1,
-                  transition: 'opacity 0.15s',
-                }}
-              >
-                {loadingSlug === plan.slug ? 'Redirecting...' : 'Subscribe'}
-              </button>
-            )}
-          </div>
+              {plan.slug === 'free' ? (
+                <Button asChild variant="outline" className="w-full rounded-2xl">
+                  <Link to="/register">Start free</Link>
+                </Button>
+              ) : (
+                <Button
+                  className="w-full rounded-2xl"
+                  variant={plan.highlight ? 'subtle' : 'default'}
+                  onClick={() => handleSubscribe(plan.slug)}
+                  disabled={loadingSlug === plan.slug}
+                >
+                  {loadingSlug === plan.slug ? 'Redirecting...' : 'Subscribe'}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* Footer note */}
-      <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', marginTop: '40px' }}>
-        All paid plans include a 14-day free trial. No credit card required for Free plan.
-        {!isAuthenticated && (
+      <p className="text-center text-sm text-muted-foreground">
+        All paid plans include a 14-day free trial.
+        {!isAuthenticated ? (
           <>
             {' '}Already have an account?{' '}
-            <Link to="/login" style={{ color: '#7C3AED', textDecoration: 'none', fontWeight: 500 }}>Log in</Link>
+            <Link to="/login" className="font-semibold text-foreground underline-offset-4 hover:underline">
+              Log in
+            </Link>
           </>
-        )}
+        ) : null}
       </p>
     </div>
   )

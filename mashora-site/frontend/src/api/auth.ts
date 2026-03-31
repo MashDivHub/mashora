@@ -1,28 +1,26 @@
 import client from './client'
 
-export interface LoginResponse {
+export interface AuthResponse {
   access_token: string
+  refresh_token: string
   token_type: string
 }
 
 export interface User {
-  id: number
+  id: string
   email: string
+  role: string
+  org_id: string
   org_name: string
   is_active: boolean
+  created_at: string
 }
 
-export interface RegisterResponse {
-  id: number
-  email: string
-  org_name: string
-}
-
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string): Promise<AuthResponse> {
   const params = new URLSearchParams()
   params.append('username', email)
   params.append('password', password)
-  const response = await client.post<LoginResponse>('/auth/token', params, {
+  const response = await client.post<AuthResponse>('/auth/token', params, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   })
   return response.data
@@ -32,8 +30,8 @@ export async function register(
   email: string,
   password: string,
   orgName: string
-): Promise<RegisterResponse> {
-  const response = await client.post<RegisterResponse>('/auth/register', {
+): Promise<AuthResponse> {
+  const response = await client.post<AuthResponse>('/auth/register', {
     email,
     password,
     org_name: orgName,
@@ -46,7 +44,7 @@ export async function getMe(): Promise<User> {
   return response.data
 }
 
-export async function refreshToken(): Promise<LoginResponse> {
-  const response = await client.post<LoginResponse>('/auth/refresh')
+export async function refreshToken(): Promise<AuthResponse> {
+  const response = await client.post<AuthResponse>('/auth/refresh')
   return response.data
 }

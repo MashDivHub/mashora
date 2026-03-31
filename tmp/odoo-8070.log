@@ -1,0 +1,32 @@
+INFO:     127.0.0.1:55216 - "GET /web/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53045 - "GET /web/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56060 - "POST /web/session/authenticate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56060 - "POST /web/dataset/call_kw/ir.module.module/search_read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56060 - "POST /web/dataset/call_kw/ir.module.module/button_immediate_uninstall HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58522 - "POST /web/session/authenticate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58522 - "POST /web/dataset/call_kw/ir.module.module/search_read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59825 - "GET /web/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /web/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54889 - "GET /mashora/apps HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57897 - "GET /web/static/fonts/inter/inter-latin.woff2 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65331 - "GET /web/static/fonts/jetbrains-mono/jetbrains-mono-latin.woff2 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65332 - "GET /web/webclient/load_menus HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65334 - "GET /web/manifest.webmanifest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63056 - "GET /web/assets/debug/web.assets_web.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61969 - "GET /web/assets/debug/web.assets_web_print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65333 - "GET /web/assets/debug/web.assets_web.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /web/webclient/translations?hash=&lang=en_US HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50648 - "GET /web/image?model=res.users&field=avatar_128&id=2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61221 - "POST /web/dataset/call_kw/ir.module.module/get_views HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51614 - "POST /web/dataset/call_kw/ir.module.module/search_panel_select_range HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55176 - "POST /web/dataset/call_kw/ir.module.module/check_module_update HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51616 - "POST /web/dataset/call_kw/ir.module.module/web_search_read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51615 - "POST /web/dataset/call_kw/ir.module.module/search_panel_select_range HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49452 - "POST /web/dataset/call_kw/ir.module.module/check_module_update HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51401 - "GET /website_sale/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:64357 - "GET /website_event/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:64359 - "GET /website_slides/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:61023 - "GET /mail/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54256 - "GET /website/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:55494 - "GET /website_hr_recruitment/static/description/icon.png HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:54766 - "GET /web/service-worker.js HTTP/1.1" 200 OK

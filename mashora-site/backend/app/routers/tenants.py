@@ -38,6 +38,29 @@ async def create_tenant(
     return TenantResponse.model_validate(tenant)
 
 
+@router.post("/{tenant_id}/suspend", response_model=TenantResponse)
+async def suspend_tenant(
+    tenant_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TenantResponse:
+    from uuid import UUID
+    from sqlalchemy import select
+    from app.services.tenant_provisioner import TenantProvisioner
+
+    result = await db.execute(
+        select(Tenant).where(
+            Tenant.id == UUID(tenant_id),
+            Tenant.org_id == current_user.org_id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+
+    tenant = await TenantProvisioner.suspend_tenant(db, UUID(tenant_id))
+    return TenantResponse.model_validate(tenant)
+
+
 @router.get("/{tenant_id}", response_model=TenantResponse)
 async def get_tenant(
     tenant_id: str,

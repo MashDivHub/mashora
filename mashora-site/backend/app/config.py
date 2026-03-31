@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Mashora Platform"
     debug: bool = False
     api_prefix: str = "/api/v1"
+    public_web_url: str = "http://localhost:8069"
 
     # Database
     database_url: str = "postgresql+asyncpg://mashora:mashora_dev@localhost:5433/mashora_site"

@@ -1,21 +1,31 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, CloudDownload, Package, Star as StarIcon } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   getAddon,
   getAddonReviews,
   installAddon,
   reviewAddon,
-  AddonDetail as AddonDetailType,
-  AddonReviewResponse,
+  type AddonDetail as AddonDetailType,
+  type AddonReviewResponse,
 } from '../api/addons'
-import { listTenants, Tenant } from '../api/tenants'
+import { listTenants, type Tenant } from '../api/tenants'
 import { useAuthStore } from '../store/authStore'
 import StarRating from '../components/StarRating'
+import { Notice } from '@/components/app/notice'
+import { PageHeader } from '@/components/app/page-header'
+import { StatusBadge } from '@/components/app/status-badge'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 
 function formatPrice(cents: number, currency: string): string {
   if (cents === 0) return 'Free'
   const amount = (cents / 100).toFixed(2)
-  const symbol = currency.toUpperCase() === 'USD' ? '$' : currency + ' '
+  const symbol = currency.toUpperCase() === 'USD' ? '$' : `${currency} `
   return `${symbol}${amount}/month`
 }
 
@@ -38,14 +48,10 @@ export default function AddonDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('description')
-
-  // Install state
   const [selectedTenant, setSelectedTenant] = useState('')
   const [installing, setInstalling] = useState(false)
   const [installMsg, setInstallMsg] = useState('')
   const [installError, setInstallError] = useState('')
-
-  // Review state
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
@@ -55,10 +61,7 @@ export default function AddonDetail() {
   useEffect(() => {
     if (!technicalName) return
     setLoading(true)
-    Promise.all([
-      getAddon(technicalName),
-      getAddonReviews(technicalName),
-    ])
+    Promise.all([getAddon(technicalName), getAddonReviews(technicalName)])
       .then(([addonData, reviewData]) => {
         setAddon(addonData)
         setReviews(reviewData)
@@ -67,9 +70,9 @@ export default function AddonDetail() {
       .finally(() => setLoading(false))
 
     if (isAuthenticated) {
-      listTenants()
-        .then(setTenants)
-        .catch(() => {})
+      listTenants().then(setTenants).catch(() => {
+        // Non-critical.
+      })
     }
   }, [technicalName, isAuthenticated])
 
@@ -80,7 +83,7 @@ export default function AddonDetail() {
     setInstallError('')
     try {
       await installAddon(technicalName, selectedTenant)
-      setInstallMsg('Addon installed successfully!')
+      setInstallMsg('Addon installed successfully.')
     } catch {
       setInstallError('Installation failed. Please try again.')
     } finally {
@@ -99,7 +102,7 @@ export default function AddonDetail() {
       setReviews((prev) => [newReview, ...prev])
       setReviewRating(0)
       setReviewComment('')
-      setReviewMsg('Review submitted!')
+      setReviewMsg('Review submitted.')
     } catch {
       setReviewError('Failed to submit review.')
     } finally {
@@ -108,317 +111,219 @@ export default function AddonDetail() {
   }
 
   if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '80px', color: '#6B7280' }}>
-        Loading addon...
-      </div>
-    )
+    return <div className="rounded-3xl border border-border/70 bg-card/90 p-10 text-center text-sm text-muted-foreground">Loading addon...</div>
   }
 
   if (error || !addon) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px' }}>
-        <div style={{ color: '#B91C1C', marginBottom: '16px' }}>{error || 'Addon not found.'}</div>
-        <button
-          onClick={() => navigate('/addons')}
-          style={{ padding: '8px 16px', background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-        >
-          Back to Marketplace
-        </button>
+      <div className="space-y-4">
+        <Notice tone="danger">{error || 'Addon not found.'}</Notice>
+        <Button variant="outline" onClick={() => navigate('/addons')}>
+          <ArrowLeft className="size-4" />
+          Back to marketplace
+        </Button>
       </div>
     )
   }
 
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'description', label: 'Description' },
-    { key: 'versions', label: `Versions (${addon.versions.length})` },
-    { key: 'reviews', label: `Reviews (${reviews.length})` },
-  ]
-
   return (
-    <div style={{ background: '#F3F4F6', minHeight: 'calc(100vh - 56px)', margin: '-32px -24px', padding: '32px 24px' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        {/* Back link */}
-        <button
-          onClick={() => navigate('/addons')}
-          style={{ background: 'none', border: 'none', color: '#7C3AED', fontSize: '14px', cursor: 'pointer', padding: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-        >
-          &#8592; Back to Marketplace
-        </button>
+    <div className="space-y-8">
+      <Button variant="ghost" className="w-fit rounded-full px-0 hover:bg-transparent" onClick={() => navigate('/addons')}>
+        <ArrowLeft className="size-4" />
+        Back to marketplace
+      </Button>
 
-        {/* Header card */}
-        <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '28px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '12px',
-                background: addon.icon_url ? undefined : '#EDE9FE',
-                backgroundImage: addon.icon_url ? `url(${addon.icon_url})` : undefined,
-                backgroundSize: 'cover',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '36px',
-                flexShrink: 0,
-              }}
-            >
-              {!addon.icon_url && '🧩'}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#1E293B' }}>
-                  {addon.display_name}
-                </h1>
-                <span style={{
-                  padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
-                  background: addon.price_cents === 0 ? '#D1FAE5' : '#EDE9FE',
-                  color: addon.price_cents === 0 ? '#065F46' : '#7C3AED',
-                }}>
-                  {formatPrice(addon.price_cents, addon.currency)}
-                </span>
+      <PageHeader
+        eyebrow="Addon"
+        title={addon.display_name}
+        description={addon.summary}
+        actions={<Badge variant={addon.price_cents === 0 ? 'success' : 'outline'}>{formatPrice(addon.price_cents, addon.currency)}</Badge>}
+      />
+
+      <Card className="overflow-hidden border-border/70 bg-card/90">
+        <CardContent className="grid gap-8 p-6 lg:grid-cols-[1fr_320px] lg:p-8">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-start gap-5">
+              <div
+                className="flex size-20 items-center justify-center rounded-3xl border border-border/70 bg-muted/60 text-2xl"
+                style={addon.icon_url ? { backgroundImage: `url(${addon.icon_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {!addon.icon_url ? 'A' : null}
               </div>
-              <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-                by {addon.author_name || 'Unknown'} &bull; {addon.category} &bull; v{addon.version}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <StarRating rating={addon.rating_avg} readonly size={16} />
-                  <span style={{ fontSize: '13px', color: '#6B7280' }}>
-                    {addon.rating_avg.toFixed(1)} ({addon.rating_count} reviews)
-                  </span>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{addon.category}</Badge>
+                  <Badge variant="secondary">v{addon.version}</Badge>
+                  <Badge variant="outline">Requires Mashora {addon.mashora_version_min}+</Badge>
                 </div>
-                <span style={{ fontSize: '13px', color: '#6B7280' }}>
-                  &#8595; {addon.download_count.toLocaleString()} downloads
-                </span>
-                <span style={{ fontSize: '13px', color: '#6B7280' }}>
-                  Requires Mashora {addon.mashora_version_min}+
-                </span>
+                <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <StarRating rating={addon.rating_avg} readonly size={16} />
+                    <span>{addon.rating_avg.toFixed(1)} ({addon.rating_count} reviews)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CloudDownload className="size-4" />
+                    <span>{addon.download_count.toLocaleString()} downloads</span>
+                  </div>
+                  <div>by {addon.author_name || 'Unknown publisher'}</div>
+                </div>
               </div>
-              <p style={{ margin: '12px 0 0', fontSize: '14px', color: '#4B5563' }}>{addon.summary}</p>
             </div>
 
-            {/* Install panel */}
-            <div style={{ minWidth: '200px', flexShrink: 0 }}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabKey)}>
+              <TabsList>
+                <TabsTrigger value="description">Description</TabsTrigger>
+                <TabsTrigger value="versions">Versions ({addon.versions.length})</TabsTrigger>
+                <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="description">
+                <div className="rounded-3xl border border-border/70 bg-background/60 p-6 text-sm leading-7 text-muted-foreground whitespace-pre-wrap">
+                  {addon.description || addon.summary}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="versions">
+                <div className="space-y-4">
+                  {addon.versions.length === 0 ? (
+                    <div className="rounded-3xl border border-border/70 bg-background/60 p-6 text-sm text-muted-foreground">
+                      No versions available.
+                    </div>
+                  ) : (
+                    addon.versions.map((version, index) => (
+                      <div key={version.id} className="rounded-3xl border border-border/70 bg-background/60 p-6">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="text-lg font-semibold">v{version.version}</div>
+                          {index === 0 ? <Badge>Latest</Badge> : null}
+                          <div className="text-sm text-muted-foreground">
+                            {formatBytes(version.file_size)} • {new Date(version.published_at).toLocaleDateString()} • Compat {version.mashora_version_compat}
+                          </div>
+                        </div>
+                        {version.changelog ? (
+                          <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{version.changelog}</p>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reviews">
+                <div className="space-y-6">
+                  {isAuthenticated ? (
+                    <Card className="border-border/70 bg-background/60">
+                      <CardContent className="space-y-4 p-6">
+                        <div className="space-y-2">
+                          <div className="text-lg font-semibold">Write a review</div>
+                          <div className="text-sm text-muted-foreground">Rate the addon and share what worked well for your team.</div>
+                        </div>
+                        <form onSubmit={handleReview} className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium">Your rating</div>
+                            <StarRating rating={reviewRating} onChange={setReviewRating} size={24} />
+                          </div>
+                          <Textarea
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            placeholder="Share your experience with this addon..."
+                            rows={4}
+                          />
+                          {reviewMsg ? <Notice tone="success">{reviewMsg}</Notice> : null}
+                          {reviewError ? <Notice tone="danger">{reviewError}</Notice> : null}
+                          <Button type="submit" disabled={reviewRating === 0 || submittingReview}>
+                            {submittingReview ? 'Submitting...' : 'Submit review'}
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Notice tone="info">
+                      Log in to review this addon and install it into one of your tenant workspaces.
+                    </Notice>
+                  )}
+
+                  {reviews.length === 0 ? (
+                    <div className="rounded-3xl border border-border/70 bg-background/60 p-6 text-sm text-muted-foreground">
+                      No reviews yet. Be the first to rate it.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <div key={review.id} className="rounded-3xl border border-border/70 bg-background/60 p-6">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <StarIcon className="size-4 fill-amber-400 text-amber-400" />
+                              <span className="font-medium">{review.rating.toFixed(1)}</span>
+                            </div>
+                            <div className="text-sm font-medium">{review.user_email || 'Anonymous reviewer'}</div>
+                            <div className="text-sm text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</div>
+                          </div>
+                          {review.comment ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{review.comment}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <Card className="h-fit border-border/70 bg-background/60">
+            <CardContent className="space-y-5 p-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl border border-border/70 bg-muted/60 p-3">
+                  <Package className="size-5" />
+                </div>
+                <div>
+                  <div className="font-semibold">Install addon</div>
+                  <div className="text-sm text-muted-foreground">Choose a tenant and deploy.</div>
+                </div>
+              </div>
+
               {isAuthenticated ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <select
-                    value={selectedTenant}
-                    onChange={(e) => setSelectedTenant(e.target.value)}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #D1D5DB',
-                      fontSize: '13px',
-                      background: '#fff',
-                    }}
-                  >
-                    <option value="">Select instance...</option>
-                    {tenants.map((t) => (
-                      <option key={t.id} value={String(t.id)}>{t.db_name}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleInstall}
-                    disabled={!selectedTenant || installing}
-                    style={{
-                      padding: '9px 16px',
-                      background: !selectedTenant || installing ? '#C4B5FD' : '#7C3AED',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: !selectedTenant || installing ? 'default' : 'pointer',
-                    }}
-                  >
-                    {installing ? 'Installing...' : 'Install Addon'}
-                  </button>
-                  {installMsg && <div style={{ fontSize: '12px', color: '#065F46' }}>{installMsg}</div>}
-                  {installError && <div style={{ fontSize: '12px', color: '#B91C1C' }}>{installError}</div>}
+                <div className="space-y-4">
+                  <Select value={selectedTenant} onValueChange={setSelectedTenant}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select tenant instance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tenants.map((tenant) => (
+                        <SelectItem key={tenant.id} value={String(tenant.id)}>
+                          {tenant.db_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button className="w-full" disabled={!selectedTenant || installing} onClick={handleInstall}>
+                    {installing ? 'Installing...' : 'Install addon'}
+                  </Button>
+                  {installMsg ? <Notice tone="success">{installMsg}</Notice> : null}
+                  {installError ? <Notice tone="danger">{installError}</Notice> : null}
                 </div>
               ) : (
-                <button
-                  onClick={() => navigate('/login')}
-                  style={{
-                    width: '100%',
-                    padding: '9px 16px',
-                    background: '#7C3AED',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Login to Install
-                </button>
+                <Button className="w-full" onClick={() => navigate('/login')}>
+                  Login to install
+                </Button>
               )}
-            </div>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB' }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                style={{
-                  padding: '14px 20px',
-                  border: 'none',
-                  borderBottom: activeTab === tab.key ? '2px solid #7C3AED' : '2px solid transparent',
-                  background: 'none',
-                  color: activeTab === tab.key ? '#7C3AED' : '#6B7280',
-                  fontSize: '14px',
-                  fontWeight: activeTab === tab.key ? 600 : 400,
-                  cursor: 'pointer',
-                  marginBottom: '-1px',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ padding: '24px' }}>
-            {/* Description tab */}
-            {activeTab === 'description' && (
-              <div style={{ fontSize: '14px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {addon.description || addon.summary}
+              <div className="space-y-3 rounded-3xl border border-border/70 bg-card/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Category</span>
+                  <StatusBadge value={addon.category.toLowerCase()} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Price</span>
+                  <span className="font-medium">{formatPrice(addon.price_cents, addon.currency)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Downloads</span>
+                  <span className="font-medium">{addon.download_count.toLocaleString()}</span>
+                </div>
               </div>
-            )}
-
-            {/* Versions tab */}
-            {activeTab === 'versions' && (
-              <div>
-                {addon.versions.length === 0 ? (
-                  <div style={{ color: '#6B7280', textAlign: 'center', padding: '24px' }}>No versions available.</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {addon.versions.map((v, idx) => (
-                      <div key={v.id} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: 700, fontSize: '14px', color: '#1E293B' }}>v{v.version}</span>
-                          {idx === 0 && (
-                            <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#7C3AED' }}>
-                              Latest
-                            </span>
-                          )}
-                          <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: 'auto' }}>
-                            {formatBytes(v.file_size)} &bull; {new Date(v.published_at).toLocaleDateString()} &bull; Compat: {v.mashora_version_compat}
-                          </span>
-                        </div>
-                        {v.changelog && (
-                          <p style={{ margin: 0, fontSize: '13px', color: '#4B5563', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                            {v.changelog}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Reviews tab */}
-            {activeTab === 'reviews' && (
-              <div>
-                {/* Write review form */}
-                {isAuthenticated ? (
-                  <form
-                    onSubmit={handleReview}
-                    style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}
-                  >
-                    <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600, color: '#1E293B' }}>
-                      Write a Review
-                    </h3>
-                    <div style={{ marginBottom: '10px' }}>
-                      <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>Your rating</div>
-                      <StarRating rating={reviewRating} onChange={setReviewRating} size={24} />
-                    </div>
-                    <textarea
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Share your experience with this addon (optional)..."
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #D1D5DB',
-                        fontSize: '13px',
-                        resize: 'vertical',
-                        boxSizing: 'border-box',
-                        fontFamily: 'inherit',
-                        marginBottom: '10px',
-                      }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button
-                        type="submit"
-                        disabled={reviewRating === 0 || submittingReview}
-                        style={{
-                          padding: '7px 16px',
-                          background: reviewRating === 0 || submittingReview ? '#C4B5FD' : '#7C3AED',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          cursor: reviewRating === 0 || submittingReview ? 'default' : 'pointer',
-                        }}
-                      >
-                        {submittingReview ? 'Submitting...' : 'Submit Review'}
-                      </button>
-                      {reviewMsg && <span style={{ fontSize: '13px', color: '#065F46' }}>{reviewMsg}</span>}
-                      {reviewError && <span style={{ fontSize: '13px', color: '#B91C1C' }}>{reviewError}</span>}
-                    </div>
-                  </form>
-                ) : (
-                  <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '16px', marginBottom: '24px', fontSize: '14px', color: '#6B7280' }}>
-                    <button onClick={() => navigate('/login')} style={{ color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
-                      Log in
-                    </button>{' '}
-                    to write a review.
-                  </div>
-                )}
-
-                {/* Reviews list */}
-                {reviews.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#6B7280', padding: '24px' }}>
-                    No reviews yet. Be the first!
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {reviews.map((r) => (
-                      <div key={r.id} style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <StarRating rating={r.rating} readonly size={14} />
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
-                            {r.user_email || 'Anonymous'}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#9CA3AF', marginLeft: 'auto' }}>
-                            {new Date(r.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {r.comment && (
-                          <p style={{ margin: 0, fontSize: '13px', color: '#4B5563', lineHeight: 1.5 }}>
-                            {r.comment}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
     </div>
   )
 }

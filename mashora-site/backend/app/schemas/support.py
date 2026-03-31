@@ -40,9 +40,14 @@ class TicketMessageResponse(BaseModel):
     user_email: str | None
     message: str
     is_staff: bool
+    sender: str
     created_at: datetime
 
 
 class TicketList(BaseModel):
     tickets: list[TicketResponse]
     total: int
+
+
+class TicketDetailResponse(TicketResponse):
+    messages: list[TicketMessageResponse]

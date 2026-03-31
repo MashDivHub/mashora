@@ -21,6 +21,26 @@ from app.schemas.addon import (
 router = APIRouter(prefix="/addons", tags=["addons"])
 
 
+def _addon_response(addon: Addon) -> AddonResponse:
+    return AddonResponse(
+        id=addon.id,
+        technical_name=addon.technical_name,
+        display_name=addon.display_name,
+        summary=addon.summary,
+        author_name=addon.author.name if addon.author else None,
+        category=addon.category,
+        version=addon.version,
+        price_cents=addon.price_cents,
+        currency=addon.currency,
+        icon_url=addon.icon_url,
+        download_count=addon.download_count,
+        rating_avg=addon.rating_avg,
+        rating_count=addon.rating_count,
+        status=addon.status,
+        created_at=addon.created_at,
+    )
+
+
 @router.get("", response_model=AddonList)
 async def browse_addons(
     q: str | None = Query(None),
@@ -30,7 +50,7 @@ async def browse_addons(
     sort_by: str = Query("download_count"),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Addon).where(Addon.status == "published")
+    query = select(Addon).where(Addon.status == "published").options(selectinload(Addon.author))
 
     if q:
         query = query.where(
@@ -57,7 +77,7 @@ async def browse_addons(
     addons = result.scalars().all()
 
     return AddonList(
-        addons=[AddonResponse.model_validate(a) for a in addons],
+        addons=[_addon_response(a) for a in addons],
         total=total,
         page=page,
         per_page=per_page,
@@ -69,14 +89,14 @@ async def get_addon(technical_name: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Addon)
         .where(Addon.technical_name == technical_name)
-        .options(selectinload(Addon.versions))
+        .options(selectinload(Addon.author), selectinload(Addon.versions))
     )
     addon = result.scalar_one_or_none()
     if addon is None:
         raise HTTPException(status_code=404, detail="Addon not found")
 
     versions = [AddonVersionResponse.model_validate(v) for v in addon.versions]
-    data = AddonResponse.model_validate(addon).model_dump()
+    data = _addon_response(addon).model_dump()
     data["description"] = addon.description
     data["mashora_version_min"] = addon.mashora_version_min
     data["versions"] = versions
