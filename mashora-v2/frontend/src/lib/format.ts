@@ -38,10 +38,21 @@ export function formatFieldLabel(name: string, field?: ErpFieldDefinition) {
 }
 
 export function recordTitle(record: Record<string, unknown>) {
-  const displayName = record.display_name ?? record.name
-  if (typeof displayName === 'string' && displayName.trim()) {
-    return displayName
+  const candidates = [record.display_name, record.shortdesc, record.name]
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]
+    if (typeof candidate !== 'string' || !candidate.trim()) {
+      continue
+    }
+
+    if (index === 2 && /^[a-z0-9_]+$/.test(candidate)) {
+      return titleCase(candidate)
+    }
+
+    return candidate
   }
+
   return `Record #${record.id ?? 'New'}`
 }
 

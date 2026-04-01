@@ -2,6 +2,7 @@ import { Layers3 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AppLogo } from '@/components/shell/app-logo'
+import { titleCase } from '@/lib/format'
 import {
   findFirstActionableMenu,
   getApps,
@@ -23,6 +24,10 @@ interface AppSidebarProps {
 interface SidebarItem {
   menu: ErpMenu
   depth: number
+}
+
+function presentMenuName(name: string) {
+  return /^[a-z0-9_]+$/.test(name) ? titleCase(name) : name
 }
 
 function collectBranch(menus: ErpMenuCollection, menu: ErpMenu | undefined) {
@@ -114,7 +119,14 @@ export function AppSidebar({
                       : 'border-border/60 bg-card/40 hover:border-primary/20 hover:bg-accent/50'
                   )}
                 >
-                  <div className="mb-2 text-sm font-medium">{app.name}</div>
+                  <div className="mb-2 flex items-center gap-3">
+                    {app.webIconData ? (
+                      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-1.5">
+                        <img src={app.webIconData} alt={presentMenuName(app.name)} className="h-full w-full object-contain" />
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 text-sm font-medium">{presentMenuName(app.name)}</div>
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {app.id === currentApp?.id ? 'Active workspace' : 'Open workspace'}
                   </div>
@@ -152,7 +164,7 @@ export function AppSidebar({
                     )}
                     style={{ paddingLeft: `${depth * 14 + 12}px` }}
                   >
-                    <span className="truncate">{menu.name}</span>
+                    <span className="truncate">{presentMenuName(menu.name)}</span>
                   </button>
                 )
               })

@@ -21,6 +21,17 @@ export interface LoadViewsResult {
   views: Record<string, ViewDescription>
 }
 
+interface RawLoadViewsResult {
+  models: Record<string, { fields: Record<string, ErpFieldDefinition> }>
+  views: Record<
+    string,
+    ViewDescription & {
+      toolbar?: unknown
+      filters?: unknown
+    }
+  >
+}
+
 export type ErpRecord = Record<string, unknown> & { id: number }
 
 function normalizeContext(context?: Record<string, unknown> | string | null) {
@@ -55,7 +66,7 @@ export async function loadViews(params: {
   actionId?: number | false
 }) {
   const context = normalizeContext(params.context)
-  return callKw<LoadViewsResult>(params.resModel, 'get_views', [], {
+  const result = await callKw<RawLoadViewsResult>(params.resModel, 'get_views', [], {
     context,
     views: params.views,
     options: {
@@ -64,6 +75,21 @@ export async function loadViews(params: {
       toolbar: true,
     },
   })
+
+  return {
+    fields: result.models[params.resModel]?.fields || {},
+    relatedModels: result.models || {},
+    views: Object.fromEntries(
+      Object.entries(result.views || {}).map(([viewType, view]) => [
+        viewType,
+        {
+          arch: view.arch,
+          id: view.id,
+          custom_view_id: view.custom_view_id,
+        },
+      ])
+    ),
+  } satisfies LoadViewsResult
 }
 
 export async function searchRead(params: {

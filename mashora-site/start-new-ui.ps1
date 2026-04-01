@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = "C:\xampp\htdocs\mashora"
+$erpRoot = Join-Path $repoRoot "mashora-v2\backend"
 $frontendRoot = Join-Path $repoRoot "mashora-site\frontend"
 $backendRoot = Join-Path $repoRoot "mashora-site\backend"
 $tmpRoot = Join-Path $repoRoot "tmp"
@@ -79,7 +80,7 @@ Start-BackgroundProcess `
         "-d",
         "mashora_demo"
     ) `
-    -WorkingDirectory $repoRoot `
+    -WorkingDirectory $erpRoot `
     -StdOutPath $odooLog `
     -StdErrPath $odooErrLog
 

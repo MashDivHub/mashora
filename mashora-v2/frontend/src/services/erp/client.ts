@@ -39,6 +39,30 @@ function resolveUrl(path: string) {
   return `${explicitBaseUrl.replace(/\/$/, '')}${normalizedPath}`
 }
 
+export function resolveErpAssetUrl(path?: string | null) {
+  if (!path) {
+    return ''
+  }
+  if (/^(?:https?:\/\/|data:)/.test(path)) {
+    return path
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  if (explicitBaseUrl) {
+    return `${explicitBaseUrl.replace(/\/$/, '')}${normalizedPath}`
+  }
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location
+    if (port === '3001') {
+      return `${protocol}//${hostname}:8069${normalizedPath}`
+    }
+  }
+
+  return normalizedPath
+}
+
 async function readJson<T>(response: Response) {
   return (await response.json()) as T
 }

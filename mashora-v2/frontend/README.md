@@ -1,4 +1,4 @@
-# Mashora ERP Frontend
+# Mashora V2 Frontend
 
 This folder is a clean frontend workspace for the ERP, separate from the legacy Mashora webclient.
 
@@ -18,7 +18,7 @@ It keeps backend models, business rules, actions, sessions, and menu logic on th
 ## Run it
 
 ```bash
-cd mashora-erp-frontend
+cd mashora-v2/frontend
 npm install
 npm run dev
 ```

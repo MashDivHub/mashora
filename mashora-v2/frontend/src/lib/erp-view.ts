@@ -17,6 +17,7 @@ export interface ParsedListView {
 
 export interface ParsedKanbanView {
   fields: ParsedViewField[]
+  mediaField?: string
   titleField?: string
   subtitleField?: string
   badgeField?: string
@@ -98,6 +99,17 @@ function parseDocument(arch: string) {
   return new DOMParser().parseFromString(arch, 'text/xml')
 }
 
+function isMediaField(field: ParsedViewField) {
+  return (
+    field.widget?.includes('image') ||
+    /(?:^|_)(icon|image|avatar|logo)(?:_|$)/.test(field.name)
+  )
+}
+
+function findFirstMatchingField(fields: ParsedViewField[], priorities: string[]) {
+  return fields.find((field) => priorities.includes(field.name))?.name
+}
+
 export function parseListView(arch: string, fieldDefinitions: Record<string, ErpFieldDefinition>): ParsedListView {
   const document = parseDocument(arch)
   const columns = Array.from(document.querySelectorAll('tree > field, list > field'))
@@ -142,17 +154,30 @@ export function parseKanbanView(
     })
     .filter((field): field is ParsedViewField => field !== null)
 
-  const resolvedFields = uniqueFields(fields).length ? uniqueFields(fields) : fallbackFields(fieldDefinitions, 6)
+  const uniqueResolvedFields = uniqueFields(fields)
+  const mediaField = uniqueResolvedFields.find((field) => isMediaField(field))?.name
+  const textFields = uniqueResolvedFields.filter((field) => field.name !== mediaField && !isMediaField(field))
+  const fallbackTextFields = fallbackFields(fieldDefinitions, 6).filter((field) => !isMediaField(field))
+  const resolvedFields = textFields.length ? textFields : fallbackTextFields
 
   return {
     fields: resolvedFields,
-    titleField: resolvedFields.find((field) => ['display_name', 'name'].includes(field.name))?.name || resolvedFields[0]?.name,
-    subtitleField: resolvedFields.find((field) =>
-      ['state', 'stage_id', 'partner_id', 'user_id', 'date'].includes(field.name)
-    )?.name,
-    badgeField: resolvedFields.find((field) =>
-      ['state', 'priority', 'activity_state'].includes(field.name)
-    )?.name,
+    mediaField,
+    titleField:
+      findFirstMatchingField(resolvedFields, ['display_name', 'shortdesc', 'name', 'title', 'subject']) ||
+      resolvedFields[0]?.name,
+    subtitleField:
+      findFirstMatchingField(resolvedFields, [
+        'summary',
+        'state',
+        'stage_id',
+        'partner_id',
+        'user_id',
+        'date',
+        'create_date',
+      ]) ||
+      resolvedFields[1]?.name,
+    badgeField: findFirstMatchingField(resolvedFields, ['state', 'priority', 'activity_state']),
   }
 }
 
@@ -215,6 +240,9 @@ export function collectFieldNamesFromParsedViews(...views: Array<ParsedListView 
     }
     if ('fields' in view) {
       view.fields.forEach((field) => names.add(field.name))
+    }
+    if ('mediaField' in view && view.mediaField) {
+      names.add(view.mediaField)
     }
     if ('sections' in view) {
       view.sections.forEach((section) => {

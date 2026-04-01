@@ -36,11 +36,9 @@ setup/win32/static/postgresql*.exe
 
 # js tooling
 node_modules
-jsconfig.json
-tsconfig.json
-package-lock.json
-package.json
-.husky
+
+# mashora v2 backend local config
+/mashora-v2/backend/mashora.conf
 
 # various virtualenv
 /bin/
@@ -52,4 +50,4 @@ package.json
 /share/
 /src/
 /mashora-site/frontend/dist
-/tmp
+/tmp/
