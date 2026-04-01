@@ -164,7 +164,7 @@ export default function Pricing() {
           >
             <CardHeader className="space-y-4">
               {plan.highlight ? (
-                <Badge className="w-fit rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                <Badge className="w-fit rounded-full bg-zinc-900 text-white dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
                   <Sparkles className="mr-1 size-3" />
                   Most popular
                 </Badge>
@@ -193,7 +193,7 @@ export default function Pricing() {
               <div className="space-y-3">
                 {plan.features.map((feature) => (
                   <div key={feature} className="flex items-start gap-3 text-sm text-muted-foreground">
-                    <div className="mt-0.5 rounded-full bg-zinc-900 p-1 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                    <div className="mt-0.5 rounded-full bg-zinc-900 p-1 text-white dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
                       <Check className="size-3" />
                     </div>
                     <span>{feature}</span>

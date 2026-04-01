@@ -27,12 +27,6 @@ const features = [
   },
 ]
 
-const primaryCtaStyle = {
-  backgroundColor: '#fafafa',
-  color: '#09090b',
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18)',
-}
-
 export default function Home() {
   return (
     <div className="space-y-12">
@@ -51,14 +45,12 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
-              to="/register"
-              style={primaryCtaStyle}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold transition-all hover:brightness-95"
-            >
-              Start building
-              <ArrowRight className="size-4" />
-            </Link>
+            <Button asChild size="lg" className="rounded-2xl">
+              <Link to="/register">
+                Start building
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="lg" className="rounded-2xl">
               <Link to="/addons">Explore marketplace</Link>
             </Button>
@@ -128,7 +120,7 @@ export default function Home() {
         {features.map(({ icon: Icon, title, description }) => (
           <Card key={title} className="group bg-card/85 transition-transform duration-300 hover:-translate-y-1">
             <CardContent className="space-y-4 p-6">
-              <div className="inline-flex rounded-2xl border border-border/70 bg-muted/60 p-3 text-zinc-900 transition-colors group-hover:bg-zinc-900 group-hover:text-white dark:text-zinc-100 dark:group-hover:bg-zinc-100 dark:group-hover:text-zinc-900">
+              <div className="inline-flex rounded-2xl border border-border/70 bg-muted/60 p-3 text-zinc-900 transition-colors group-hover:bg-zinc-900 group-hover:text-white dark:text-zinc-100 dark:group-hover:border-zinc-700 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-50">
                 <Icon className="size-5" />
               </div>
               <div className="space-y-2">

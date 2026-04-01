@@ -5519,3 +5519,1051 @@ INFO:     connection closed
 INFO:     127.0.0.1:54718 - "WebSocket /websocket?version=19.0-2" 403
 INFO:     connection rejected (403 Forbidden)
 INFO:     connection closed
+INFO:     127.0.0.1:61019 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:56640 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:51592 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54796 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:59303 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53743 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50205 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:59887 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54032 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64318 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64647 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:40:10,134 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:41:11,345 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/099807d/web.assets_frontend.min.css (id:128) 
+2026-04-01 01:41:11,347 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [93] (matching /web/assets/_______/web.assets_frontend.min.css) because it was replaced with /web/assets/099807d/web.assets_frontend.min.css 
+2026-04-01 01:41:12,722 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:41:12,750 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (poMjvEWatDqGGjoqQHjPUOhPcoMD3ha8g2kNJd0C61) 
+2026-04-01 01:41:16,826 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/6ea4404/web.assets_web.min.css (id:129) 
+2026-04-01 01:41:16,828 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [115] (matching /web/assets/_______/web.assets_web.min.css) because it was replaced with /web/assets/6ea4404/web.assets_web.min.css 
+2026-04-01 01:41:19,652 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/ad85c03/web.assets_web_print.min.css (id:130) 
+2026-04-01 01:41:29,049 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/88b2037/web.assets_web.min.js (id:131) 
+2026-04-01 01:41:29,050 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [114] (matching /web/assets/_______/web.assets_web.min.js) because it was replaced with /web/assets/88b2037/web.assets_web.min.js 
+2026-04-01 01:41:29,361 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/d255e5a/bus.websocket_worker_assets.min.js (id:132) 
+INFO:     127.0.0.1:61026 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61034 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61036 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61038 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61040 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:42:16,045 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:42:16,064 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (WH1QTW1mBXt0NBFNQYFzcV-YG1zcLNfaPcspRcnceh) 
+INFO:     127.0.0.1:61050 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61052 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61054 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61057 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61690 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61694 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:45:58,273 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:45:58,294 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (I29HxqJb7PXFqquoYpEKp-wAlB_zYcF6FCdH4Vd2t3) 
+INFO:     127.0.0.1:63543 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63545 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63547 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63549 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63551 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63553 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63565 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63567 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63569 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:47:18,342 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (0o2-w3YLZy4wHgyITmjuysxsUEerfEhVaNcrDpYPFx) 
+INFO:     127.0.0.1:61932 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49833 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:59908 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57525 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57459 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64966 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:56753 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61431 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:48:37,166 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:48:37,221 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (2jGXF00WFL13fxgNkNIJu1kTu-7RaLPRvG9mDpPg75) 
+2026-04-01 01:48:37,260 48784 ERROR mashora_demo mashora.http: Exception during request handling. 
+Traceback (most recent call last):
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 2825, in __call__
+    response = request._serve_db()
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 2300, in _serve_db
+    raise self._update_served_exception(exc)
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 2298, in _serve_db
+    return service_model.retrying(serve_func, env=self.env)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\xampp\htdocs\mashora\mashora\service\model.py", line 188, in retrying
+    result = func()
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 2353, in _serve_ir_http
+    response = self.dispatcher.dispatch(rule.endpoint, args)
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 2568, in dispatch
+    result = self.request.registry['ir.http']._dispatch(endpoint)
+  File "C:\xampp\htdocs\mashora\mashora\addons\base\models\ir_http.py", line 355, in _dispatch
+    result = endpoint(**request.params)
+  File "C:\xampp\htdocs\mashora\mashora\http.py", line 808, in route_wrapper
+    result = endpoint(self, *args, **params_ok)
+  File "c:\xampp\htdocs\mashora\addons\web\controllers\dataset.py", line 32, in call_kw
+    return call_kw(request.env[model], method, args, kwargs)
+  File "C:\xampp\htdocs\mashora\mashora\service\model.py", line 97, in call_kw
+    result = method(recs, *args, **kwargs)
+TypeError: BaseModel.search_read() got multiple values for argument 'fields'
+2026-04-01 01:48:37,316 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (2jGXF00WFL13fxgNkNIJu1kTu-7RaLPRvG9mDpPg75) 
+2026-04-01 01:48:37,319 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_immediate_install on [] to user admin #2 via 127.0.0.1 
+2026-04-01 01:48:37,320 48784 INFO mashora_demo mashora.addons.base.models.ir_module: User #2 triggered module installation 
+2026-04-01 01:48:37,323 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_install on [] to user admin #2 via 127.0.0.1 
+2026-04-01 01:48:37,379 48784 INFO mashora_demo mashora.modules.loading: loading 1 modules... 
+2026-04-01 01:48:37,386 48784 INFO mashora_demo mashora.modules.loading: 1 modules loaded in 0.01s, 0 queries (+0 extra) 
+2026-04-01 01:48:37,417 48784 INFO mashora_demo mashora.modules.loading: updating modules list 
+2026-04-01 01:48:37,419 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via 127.0.0.1 
+2026-04-01 01:48:41,867 48784 WARNING mashora_demo mashora.modules.module: Missing `author` key in manifest for 'mashora_modern_ui', defaulting to '' 
+2026-04-01 01:48:42,272 48784 INFO mashora_demo mashora.modules.loading: loading 14 modules... 
+2026-04-01 01:48:42,280 48784 INFO mashora_demo mashora.modules.loading: 14 modules loaded in 0.01s, 0 queries (+0 extra) 
+2026-04-01 01:48:42,553 48784 INFO mashora_demo mashora.modules.loading: Modules loaded. 
+2026-04-01 01:48:42,565 48784 INFO mashora_demo mashora.registry: Registry changed, signaling through the database 
+2026-04-01 01:48:42,569 48784 INFO mashora_demo mashora.registry: Registry loaded in 5.224s 
+2026-04-01 01:48:42,569 48784 INFO mashora_demo mashora.addons.base.models.ir_module: getting next ir.actions.todo() 
+INFO:     127.0.0.1:63624 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:59816 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:49:20,629 48784 INFO mashora_demo mashora.addons.base.models.ir_http: Generating routing map for key None 
+2026-04-01 01:49:21,091 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:49:21,160 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (FC308JRVTH5Je8xDIPz8YJSSv79qPELYLBHuf0PWjp) 
+2026-04-01 01:49:21,163 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_immediate_install on ['Mashora Modern UI'] to user admin #2 via 127.0.0.1 
+2026-04-01 01:49:21,163 48784 INFO mashora_demo mashora.addons.base.models.ir_module: User #2 triggered module installation 
+2026-04-01 01:49:21,166 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_install on ['Mashora Modern UI'] to user admin #2 via 127.0.0.1 
+2026-04-01 01:49:21,224 48784 INFO mashora_demo mashora.modules.loading: loading 1 modules... 
+2026-04-01 01:49:21,227 48784 INFO mashora_demo mashora.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-04-01 01:49:21,246 48784 INFO mashora_demo mashora.modules.loading: updating modules list 
+2026-04-01 01:49:21,247 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via 127.0.0.1 
+2026-04-01 01:49:22,042 48784 WARNING mashora_demo mashora.modules.module: Missing `author` key in manifest for 'mashora_modern_ui', defaulting to '' 
+2026-04-01 01:49:22,334 48784 INFO mashora_demo mashora.modules.loading: loading 15 modules... 
+2026-04-01 01:49:22,337 48784 INFO mashora_demo mashora.modules.loading: Loading module mashora_modern_ui (15/15) 
+2026-04-01 01:49:22,410 48784 INFO mashora_demo mashora.modules.loading: loading mashora_modern_ui/views/web_templates.xml 
+2026-04-01 01:49:22,453 48784 INFO mashora_demo mashora.modules.loading: loading mashora_modern_ui/views/module_views.xml 
+2026-04-01 01:49:22,485 48784 INFO mashora_demo mashora.modules.loading: Module mashora_modern_ui loaded in 0.15s, 49 queries (+49 other) 
+2026-04-01 01:49:22,485 48784 INFO mashora_demo mashora.modules.loading: 15 modules loaded in 0.15s, 49 queries (+49 extra) 
+2026-04-01 01:49:22,792 48784 INFO mashora_demo mashora.modules.loading: Modules loaded. 
+2026-04-01 01:49:22,799 48784 INFO mashora_demo mashora.registry: Registry changed, signaling through the database 
+2026-04-01 01:49:22,801 48784 INFO mashora_demo mashora.registry: Registry loaded in 1.590s 
+2026-04-01 01:49:22,802 48784 INFO mashora_demo mashora.addons.base.models.ir_module: getting next ir.actions.todo() 
+2026-04-01 01:49:46,527 48784 WARNING mashora_demo py.warnings: C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\websockets\legacy\server.py:1178: DeprecationWarning: remove second argument of ws_handler
+  File "C:\xampp\htdocs\mashora\mashora-bin", line 6, in <module>
+    mashora.cli.main()
+  File "C:\xampp\htdocs\mashora\mashora\cli\command.py", line 133, in main
+    command().run(args)
+  File "C:\xampp\htdocs\mashora\mashora\cli\server.py", line 127, in run
+    main(args)
+  File "C:\xampp\htdocs\mashora\mashora\cli\server.py", line 118, in main
+    rc = server.start(preload=config['db_name'], stop=stop)
+  File "C:\xampp\htdocs\mashora\mashora\service\server.py", line 1682, in start
+    rc = server.run(preload, stop)
+  File "C:\xampp\htdocs\mashora\mashora\service\server.py", line 489, in run
+    self._uvicorn_server.run()
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+  File "C:\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+  File "C:\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+  File "C:\Python314\Lib\asyncio\base_events.py", line 706, in run_until_complete
+    self.run_forever()
+  File "C:\Python314\Lib\asyncio\base_events.py", line 677, in run_forever
+    self._run_once()
+  File "C:\Python314\Lib\asyncio\base_events.py", line 2046, in _run_once
+    handle._run()
+  File "C:\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 325, in _loop_reading
+    self._data_received(data, length)
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 274, in _data_received
+    self._protocol.data_received(data)
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\uvicorn\protocols\http\httptools_impl.py", line 181, in data_received
+    self.handle_websocket_upgrade()
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\uvicorn\protocols\http\httptools_impl.py", line 196, in handle_websocket_upgrade
+    protocol = self.ws_protocol_class(  # type: ignore[call-arg, misc]
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 105, in __init__
+    super().__init__(
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\websockets\legacy\server.py", line 125, in __init__
+    self.ws_handler = remove_path_argument(ws_handler)
+  File "C:\Users\johnd\AppData\Roaming\Python\Python314\site-packages\websockets\legacy\server.py", line 1178, in remove_path_argument
+    warnings.warn("remove second argument of ws_handler", DeprecationWarning)
+ 
+INFO:     127.0.0.1:61019 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:49:51,994 48784 INFO mashora_demo mashora.addons.base.models.ir_http: Generating routing map for key None 
+2026-04-01 01:49:54,570 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/d010dc5/web.assets_frontend.min.css (id:133) 
+2026-04-01 01:49:54,572 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [128] (matching /web/assets/_______/web.assets_frontend.min.css) because it was replaced with /web/assets/d010dc5/web.assets_frontend.min.css 
+2026-04-01 01:49:55,238 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:49:55,259 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (J3AerdXolw-smIf2J8Mn36QjVCTfB3ChtCDi3vvDLv) 
+2026-04-01 01:49:58,804 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/0a0d3aa/web.assets_web.min.css (id:134) 
+2026-04-01 01:49:58,805 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [129] (matching /web/assets/_______/web.assets_web.min.css) because it was replaced with /web/assets/0a0d3aa/web.assets_web.min.css 
+2026-04-01 01:50:02,472 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/075827e/web.assets_web_print.min.css (id:135) 
+2026-04-01 01:50:02,477 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [130] (matching /web/assets/_______/web.assets_web_print.min.css) because it was replaced with /web/assets/075827e/web.assets_web_print.min.css 
+2026-04-01 01:50:04,204 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/570b0d1/web.assets_web.min.js (id:137) 
+2026-04-01 01:50:04,204 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/570b0d1/web.assets_web.min.js (id:136) 
+2026-04-01 01:50:04,205 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [131] (matching /web/assets/_______/web.assets_web.min.js) because it was replaced with /web/assets/570b0d1/web.assets_web.min.js 
+2026-04-01 01:50:04,206 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [131] (matching /web/assets/_______/web.assets_web.min.js) because it was replaced with /web/assets/570b0d1/web.assets_web.min.js 
+INFO:     127.0.0.1:49364 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49370 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49372 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49374 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49376 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49378 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61021 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:50:22,828 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/0a0d3aa/web.assets_web.css.map (id:138) 
+2026-04-01 01:50:22,829 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [122] (matching /web/assets/_______/web.assets_web.css.map) because it was replaced with /web/assets/0a0d3aa/web.assets_web.css.map 
+2026-04-01 01:50:22,893 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/570b0d1/web.assets_web.js.map (id:139) 
+2026-04-01 01:50:22,894 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [124] (matching /web/assets/_______/web.assets_web.js.map) because it was replaced with /web/assets/570b0d1/web.assets_web.js.map 
+2026-04-01 01:50:22,922 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/0a0d3aa/web.assets_web.css (id:140) 
+2026-04-01 01:50:22,924 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [123] (matching /web/assets/_______/web.assets_web.css) because it was replaced with /web/assets/0a0d3aa/web.assets_web.css 
+2026-04-01 01:50:26,342 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/075827e/web.assets_web_print.css.map (id:141) 
+2026-04-01 01:50:26,346 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [125] (matching /web/assets/_______/web.assets_web_print.css.map) because it was replaced with /web/assets/075827e/web.assets_web_print.css.map 
+2026-04-01 01:50:26,429 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/075827e/web.assets_web_print.css (id:142) 
+2026-04-01 01:50:26,432 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [126] (matching /web/assets/_______/web.assets_web_print.css) because it was replaced with /web/assets/075827e/web.assets_web_print.css 
+2026-04-01 01:50:27,047 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/570b0d1/web.assets_web.js (id:143) 
+2026-04-01 01:50:27,049 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [127] (matching /web/assets/_______/web.assets_web.js) because it was replaced with /web/assets/570b0d1/web.assets_web.js 
+INFO:     127.0.0.1:63570 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:56227 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:51179 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64823 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:58597 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50559 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:55147 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54910 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54956 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53113 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:65335 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53404 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50075 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:54:20,760 48784 INFO mashora_demo mashora.addons.base.models.res_users: Login successful for login:admin from 127.0.0.1 
+2026-04-01 01:54:20,806 48784 INFO mashora_demo mashora.addons.base.models.res_device: User 2 inserts device log (tlEevFeBIUSjBl9UWac-QtI3aGqWXOuLSfn1LlrwYr) 
+2026-04-01 01:54:20,809 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_immediate_uninstall on ['Mashora Modern UI'] to user admin #2 via 127.0.0.1 
+2026-04-01 01:54:20,810 48784 INFO mashora_demo mashora.addons.base.models.ir_module: User #2 triggered module uninstallation 
+2026-04-01 01:54:20,812 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.button_uninstall on ['Mashora Modern UI'] to user admin #2 via 127.0.0.1 
+2026-04-01 01:54:20,838 48784 INFO mashora_demo mashora.modules.loading: loading 1 modules... 
+2026-04-01 01:54:20,841 48784 INFO mashora_demo mashora.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-04-01 01:54:20,860 48784 INFO mashora_demo mashora.modules.loading: updating modules list 
+2026-04-01 01:54:20,861 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via 127.0.0.1 
+2026-04-01 01:54:21,795 48784 WARNING mashora_demo mashora.modules.module: Missing `author` key in manifest for 'mashora_modern_ui', defaulting to '' 
+2026-04-01 01:54:22,102 48784 INFO mashora_demo mashora.modules.loading: loading 15 modules... 
+2026-04-01 01:54:22,106 48784 INFO mashora_demo mashora.modules.loading: 15 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-04-01 01:54:22,145 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.module_uninstall on ['Mashora Modern UI'] to user __system__ #1 via 127.0.0.1 
+2026-04-01 01:54:22,149 48784 INFO mashora_demo mashora.addons.base.models.ir_model: Deleting ir.ui.view(258, 257, 256) 
+2026-04-01 01:54:22,164 48784 INFO mashora_demo mashora.models.unlink: User #1 deleted ir.model.data records with IDs: [19764, 19763, 19765] 
+2026-04-01 01:54:22,165 48784 INFO mashora_demo mashora.models.unlink: User #1 deleted ir.ui.view records with IDs: [258, 257, 256] 
+2026-04-01 01:54:22,170 48784 INFO mashora_demo mashora.addons.base.models.ir_model: ir.model.data could not be deleted ([]) 
+2026-04-01 01:54:22,173 48784 INFO mashora_demo mashora.models.unlink: User #1 deleted ir.model.data records with IDs: [19765, 19764, 19763] 
+2026-04-01 01:54:22,177 48784 INFO mashora_demo mashora.modules.loading: Reloading registry once more after uninstalling modules 
+2026-04-01 01:54:22,198 48784 INFO mashora_demo mashora.modules.loading: loading 1 modules... 
+2026-04-01 01:54:22,201 48784 INFO mashora_demo mashora.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-04-01 01:54:22,230 48784 INFO mashora_demo mashora.modules.loading: updating modules list 
+2026-04-01 01:54:22,231 48784 INFO mashora_demo mashora.addons.base.models.ir_module: ALLOW access to module.update_list on [] to user __system__ #1 via 127.0.0.1 
+2026-04-01 01:54:23,030 48784 WARNING mashora_demo mashora.modules.module: Missing `author` key in manifest for 'mashora_modern_ui', defaulting to '' 
+2026-04-01 01:54:23,339 48784 INFO mashora_demo mashora.modules.loading: loading 14 modules... 
+2026-04-01 01:54:23,344 48784 INFO mashora_demo mashora.modules.loading: 14 modules loaded in 0.00s, 0 queries (+0 extra) 
+2026-04-01 01:54:23,586 48784 INFO mashora_demo mashora.modules.loading: Modules loaded. 
+2026-04-01 01:54:23,595 48784 INFO mashora_demo mashora.registry: Registry changed, signaling through the database 
+2026-04-01 01:54:23,598 48784 INFO mashora_demo mashora.registry: Registry loaded in 1.420s 
+2026-04-01 01:54:23,598 48784 INFO mashora_demo mashora.registry: Registry changed, signaling through the database 
+2026-04-01 01:54:23,602 48784 INFO mashora_demo mashora.registry: Registry loaded in 2.779s 
+2026-04-01 01:54:23,602 48784 INFO mashora_demo mashora.addons.base.models.ir_module: getting next ir.actions.todo() 
+INFO:     127.0.0.1:61019 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:62749 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50406 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:52254 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 01:56:16,642 48784 INFO mashora_demo mashora.addons.base.models.ir_http: Generating routing map for key None 
+2026-04-01 01:56:20,336 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/6ea4404/web.assets_web.css.map (id:144) 
+2026-04-01 01:56:20,338 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [138] (matching /web/assets/_______/web.assets_web.css.map) because it was replaced with /web/assets/6ea4404/web.assets_web.css.map 
+2026-04-01 01:56:20,425 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/6ea4404/web.assets_web.css (id:145) 
+2026-04-01 01:56:20,427 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [140] (matching /web/assets/_______/web.assets_web.css) because it was replaced with /web/assets/6ea4404/web.assets_web.css 
+2026-04-01 01:56:20,427 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/88b2037/web.assets_web.js.map (id:146) 
+2026-04-01 01:56:20,428 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [139] (matching /web/assets/_______/web.assets_web.js.map) because it was replaced with /web/assets/88b2037/web.assets_web.js.map 
+2026-04-01 01:56:24,155 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/ad85c03/web.assets_web_print.css.map (id:147) 
+2026-04-01 01:56:24,156 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [141] (matching /web/assets/_______/web.assets_web_print.css.map) because it was replaced with /web/assets/ad85c03/web.assets_web_print.css.map 
+2026-04-01 01:56:24,359 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/ad85c03/web.assets_web_print.css (id:148) 
+2026-04-01 01:56:24,361 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [142] (matching /web/assets/_______/web.assets_web_print.css) because it was replaced with /web/assets/ad85c03/web.assets_web_print.css 
+2026-04-01 01:56:24,896 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/88b2037/web.assets_web.js (id:149) 
+2026-04-01 01:56:24,898 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [143] (matching /web/assets/_______/web.assets_web.js) because it was replaced with /web/assets/88b2037/web.assets_web.js 
+INFO:     127.0.0.1:51597 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64986 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53239 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:62843 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49682 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64350 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53969 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57017 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64512 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50690 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63746 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57111 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61178 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57395 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:65513 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:62263 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54320 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:49746 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63837 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:56549 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61017 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:58677 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:60116 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57952 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64092 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:52691 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61614 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:52045 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:65350 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 02:08:18,986 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/0958ad8/web.assets_web.css.map (id:150) 
+2026-04-01 02:08:18,987 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [144] (matching /web/assets/_______/web.assets_web.css.map) because it was replaced with /web/assets/0958ad8/web.assets_web.css.map 
+2026-04-01 02:08:19,030 48784 ERROR mashora_demo mashora.addons.base.models.assetsbundle: 'Invalid XML template: xmlParseEntityRef: no name, line 44, column 62' in file '/web/static/src/webclient/webclient.xml' 
+2026-04-01 02:08:19,037 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/a970211/web.assets_web.js.map (id:151) 
+2026-04-01 02:08:19,039 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [146] (matching /web/assets/_______/web.assets_web.js.map) because it was replaced with /web/assets/a970211/web.assets_web.js.map 
+2026-04-01 02:08:19,065 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/0958ad8/web.assets_web.css (id:152) 
+2026-04-01 02:08:19,066 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [145] (matching /web/assets/_______/web.assets_web.css) because it was replaced with /web/assets/0958ad8/web.assets_web.css 
+2026-04-01 02:08:22,729 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/4ad239c/web.assets_web_print.css.map (id:153) 
+2026-04-01 02:08:22,731 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [147] (matching /web/assets/_______/web.assets_web_print.css.map) because it was replaced with /web/assets/4ad239c/web.assets_web_print.css.map 
+2026-04-01 02:08:22,766 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/4ad239c/web.assets_web_print.css (id:154) 
+2026-04-01 02:08:22,769 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [148] (matching /web/assets/_______/web.assets_web_print.css) because it was replaced with /web/assets/4ad239c/web.assets_web_print.css 
+2026-04-01 02:08:23,309 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/a970211/web.assets_web.js (id:155) 
+2026-04-01 02:08:23,311 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [149] (matching /web/assets/_______/web.assets_web.js) because it was replaced with /web/assets/a970211/web.assets_web.js 
+INFO:     127.0.0.1:58949 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:63575 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:58828 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:51408 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 02:08:33,932 48784 ERROR mashora_demo asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()> 
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:     127.0.0.1:58386 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:50294 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:54359 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:57345 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53299 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64110 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53244 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:53175 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:60165 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:59275 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 02:11:17,124 48784 WARNING mashora_demo mashora.addons.base.models.assetsbundle: Internal Error: Incompatible units: 'vw' and 'rem'.
+This error occurred while compiling the bundle 'web.assets_web' containing:
+    - /web/static/lib/bootstrap/scss/_functions.scss
+    - /web/static/lib/bootstrap/scss/_mixins.scss
+    - /web/static/src/scss/functions.scss
+    - /web/static/src/scss/mixins_forwardport.scss
+    - /web/static/src/scss/bs_mixins_overrides.scss
+    - /web/static/src/scss/utils.scss
+    - /web/static/src/scss/primary_variables.scss
+    - /html_editor/static/src/scss/html_editor.variables.scss
+    - /web/static/src/core/avatar/avatar.variables.scss
+    - /web/static/src/core/bottom_sheet/bottom_sheet.variables.scss
+    - /web/static/src/core/notifications/notification.variables.scss
+    - /web/static/src/search/control_panel/control_panel.variables.scss
+    - /web/static/src/search/search_bar/search_bar.variables.scss
+    - /web/static/src/search/search_panel/search_panel.variables.scss
+    - /web/static/src/views/fields/statusbar/statusbar_field.variables.scss
+    - /web/static/src/views/fields/translation_button.variables.scss
+    - /web/static/src/views/form/form.variables.scss
+    - /web/static/src/views/kanban/kanban.variables.scss
+    - /web/static/src/webclient/burger_menu/burger_menu.variables.scss
+    - /web/static/src/webclient/navbar/navbar.variables.scss
+    - /web/static/src/scss/secondary_variables.scss
+    - /html_editor/static/src/scss/secondary_variables.scss
+    - /web/static/src/scss/bootstrap_overridden.scss
+    - /web/static/src/scss/bs_mixins_overrides_backend.scss
+    - /html_editor/static/src/scss/bootstrap_overridden_backend.scss
+    - /html_editor/static/src/scss/bootstrap_overridden.scss
+    - /web/static/src/scss/pre_variables.scss
+    - /web/static/lib/bootstrap/scss/_variables.scss
+    - /web/static/lib/bootstrap/scss/_variables-dark.scss
+    - /web/static/lib/bootstrap/scss/_maps.scss
+    - /web/static/src/scss/import_bootstrap.scss
+    - /web/static/src/scss/utilities_custom.scss
+    - /web/static/src/scss/utilities_custom_backend.scss
+    - /web/static/lib/bootstrap/scss/utilities/_api.scss
+    - /web/static/src/scss/bootstrap_review.scss
+    - /web/static/src/scss/bootstrap_review_backend.scss
+    - /web/static/src/core/utils/transitions.scss
+    - /web/static/src/core/action_swiper/action_swiper.scss
+    - /web/static/src/core/autocomplete/autocomplete.scss
+    - /web/static/src/core/avatar/avatar.scss
+    - /web/static/src/core/badge/badge.scss
+    - /web/static/src/core/barcode/barcode_dialog.scss
+    - /web/static/src/core/barcode/crop_overlay.scss
+    - /web/static/src/core/bottom_sheet/bottom_sheet.scss
+    - /web/static/src/core/checkbox/checkbox.scss
+    - /web/static/src/core/color_picker/color_picker.scss
+    - /web/static/src/core/color_picker/custom_color_picker/custom_color_picker.scss
+    - /web/static/src/core/colorlist/colorlist.scss
+    - /web/static/src/core/commands/command_palette.scss
+    - /web/static/src/core/datetime/datetime_picker.scss
+    - /web/static/src/core/debug/debug_menu.scss
+    - /web/static/src/core/dialog/dialog.scss
+    - /web/static/src/core/dropdown/accordion_item.scss
+    - /web/static/src/core/dropdown/dropdown.scss
+    - /web/static/src/core/dropzone/dropzone.scss
+    - /web/static/src/core/effects/rainbow_man.scss
+    - /web/static/src/core/emoji_picker/emoji_picker.scss
+    - /web/static/src/core/errors/error_dialog.scss
+    - /web/static/src/core/file_upload/file_upload_progress_bar.scss
+    - /web/static/src/core/file_upload/file_upload_progress_record.scss
+    - /web/static/src/core/file_viewer/file_viewer.scss
+    - /web/static/src/core/ir_ui_view_code_editor/code_editor.scss
+    - /web/static/src/core/model_field_selector/model_field_selector.scss
+    - /web/static/src/core/model_field_selector/model_field_selector_popover.scss
+    - /web/static/src/core/model_selector/model_selector.scss
+    - /web/static/src/core/notebook/notebook.scss
+    - /web/static/src/core/notifications/notification.scss
+    - /web/static/src/core/overlay/overlay_container.scss
+    - /web/static/src/core/pager/pager_indicator.scss
+    - /web/static/src/core/popover/popover.scss
+    - /web/static/src/core/pwa/install_prompt.scss
+    - /web/static/src/core/record_selectors/record_selectors.scss
+    - /web/static/src/core/resizable_panel/resizable_panel.scss
+    - /web/static/src/core/select_menu/select_menu.scss
+    - /web/static/src/core/signature/name_and_signature.scss
+    - /web/static/src/core/tags_list/tags_list.scss
+    - /web/static/src/core/time_picker/time_picker.scss
+    - /web/static/src/core/tooltip/tooltip.scss
+    - /web/static/src/core/tree_editor/tree_editor.scss
+    - /web/static/src/core/ui/block_ui.scss
+    - /web/static/src/core/utils/draggable_hook_builder.scss
+    - /web/static/src/core/utils/nested_sortable.scss
+    - /web/static/src/webclient/navbar/navbar.scss
+    - /web/static/src/scss/animation.scss
+    - /web/static/src/scss/fontawesome_overridden.scss
+    - /web/static/src/scss/mimetypes.scss
+    - /web/static/src/scss/ui.scss
+    - /web/static/src/views/fields/translation_dialog.scss
+    - /web/static/src/search/cog_menu/cog_menu.scss
+    - /web/static/src/search/control_panel/control_panel.scss
+    - /web/static/src/search/control_panel/control_panel.variables_print.scss
+    - /web/static/src/search/custom_group_by_item/custom_group_by_item.scss
+    - /web/static/src/search/search_bar/search_bar.scss
+    - /web/static/src/search/search_bar_menu/search_bar_menu.scss
+    - /web/static/src/search/search_panel/search_panel.scss
+    - /web/static/src/search/search_panel/search_view.scss
+    - /web/static/src/webclient/icons.scss
+    - /web/static/src/views/calendar/calendar_common/calendar_common_popover.scss
+    - /web/static/src/views/calendar/calendar_controller.scss
+    - /web/static/src/views/calendar/calendar_controller_mobile.scss
+    - /web/static/src/views/calendar/calendar_filter_section/calendar_filter_section.scss
+    - /web/static/src/views/calendar/calendar_renderer.scss
+    - /web/static/src/views/calendar/calendar_renderer_mobile.scss
+    - /web/static/src/views/calendar/calendar_side_panel/calendar_side_panel.scss
+    - /web/static/src/views/calendar/calendar_year/calendar_year_popover.scss
+    - /web/static/src/views/fields/ace/ace_field.scss
+    - /web/static/src/views/fields/badge_selection/badge_selection.scss
+    - /web/static/src/views/fields/boolean_favorite/boolean_favorite_field.scss
+    - /web/static/src/views/fields/char/char_field.scss
+    - /web/static/src/views/fields/color_picker/color_picker_field.scss
+    - /web/static/src/views/fields/contact_image/contact_image_field.scss
+    - /web/static/src/views/fields/copy_clipboard/copy_clipboard_field.scss
+    - /web/static/src/views/fields/email/email_field.scss
+    - /web/static/src/views/fields/fields.scss
+    - /web/static/src/views/fields/google_slide_viewer/google_slide_viewer.scss
+    - /web/static/src/views/fields/html/html_field.scss
+    - /web/static/src/views/fields/iframe_wrapper/iframe_wrapper_field.scss
+    - /web/static/src/views/fields/image/image_field.scss
+    - /web/static/src/views/fields/journal_dashboard_graph/journal_dashboard_graph_field.scss
+    - /web/static/src/views/fields/kanban_color_picker/kanban_color_picker_field.scss
+    - /web/static/src/views/fields/many2many_binary/many2many_binary_field.scss
+    - /web/static/src/views/fields/many2many_tags/many2many_tags_field.scss
+    - /web/static/src/views/fields/many2many_tags_avatar/many2many_tags_avatar_field.scss
+    - /web/static/src/views/fields/many2one/many2one_field.scss
+    - /web/static/src/views/fields/many2one_avatar/many2one_avatar_field.scss
+    - /web/static/src/views/fields/monetary/monetary_field.scss
+    - /web/static/src/views/fields/pdf_viewer/pdf_viewer_field.scss
+    - /web/static/src/views/fields/percent_pie/percent_pie_field.scss
+    - /web/static/src/views/fields/phone/phone_field.scss
+    - /web/static/src/views/fields/priority/priority_field.scss
+    - /web/static/src/views/fields/progress_bar/progress_bar_field.scss
+    - /web/static/src/views/fields/properties/card_properties_field.scss
+    - /web/static/src/views/fields/properties/properties_field.scss
+    - /web/static/src/views/fields/properties/property_definition.scss
+    - /web/static/src/views/fields/properties/property_definition_selection.scss
+    - /web/static/src/views/fields/properties/property_tags.scss
+    - /web/static/src/views/fields/properties/property_text.scss
+    - /web/static/src/views/fields/properties/property_value.scss
+    - /web/static/src/views/fields/radio/radio_field.scss
+    - /web/static/src/views/fields/selection/selection_field.scss
+    - /web/static/src/views/fields/signature/signature_field.scss
+    - /web/static/src/views/fields/state_selection/state_selection_field.scss
+    - /web/static/src/views/fields/statusbar/statusbar_field.scss
+    - /web/static/src/views/fields/text/text_field.scss
+    - /web/static/src/views/fields/translation_button.scss
+    - /web/static/src/views/fields/url/url_field.scss
+    - /web/static/src/views/form/form_controller.scss
+    - /web/static/src/views/form/setting/setting.scss
+    - /web/static/src/views/kanban/kanban.print_variables.scss
+    - /web/static/src/views/kanban/kanban_column_progressbar.scss
+    - /web/static/src/views/kanban/kanban_controller.scss
+    - /web/static/src/views/kanban/kanban_cover_image_dialog.scss
+    - /web/static/src/views/kanban/kanban_examples_dialog.scss
+    - /web/static/src/views/kanban/kanban_record.scss
+    - /web/static/src/views/kanban/kanban_record_quick_create.scss
+    - /web/static/src/views/list/list_confirmation_dialog.scss
+    - /web/static/src/views/list/list_renderer.scss
+    - /web/static/src/views/view.scss
+    - /web/static/src/views/view_components/animated_number.scss
+    - /web/static/src/views/view_components/group_config_menu.scss
+    - /web/static/src/views/view_components/selection_box.scss
+    - /web/static/src/views/view_dialogs/export_data_dialog.scss
+    - /web/static/src/views/view_dialogs/select_create_dialog.scss
+    - /web/static/src/views/widgets/ribbon/ribbon.scss
+    - /web/static/src/views/widgets/week_days/week_days.scss
+    - /web/static/src/webclient/actions/action_dialog.scss
+    - /web/static/src/webclient/burger_menu/burger_menu.scss
+    - /web/static/src/webclient/debug/profiling/profiling_item.scss
+    - /web/static/src/webclient/debug/profiling/profiling_qweb.scss
+    - /web/static/src/webclient/loading_indicator/loading_indicator.scss
+    - /web/static/src/webclient/res_user_group_ids_field/res_user_group_ids_field.scss
+    - /web/static/src/webclient/res_user_group_ids_field/res_user_group_ids_privilege_field.scss
+    - /web/static/src/webclient/settings_form_view/settings/searchable_setting.scss
+    - /web/static/src/webclient/settings_form_view/settings_form_view.scss
+    - /web/static/src/webclient/settings_form_view/settings_form_view_mobile.scss
+    - /web/static/src/webclient/settings_form_view/widgets/settings_widgets.scss
+    - /web/static/src/webclient/switch_company_menu/switch_company_menu.scss
+    - /web/static/src/webclient/user_menu/user_menu.scss
+    - /web/static/src/webclient/webclient.scss
+    - /web/static/src/webclient/webclient_layout.scss
+    - /web/static/src/scss/ace.scss
+    - /web/static/src/scss/base_document_layout.scss
+    - /base/static/src/scss/res_partner.scss
+    - /base/static/src/scss/res_users.scss
+    - /web/static/src/views/form/button_box/button_box.scss
+    - /auth_passkey/static/src/scss/res_users.scss
+    - /auth_totp/static/src/scss/res_users_view_form.scss
+    - /base_import/static/src/import_action/import_action.scss
+    - /base_import/static/src/import_data_content/import_data_content.scss
+    - /base_import/static/src/import_data_progress/import_data_progress.scss
+    - /base_import/static/src/import_data_sidepanel/import_data_sidepanel.scss
+    - /html_editor/static/src/components/switch/switch.scss
+    - /html_editor/static/src/main/media/media_dialog/media_dialog.scss
+    - /html_editor/static/src/main/media/media_dialog/upload_progress_toast/upload_progress_toast.scss
+    - /html_editor/static/src/main/local_overlay.scss
+    - /html_editor/static/src/main/list/list.scss
+    - /html_editor/static/src/main/media/file.scss
+    - /html_editor/static/src/others/embedded_components/core/embedded_component_toolbar/embedded_component_toolbar.scss
+    - /html_editor/static/src/others/embedded_components/core/file/file.scss
+    - /html_editor/static/src/others/embedded_components/core/table_of_content/table_of_content.scss
+    - /html_editor/static/src/others/embedded_components/core/toggle_block/toggle_block.scss
+    - /html_editor/static/src/others/qweb_plugin.scss
+    - /html_editor/static/src/styles.scss
+    - /html_editor/static/src/components/history_dialog/history_dialog.scss
+    - /html_editor/static/src/core/format_plugin.scss
+    - /html_editor/static/src/main/align/align_selector.scss
+    - /html_editor/static/src/main/banner.scss
+    - /html_editor/static/src/main/chatgpt/chatgpt_plugin.scss
+    - /html_editor/static/src/main/chatgpt/language_selector.scss
+    - /html_editor/static/src/main/font/color_picker_gradient_tab.scss
+    - /html_editor/static/src/main/font/font_plugin.scss
+    - /html_editor/static/src/main/font/font_selector.scss
+    - /html_editor/static/src/main/font/font_size_selector.scss
+    - /html_editor/static/src/main/font/gradient_picker/gradient_picker.scss
+    - /html_editor/static/src/main/hint.scss
+    - /html_editor/static/src/main/link/link.scss
+    - /html_editor/static/src/main/link/link_popover.scss
+    - /html_editor/static/src/main/media/image_crop.scss
+    - /html_editor/static/src/main/media/image_transformation.scss
+    - /html_editor/static/src/main/movenode.scss
+    - /html_editor/static/src/main/power_buttons.scss
+    - /html_editor/static/src/main/powerbox/powerbox.scss
+    - /html_editor/static/src/main/selection_placeholder_plugin.scss
+    - /html_editor/static/src/main/separator_selection.scss
+    - /html_editor/static/src/main/table/table.scss
+    - /html_editor/static/src/main/table/table_align_selector.scss
+    - /html_editor/static/src/main/table/table_menu.scss
+    - /html_editor/static/src/main/table/table_picker.scss
+    - /html_editor/static/src/main/table/table_resize.scss
+    - /html_editor/static/src/main/table/table_selection.scss
+    - /html_editor/static/src/main/toolbar/toolbar.scss
+    - /html_editor/static/src/others/collaboration/collaboration_selection.scss
+    - /html_editor/static/src/others/collaboration/collaboration_selection_avatar.scss
+    - /html_editor/static/src/others/embedded_components/backend/caption/caption.scss
+    - /html_editor/static/src/others/embedded_components/backend/video/video.scss
+    - /html_editor/static/src/others/embedded_components/plugins/syntax_highlighting_plugin/syntax_highlighting_plugin.scss
+    - /html_editor/static/src/fields/html_field.scss
+    - /html_editor/static/src/fields/property_value.scss
+    - /html_editor/static/src/scss/base_style.scss
+    - /html_editor/static/src/scss/html_editor.common.scss
+    - /html_editor/static/src/scss/html_editor.backend.scss
+    - /web_tour/static/src/scss/tour_pointer.scss 
+2026-04-01 02:11:17,289 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/99c8acd/web.assets_web.css (id:156) 
+2026-04-01 02:11:17,291 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [152] (matching /web/assets/_______/web.assets_web.css) because it was replaced with /web/assets/99c8acd/web.assets_web.css 
+2026-04-01 02:11:18,899 48784 WARNING mashora_demo mashora.addons.base.models.assetsbundle: Internal Error: Incompatible units: 'vw' and 'rem'.
+This error occurred while compiling the bundle 'web.assets_web_print' containing:
+    - /web/static/src/scss/functions.scss
+    - /web/static/src/scss/primary_variables_print.scss
+    - /web/static/src/views/kanban/kanban.print_variables.scss
+    - /web/static/lib/bootstrap/scss/_functions.scss
+    - /web/static/lib/bootstrap/scss/_mixins.scss
+    - /web/static/src/scss/mixins_forwardport.scss
+    - /web/static/src/scss/bs_mixins_overrides.scss
+    - /web/static/src/scss/utils.scss
+    - /web/static/src/scss/primary_variables.scss
+    - /html_editor/static/src/scss/html_editor.variables.scss
+    - /web/static/src/core/avatar/avatar.variables.scss
+    - /web/static/src/core/bottom_sheet/bottom_sheet.variables.scss
+    - /web/static/src/core/notifications/notification.variables.scss
+    - /web/static/src/search/control_panel/control_panel.variables.scss
+    - /web/static/src/search/search_bar/search_bar.variables.scss
+    - /web/static/src/search/search_panel/search_panel.variables.scss
+    - /web/static/src/views/fields/statusbar/statusbar_field.variables.scss
+    - /web/static/src/views/fields/translation_button.variables.scss
+    - /web/static/src/views/form/form.variables.scss
+    - /web/static/src/views/kanban/kanban.variables.scss
+    - /web/static/src/webclient/burger_menu/burger_menu.variables.scss
+    - /web/static/src/webclient/navbar/navbar.variables.scss
+    - /web/static/src/scss/secondary_variables.scss
+    - /html_editor/static/src/scss/secondary_variables.scss
+    - /web/static/src/scss/bootstrap_overridden.scss
+    - /web/static/src/scss/bs_mixins_overrides_backend.scss
+    - /html_editor/static/src/scss/bootstrap_overridden_backend.scss
+    - /html_editor/static/src/scss/bootstrap_overridden.scss
+    - /web/static/src/scss/pre_variables.scss
+    - /web/static/lib/bootstrap/scss/_variables.scss
+    - /web/static/lib/bootstrap/scss/_variables-dark.scss
+    - /web/static/lib/bootstrap/scss/_maps.scss
+    - /web/static/src/scss/import_bootstrap.scss
+    - /web/static/src/scss/utilities_custom.scss
+    - /web/static/src/scss/utilities_custom_backend.scss
+    - /web/static/lib/bootstrap/scss/utilities/_api.scss
+    - /web/static/src/scss/bootstrap_review.scss
+    - /web/static/src/scss/bootstrap_review_backend.scss
+    - /web/static/src/core/utils/transitions.scss
+    - /web/static/src/core/action_swiper/action_swiper.scss
+    - /web/static/src/core/autocomplete/autocomplete.scss
+    - /web/static/src/core/avatar/avatar.scss
+    - /web/static/src/core/badge/badge.scss
+    - /web/static/src/core/barcode/barcode_dialog.scss
+    - /web/static/src/core/barcode/crop_overlay.scss
+    - /web/static/src/core/bottom_sheet/bottom_sheet.scss
+    - /web/static/src/core/checkbox/checkbox.scss
+    - /web/static/src/core/color_picker/color_picker.scss
+    - /web/static/src/core/color_picker/custom_color_picker/custom_color_picker.scss
+    - /web/static/src/core/colorlist/colorlist.scss
+    - /web/static/src/core/commands/command_palette.scss
+    - /web/static/src/core/datetime/datetime_picker.scss
+    - /web/static/src/core/debug/debug_menu.scss
+    - /web/static/src/core/dialog/dialog.scss
+    - /web/static/src/core/dropdown/accordion_item.scss
+    - /web/static/src/core/dropdown/dropdown.scss
+    - /web/static/src/core/dropzone/dropzone.scss
+    - /web/static/src/core/effects/rainbow_man.scss
+    - /web/static/src/core/emoji_picker/emoji_picker.scss
+    - /web/static/src/core/errors/error_dialog.scss
+    - /web/static/src/core/file_upload/file_upload_progress_bar.scss
+    - /web/static/src/core/file_upload/file_upload_progress_record.scss
+    - /web/static/src/core/file_viewer/file_viewer.scss
+    - /web/static/src/core/ir_ui_view_code_editor/code_editor.scss
+    - /web/static/src/core/model_field_selector/model_field_selector.scss
+    - /web/static/src/core/model_field_selector/model_field_selector_popover.scss
+    - /web/static/src/core/model_selector/model_selector.scss
+    - /web/static/src/core/notebook/notebook.scss
+    - /web/static/src/core/notifications/notification.scss
+    - /web/static/src/core/overlay/overlay_container.scss
+    - /web/static/src/core/pager/pager_indicator.scss
+    - /web/static/src/core/popover/popover.scss
+    - /web/static/src/core/pwa/install_prompt.scss
+    - /web/static/src/core/record_selectors/record_selectors.scss
+    - /web/static/src/core/resizable_panel/resizable_panel.scss
+    - /web/static/src/core/select_menu/select_menu.scss
+    - /web/static/src/core/signature/name_and_signature.scss
+    - /web/static/src/core/tags_list/tags_list.scss
+    - /web/static/src/core/time_picker/time_picker.scss
+    - /web/static/src/core/tooltip/tooltip.scss
+    - /web/static/src/core/tree_editor/tree_editor.scss
+    - /web/static/src/core/ui/block_ui.scss
+    - /web/static/src/core/utils/draggable_hook_builder.scss
+    - /web/static/src/core/utils/nested_sortable.scss
+    - /web/static/src/webclient/navbar/navbar.scss
+    - /web/static/src/scss/animation.scss
+    - /web/static/src/scss/fontawesome_overridden.scss
+    - /web/static/src/scss/mimetypes.scss
+    - /web/static/src/scss/ui.scss
+    - /web/static/src/views/fields/translation_dialog.scss
+    - /web/static/src/search/cog_menu/cog_menu.scss
+    - /web/static/src/search/control_panel/control_panel.scss
+    - /web/static/src/search/control_panel/control_panel.variables_print.scss
+    - /web/static/src/search/custom_group_by_item/custom_group_by_item.scss
+    - /web/static/src/search/search_bar/search_bar.scss
+    - /web/static/src/search/search_bar_menu/search_bar_menu.scss
+    - /web/static/src/search/search_panel/search_panel.scss
+    - /web/static/src/search/search_panel/search_view.scss
+    - /web/static/src/webclient/icons.scss
+    - /web/static/src/views/calendar/calendar_common/calendar_common_popover.scss
+    - /web/static/src/views/calendar/calendar_controller.scss
+    - /web/static/src/views/calendar/calendar_controller_mobile.scss
+    - /web/static/src/views/calendar/calendar_filter_section/calendar_filter_section.scss
+    - /web/static/src/views/calendar/calendar_renderer.scss
+    - /web/static/src/views/calendar/calendar_renderer_mobile.scss
+    - /web/static/src/views/calendar/calendar_side_panel/calendar_side_panel.scss
+    - /web/static/src/views/calendar/calendar_year/calendar_year_popover.scss
+    - /web/static/src/views/fields/ace/ace_field.scss
+    - /web/static/src/views/fields/badge_selection/badge_selection.scss
+    - /web/static/src/views/fields/boolean_favorite/boolean_favorite_field.scss
+    - /web/static/src/views/fields/char/char_field.scss
+    - /web/static/src/views/fields/color_picker/color_picker_field.scss
+    - /web/static/src/views/fields/contact_image/contact_image_field.scss
+    - /web/static/src/views/fields/copy_clipboard/copy_clipboard_field.scss
+    - /web/static/src/views/fields/email/email_field.scss
+    - /web/static/src/views/fields/fields.scss
+    - /web/static/src/views/fields/google_slide_viewer/google_slide_viewer.scss
+    - /web/static/src/views/fields/html/html_field.scss
+    - /web/static/src/views/fields/iframe_wrapper/iframe_wrapper_field.scss
+    - /web/static/src/views/fields/image/image_field.scss
+    - /web/static/src/views/fields/journal_dashboard_graph/journal_dashboard_graph_field.scss
+    - /web/static/src/views/fields/kanban_color_picker/kanban_color_picker_field.scss
+    - /web/static/src/views/fields/many2many_binary/many2many_binary_field.scss
+    - /web/static/src/views/fields/many2many_tags/many2many_tags_field.scss
+    - /web/static/src/views/fields/many2many_tags_avatar/many2many_tags_avatar_field.scss
+    - /web/static/src/views/fields/many2one/many2one_field.scss
+    - /web/static/src/views/fields/many2one_avatar/many2one_avatar_field.scss
+    - /web/static/src/views/fields/monetary/monetary_field.scss
+    - /web/static/src/views/fields/pdf_viewer/pdf_viewer_field.scss
+    - /web/static/src/views/fields/percent_pie/percent_pie_field.scss
+    - /web/static/src/views/fields/phone/phone_field.scss
+    - /web/static/src/views/fields/priority/priority_field.scss
+    - /web/static/src/views/fields/progress_bar/progress_bar_field.scss
+    - /web/static/src/views/fields/properties/card_properties_field.scss
+    - /web/static/src/views/fields/properties/properties_field.scss
+    - /web/static/src/views/fields/properties/property_definition.scss
+    - /web/static/src/views/fields/properties/property_definition_selection.scss
+    - /web/static/src/views/fields/properties/property_tags.scss
+    - /web/static/src/views/fields/properties/property_text.scss
+    - /web/static/src/views/fields/properties/property_value.scss
+    - /web/static/src/views/fields/radio/radio_field.scss
+    - /web/static/src/views/fields/selection/selection_field.scss
+    - /web/static/src/views/fields/signature/signature_field.scss
+    - /web/static/src/views/fields/state_selection/state_selection_field.scss
+    - /web/static/src/views/fields/statusbar/statusbar_field.scss
+    - /web/static/src/views/fields/text/text_field.scss
+    - /web/static/src/views/fields/translation_button.scss
+    - /web/static/src/views/fields/url/url_field.scss
+    - /web/static/src/views/form/form_controller.scss
+    - /web/static/src/views/form/setting/setting.scss
+    - /web/static/src/views/kanban/kanban_column_progressbar.scss
+    - /web/static/src/views/kanban/kanban_controller.scss
+    - /web/static/src/views/kanban/kanban_cover_image_dialog.scss
+    - /web/static/src/views/kanban/kanban_examples_dialog.scss
+    - /web/static/src/views/kanban/kanban_record.scss
+    - /web/static/src/views/kanban/kanban_record_quick_create.scss
+    - /web/static/src/views/list/list_confirmation_dialog.scss
+    - /web/static/src/views/list/list_renderer.scss
+    - /web/static/src/views/view.scss
+    - /web/static/src/views/view_components/animated_number.scss
+    - /web/static/src/views/view_components/group_config_menu.scss
+    - /web/static/src/views/view_components/selection_box.scss
+    - /web/static/src/views/view_dialogs/export_data_dialog.scss
+    - /web/static/src/views/view_dialogs/select_create_dialog.scss
+    - /web/static/src/views/widgets/ribbon/ribbon.scss
+    - /web/static/src/views/widgets/week_days/week_days.scss
+    - /web/static/src/webclient/actions/action_dialog.scss
+    - /web/static/src/webclient/burger_menu/burger_menu.scss
+    - /web/static/src/webclient/debug/profiling/profiling_item.scss
+    - /web/static/src/webclient/debug/profiling/profiling_qweb.scss
+    - /web/static/src/webclient/loading_indicator/loading_indicator.scss
+    - /web/static/src/webclient/res_user_group_ids_field/res_user_group_ids_field.scss
+    - /web/static/src/webclient/res_user_group_ids_field/res_user_group_ids_privilege_field.scss
+    - /web/static/src/webclient/settings_form_view/settings/searchable_setting.scss
+    - /web/static/src/webclient/settings_form_view/settings_form_view.scss
+    - /web/static/src/webclient/settings_form_view/settings_form_view_mobile.scss
+    - /web/static/src/webclient/settings_form_view/widgets/settings_widgets.scss
+    - /web/static/src/webclient/switch_company_menu/switch_company_menu.scss
+    - /web/static/src/webclient/user_menu/user_menu.scss
+    - /web/static/src/webclient/webclient.scss
+    - /web/static/src/webclient/webclient_layout.scss
+    - /web/static/src/scss/ace.scss
+    - /web/static/src/scss/base_document_layout.scss
+    - /base/static/src/scss/res_partner.scss
+    - /base/static/src/scss/res_users.scss
+    - /web/static/src/views/form/button_box/button_box.scss
+    - /auth_passkey/static/src/scss/res_users.scss
+    - /auth_totp/static/src/scss/res_users_view_form.scss
+    - /base_import/static/src/import_action/import_action.scss
+    - /base_import/static/src/import_data_content/import_data_content.scss
+    - /base_import/static/src/import_data_progress/import_data_progress.scss
+    - /base_import/static/src/import_data_sidepanel/import_data_sidepanel.scss
+    - /html_editor/static/src/components/switch/switch.scss
+    - /html_editor/static/src/main/media/media_dialog/media_dialog.scss
+    - /html_editor/static/src/main/media/media_dialog/upload_progress_toast/upload_progress_toast.scss
+    - /html_editor/static/src/main/local_overlay.scss
+    - /html_editor/static/src/main/list/list.scss
+    - /html_editor/static/src/main/media/file.scss
+    - /html_editor/static/src/others/embedded_components/core/embedded_component_toolbar/embedded_component_toolbar.scss
+    - /html_editor/static/src/others/embedded_components/core/file/file.scss
+    - /html_editor/static/src/others/embedded_components/core/table_of_content/table_of_content.scss
+    - /html_editor/static/src/others/embedded_components/core/toggle_block/toggle_block.scss
+    - /html_editor/static/src/others/qweb_plugin.scss
+    - /html_editor/static/src/styles.scss
+    - /html_editor/static/src/components/history_dialog/history_dialog.scss
+    - /html_editor/static/src/core/format_plugin.scss
+    - /html_editor/static/src/main/align/align_selector.scss
+    - /html_editor/static/src/main/banner.scss
+    - /html_editor/static/src/main/chatgpt/chatgpt_plugin.scss
+    - /html_editor/static/src/main/chatgpt/language_selector.scss
+    - /html_editor/static/src/main/font/color_picker_gradient_tab.scss
+    - /html_editor/static/src/main/font/font_plugin.scss
+    - /html_editor/static/src/main/font/font_selector.scss
+    - /html_editor/static/src/main/font/font_size_selector.scss
+    - /html_editor/static/src/main/font/gradient_picker/gradient_picker.scss
+    - /html_editor/static/src/main/hint.scss
+    - /html_editor/static/src/main/link/link.scss
+    - /html_editor/static/src/main/link/link_popover.scss
+    - /html_editor/static/src/main/media/image_crop.scss
+    - /html_editor/static/src/main/media/image_transformation.scss
+    - /html_editor/static/src/main/movenode.scss
+    - /html_editor/static/src/main/power_buttons.scss
+    - /html_editor/static/src/main/powerbox/powerbox.scss
+    - /html_editor/static/src/main/selection_placeholder_plugin.scss
+    - /html_editor/static/src/main/separator_selection.scss
+    - /html_editor/static/src/main/table/table.scss
+    - /html_editor/static/src/main/table/table_align_selector.scss
+    - /html_editor/static/src/main/table/table_menu.scss
+    - /html_editor/static/src/main/table/table_picker.scss
+    - /html_editor/static/src/main/table/table_resize.scss
+    - /html_editor/static/src/main/table/table_selection.scss
+    - /html_editor/static/src/main/toolbar/toolbar.scss
+    - /html_editor/static/src/others/collaboration/collaboration_selection.scss
+    - /html_editor/static/src/others/collaboration/collaboration_selection_avatar.scss
+    - /html_editor/static/src/others/embedded_components/backend/caption/caption.scss
+    - /html_editor/static/src/others/embedded_components/backend/video/video.scss
+    - /html_editor/static/src/others/embedded_components/plugins/syntax_highlighting_plugin/syntax_highlighting_plugin.scss
+    - /html_editor/static/src/fields/html_field.scss
+    - /html_editor/static/src/fields/property_value.scss
+    - /html_editor/static/src/scss/base_style.scss
+    - /html_editor/static/src/scss/html_editor.common.scss
+    - /html_editor/static/src/scss/html_editor.backend.scss
+    - /web_tour/static/src/scss/tour_pointer.scss 
+INFO:     127.0.0.1:58330 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+2026-04-01 02:11:19,019 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/970be5c/web.assets_web_print.css (id:157) 
+2026-04-01 02:11:19,020 48784 INFO mashora_demo mashora.addons.base.models.assetsbundle: Deleting attachments [154] (matching /web/assets/_______/web.assets_web_print.css) because it was replaced with /web/assets/970be5c/web.assets_web_print.css 
+INFO:     127.0.0.1:61255 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:61961 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:64675 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed
+INFO:     127.0.0.1:56524 - "WebSocket /websocket?version=19.0-2" 403
+INFO:     connection rejected (403 Forbidden)
+INFO:     connection closed

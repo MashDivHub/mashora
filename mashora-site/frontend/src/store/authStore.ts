@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { login as apiLogin, getMe, User } from '../api/auth'
+import { clearTokens, getAccessToken, getRefreshToken, storeTokens } from '@/lib/auth-storage'
 
 interface AuthState {
   user: User | null
@@ -13,18 +14,18 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: getAccessToken(),
+  isAuthenticated: Boolean(getAccessToken() || getRefreshToken()),
 
   login: async (email: string, password: string) => {
     const data = await apiLogin(email, password)
-    localStorage.setItem('token', data.access_token)
+    storeTokens(data.access_token, data.refresh_token)
     const user = await getMe()
-    set({ token: data.access_token, user, isAuthenticated: true })
+    set({ token: getAccessToken(), user, isAuthenticated: true })
   },
 
   logout: () => {
-    localStorage.removeItem('token')
+    clearTokens()
     set({ token: null, user: null, isAuthenticated: false })
   },
 
@@ -33,13 +34,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   initFromStorage: async () => {
-    const token = localStorage.getItem('token')
-    if (token) {
+    const hasStoredSession = Boolean(getAccessToken() || getRefreshToken())
+    if (hasStoredSession) {
       try {
         const user = await getMe()
-        set({ token, user, isAuthenticated: true })
+        set({ token: getAccessToken(), user, isAuthenticated: true })
       } catch {
-        localStorage.removeItem('token')
+        clearTokens()
         set({ token: null, user: null, isAuthenticated: false })
       }
     }

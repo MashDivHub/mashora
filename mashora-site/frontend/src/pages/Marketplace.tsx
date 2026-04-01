@@ -136,7 +136,7 @@ export default function Marketplace() {
                 className={cn(
                   'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
                   category === item
-                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50'
                     : 'border-border bg-background text-muted-foreground hover:text-foreground'
                 )}
               >

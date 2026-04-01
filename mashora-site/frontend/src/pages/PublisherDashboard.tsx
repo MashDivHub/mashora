@@ -117,7 +117,7 @@ export default function PublisherDashboard() {
         description="Submit new marketplace packages, track approval status, and push fresh versions through a cleaner workflow."
         actions={
           <Button
-            className="rounded-2xl"
+            className="w-full rounded-2xl sm:w-auto"
             onClick={() => {
               setShowSubmitForm((value) => !value)
               setSubmitMsg('')
@@ -137,7 +137,7 @@ export default function PublisherDashboard() {
       {showSubmitForm ? (
         <div className="rounded-3xl border border-border/70 bg-card/90 p-6">
           <form onSubmit={handleSubmitAddon} className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid gap-5 xl:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="technicalName">Technical name</Label>
                 <Input
@@ -160,7 +160,7 @@ export default function PublisherDashboard() {
               </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
               <div className="space-y-2">
                 <Label htmlFor="addonSummary">Summary</Label>
                 <Input
@@ -186,7 +186,7 @@ export default function PublisherDashboard() {
               </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[1fr_220px]">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
               <div className="space-y-2">
                 <Label htmlFor="addonDescription">Description</Label>
                 <Textarea
@@ -233,8 +233,8 @@ export default function PublisherDashboard() {
             const isUploading = uploadingFor === addon.technical_name
             return (
               <div key={addon.id} className="rounded-3xl border border-border/70 bg-card/90 p-6">
-                <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-4">
+                <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,520px)] 2xl:items-start">
+                  <div className="min-w-0 space-y-4">
                     <div className="flex items-center gap-4">
                       <div
                         className="flex size-16 items-center justify-center rounded-3xl border border-border/70 bg-muted/60 text-xl"
@@ -251,7 +251,7 @@ export default function PublisherDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
                       <MetricCard label="Downloads" value={addon.download_count.toLocaleString()} />
                       <MetricCard
                         label="Rating"
@@ -267,7 +267,7 @@ export default function PublisherDashboard() {
                     </div>
                   </div>
 
-                  <div className="w-full max-w-xl rounded-3xl border border-border/70 bg-background/60 p-5">
+                  <div className="w-full min-w-0 rounded-3xl border border-border/70 bg-background/60 p-5 2xl:max-w-xl">
                     <div className="mb-4 flex items-center gap-3">
                       <div className="rounded-2xl border border-border/70 bg-muted/60 p-3">
                         <Upload className="size-4" />
@@ -279,7 +279,7 @@ export default function PublisherDashboard() {
                     </div>
 
                     <form onSubmit={(e) => handleUploadVersion(addon.technical_name, e)} className="space-y-4">
-                      <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+                      <div className="grid gap-4 lg:grid-cols-[160px_minmax(0,1fr)]">
                         <div className="space-y-2">
                           <Label htmlFor={`version-${addon.technical_name}`}>Version</Label>
                           <Input

@@ -141,8 +141,8 @@ export default function AddonDetail() {
       />
 
       <Card className="overflow-hidden border-border/70 bg-card/90">
-        <CardContent className="grid gap-8 p-6 lg:grid-cols-[1fr_320px] lg:p-8">
-          <div className="space-y-6">
+        <CardContent className="grid gap-8 p-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:p-8">
+          <div className="min-w-0 space-y-6">
             <div className="flex flex-wrap items-start gap-5">
               <div
                 className="flex size-20 items-center justify-center rounded-3xl border border-border/70 bg-muted/60 text-2xl"

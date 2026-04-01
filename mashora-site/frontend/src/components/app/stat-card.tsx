@@ -17,7 +17,7 @@ export function StatCard({ title, value, icon: Icon, hint }: StatCardProps) {
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">{title}</p>
             <div className="text-3xl font-semibold tracking-tight">{value}</div>
           </div>
-          <div className="rounded-2xl border border-border/70 bg-muted/60 p-3 text-muted-foreground transition-colors group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-zinc-100 dark:group-hover:text-zinc-900">
+          <div className="rounded-2xl border border-border/70 bg-muted/60 p-3 text-muted-foreground transition-colors group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:border-zinc-700 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-50">
             <Icon className="size-5" />
           </div>
         </div>

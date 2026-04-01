@@ -164,14 +164,14 @@ export default function Support() {
                       <div
                         className={`max-w-2xl rounded-3xl border px-5 py-4 text-sm leading-6 ${
                           message.sender === 'user'
-                            ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                            ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50'
                             : 'border-border/70 bg-background/60 text-muted-foreground'
                         }`}
                       >
                         <div>{message.message}</div>
                         <div
                           className={`mt-3 text-xs ${
-                            message.sender === 'user' ? 'text-zinc-300 dark:text-zinc-600' : 'text-muted-foreground'
+                            message.sender === 'user' ? 'text-zinc-300 dark:text-zinc-400' : 'text-muted-foreground'
                           }`}
                         >
                           {message.sender === 'user' ? 'You' : 'Support'} • {new Date(message.created_at).toLocaleString()}

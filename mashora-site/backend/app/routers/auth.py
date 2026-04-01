@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from app.middleware.auth import (
 )
 from app.models import Organization, User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import RefreshTokenRequest
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -99,10 +100,18 @@ async def token(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    refresh_token: str,
+    body: RefreshTokenRequest | None = None,
+    refresh_token: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    payload = verify_token(refresh_token)
+    refresh_token_value = body.refresh_token if body else refresh_token
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="refresh_token is required",
+        )
+
+    payload = verify_token(refresh_token_value)
     if payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

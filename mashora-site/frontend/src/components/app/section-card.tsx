@@ -18,7 +18,7 @@ export function SectionCard({ title, description, actions, children, contentClas
             <CardTitle>{title}</CardTitle>
             {description ? <CardDescription>{description}</CardDescription> : null}
           </div>
-          {actions}
+          {actions ? <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:justify-end">{actions}</div> : null}
         </div>
       </CardHeader>
       <CardContent className={contentClassName}>{children}</CardContent>

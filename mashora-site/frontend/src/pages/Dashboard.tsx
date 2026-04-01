@@ -83,7 +83,7 @@ export default function Dashboard() {
         title={`Welcome back${user?.org_name ? `, ${user.org_name}` : ''}`}
         description="Run tenant provisioning, billing, upgrades, support, and governance from one focused workspace."
         actions={
-          <Button asChild className="rounded-2xl">
+          <Button asChild className="w-full rounded-2xl sm:w-auto">
             <Link to="/dashboard/tenants/new">Create new instance</Link>
           </Button>
         }
@@ -106,7 +106,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {quickLinkCards.map(({ to, label, description, icon: Icon }) => (
           <Link
             key={to}

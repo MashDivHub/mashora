@@ -79,7 +79,7 @@ export default function Admin() {
       {statsLoading ? (
         <div className="rounded-3xl border border-border/70 bg-card/90 p-6 text-sm text-muted-foreground">Loading stats...</div>
       ) : stats ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard title="Organizations" value={stats.total_orgs} icon={Building2} />
           <StatCard title="Users" value={stats.total_users} icon={Users} />
           <StatCard title="Tenants" value={stats.total_tenants} icon={ShieldCheck} />
@@ -94,7 +94,7 @@ export default function Admin() {
 
       <div className="rounded-3xl border border-border/70 bg-card/90 p-6">
         <Tabs value={activeTab} onValueChange={(value) => switchTab(value as Tab)}>
-          <TabsList>
+          <TabsList className="mb-2">
             <TabsTrigger value="tenants">Tenants</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
             <TabsTrigger value="addons">Addon approvals</TabsTrigger>
@@ -199,7 +199,7 @@ export default function Admin() {
                           {addon.created_at ? new Date(addon.created_at).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex flex-col justify-end gap-2 sm:flex-row">
                             <Button
                               size="sm"
                               variant="outline"

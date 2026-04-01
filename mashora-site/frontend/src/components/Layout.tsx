@@ -27,12 +27,6 @@ const marketingNavigation = [
   { to: '/addons', label: 'Marketplace' },
 ]
 
-const lightPillStyle = {
-  backgroundColor: '#fafafa',
-  color: '#09090b',
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18)',
-}
-
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const { isAuthenticated, logout, user, initFromStorage } = useAuthStore()
@@ -78,10 +72,10 @@ export default function Layout({ children }: LayoutProps) {
     return (
       <div className="relative min-h-screen">
         <div className="relative flex min-h-screen">
-          <aside className="hidden w-72 shrink-0 border-r border-border/70 bg-background/80 backdrop-blur xl:flex xl:flex-col">
+          <aside className="hidden w-72 shrink-0 border-r border-border/70 bg-background/80 backdrop-blur 2xl:flex 2xl:flex-col">
             <div className="border-b border-border/70 px-6 py-6">
               <Link to="/" className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/20 dark:bg-zinc-100 dark:text-zinc-900">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/20 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
                   M
                 </div>
                 <div>
@@ -92,17 +86,17 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-6">
-              <div className="mb-6 rounded-3xl border border-border/70 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 text-white shadow-xl shadow-zinc-950/15 dark:from-zinc-100 dark:to-zinc-200 dark:text-zinc-950">
+              <div className="mb-6 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 p-5 text-zinc-50 shadow-xl shadow-zinc-950/15">
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-2xl bg-white/12 p-3 dark:bg-zinc-900/10">
+                  <div className="rounded-2xl bg-white/8 p-3 ring-1 ring-white/10">
                     <Waypoints className="size-5" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold">{user?.org_name || 'Workspace'}</p>
-                    <p className="text-xs text-zinc-300 dark:text-zinc-600">{user?.email || 'Connected account'}</p>
+                    <p className="text-xs text-zinc-400">{user?.email || 'Connected account'}</p>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-300 dark:text-zinc-700">
+                <p className="text-sm text-zinc-300">
                   One shell for provisioning, marketplace ops, upgrades, support, and platform control.
                 </p>
               </div>
@@ -117,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
                       className={cn(
                         'group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all',
                         active
-                          ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-950/15 dark:bg-zinc-100 dark:text-zinc-900'
+                          ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-950/15 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:shadow-none'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                       )}
                     >
@@ -132,10 +126,10 @@ export default function Layout({ children }: LayoutProps) {
 
           <div className="flex min-h-screen min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur">
-              <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 lg:px-10">
-                <div className="xl:hidden">
+              <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-4 sm:px-6 lg:px-10">
+                <div className="min-w-0 2xl:hidden">
                   <Link to="/" className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
                       M
                     </div>
                     <div>
@@ -145,27 +139,12 @@ export default function Layout({ children }: LayoutProps) {
                   </Link>
                 </div>
 
-                <div className="hidden flex-1 items-center gap-2 overflow-x-auto xl:flex">
-                  {dashboardNavigation.map(({ to, label }) => {
-                    const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
-                    return (
-                      <Link
-                        key={to}
-                        to={to}
-                        className={cn(
-                          'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-                          active ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
-                        {label}
-                      </Link>
-                    )
-                  })}
-                </div>
-
                 <div className="ml-auto flex items-center gap-3">
                   <ThemeToggle />
-                  <div className="hidden items-center gap-3 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 sm:flex">
+                  <Avatar className="size-9 lg:hidden">
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="hidden min-w-0 items-center gap-3 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 lg:flex">
                     <Avatar className="size-9">
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
@@ -174,9 +153,31 @@ export default function Layout({ children }: LayoutProps) {
                       <div className="truncate text-xs text-muted-foreground">{user?.email || 'Signed in'}</div>
                     </div>
                   </div>
-                  <Button variant="outline" onClick={handleLogout}>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
                     Logout
                   </Button>
+                </div>
+
+                <div className="order-3 w-full 2xl:hidden">
+                  <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+                    {dashboardNavigation.map(({ to, label }) => {
+                      const active = location.pathname === to || (to !== '/dashboard' && location.pathname.startsWith(to))
+                      return (
+                        <Link
+                          key={to}
+                          to={to}
+                          className={cn(
+                            'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                            active
+                              ? 'bg-zinc-900 text-white shadow-sm dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          )}
+                        >
+                          {label}
+                        </Link>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </header>
@@ -195,9 +196,9 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="relative min-h-screen">
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-10">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/15 dark:bg-zinc-100 dark:text-zinc-900">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-4 sm:px-6 lg:px-10">
+          <Link to="/" className="flex min-w-0 items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-semibold text-white shadow-lg shadow-zinc-950/15 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
               M
             </div>
             <div>
@@ -206,7 +207,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="order-3 hidden w-full items-center gap-2 overflow-x-auto pb-1 md:flex lg:order-none lg:w-auto lg:pb-0">
             {marketingNavigation.map(({ to, label }) => {
               const active = location.pathname === to
               return (
@@ -214,11 +215,10 @@ export default function Layout({ children }: LayoutProps) {
                   key={to}
                   to={to}
                   aria-current={active ? 'page' : undefined}
-                  style={active ? lightPillStyle : undefined}
                   className={cn(
-                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors',
                     active
-                      ? ''
+                      ? 'bg-zinc-900 text-white shadow-sm dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50'
                       : 'text-muted-foreground hover:bg-zinc-100 hover:text-zinc-950 dark:hover:bg-zinc-900/70 dark:hover:text-zinc-50'
                   )}
                 >
@@ -228,7 +228,7 @@ export default function Layout({ children }: LayoutProps) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <ThemeToggle />
             {isAuthenticated ? (
               <>
@@ -249,8 +249,7 @@ export default function Layout({ children }: LayoutProps) {
                 </Button>
                 <Link
                   to="/register"
-                  style={lightPillStyle}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:brightness-95"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-50 shadow-sm transition-all hover:bg-zinc-800 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700"
                 >
                   <UserRoundPlus className="size-4" />
                   Start Free

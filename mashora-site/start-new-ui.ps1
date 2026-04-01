@@ -58,19 +58,19 @@ function Start-BackgroundProcess(
         -RedirectStandardError $StdErrPath | Out-Null
 }
 
-# Free the new frontend entrypoint if something is already using it.
+# Keep the real ERP on its primary port.
 Stop-ProcessOnPort -Port 8069
 
-# Move Odoo behind the new shell on 8070.
-Stop-ProcessOnPort -Port 8070
-$odooLog = Join-Path $tmpRoot "odoo-8070.log"
-$odooErrLog = Join-Path $tmpRoot "odoo-8070.err.log"
+# Stop any old preview frontend that may still be running on 3000.
+Stop-ProcessOnPort -Port 3000
+$odooLog = Join-Path $tmpRoot "odoo-8069.log"
+$odooErrLog = Join-Path $tmpRoot "odoo-8069.err.log"
 Start-BackgroundProcess `
     -FilePath "C:\Python314\python.exe" `
     -Arguments @(
         "mashora-bin",
         "server",
-        "--http-port=8070",
+        "--http-port=8069",
         "--addons-path=addons,mashora/addons",
         "--db_host=localhost",
         "--db_port=5433",
@@ -96,22 +96,22 @@ if ($null -eq $apiProcessId) {
         -StdErrPath $apiErrLog
 }
 
-# Start the new shadcn frontend on the original app port.
-$frontendLog = Join-Path $tmpRoot "frontend-8069.log"
-$frontendErrLog = Join-Path $tmpRoot "frontend-8069.err.log"
+# Start the separate portal preview on 3000 without replacing the ERP.
+$frontendLog = Join-Path $tmpRoot "frontend-3000.log"
+$frontendErrLog = Join-Path $tmpRoot "frontend-3000.err.log"
 Start-BackgroundProcess `
     -FilePath (Join-Path $frontendRoot "node_modules\.bin\vite.cmd") `
-    -Arguments @("--host", "0.0.0.0", "--port", "8069", "--strictPort") `
+    -Arguments @("--host", "0.0.0.0", "--port", "3000", "--strictPort") `
     -WorkingDirectory $frontendRoot `
     -StdOutPath $frontendLog `
     -StdErrPath $frontendErrLog
 
 Start-Sleep -Seconds 6
-$frontendProcessId = Get-ListeningProcessId -Port 8069
+$frontendProcessId = Get-ListeningProcessId -Port 3000
 $apiProcessId = Get-ListeningProcessId -Port 8000
-$odooProcessId = Get-ListeningProcessId -Port 8070
+$odooProcessId = Get-ListeningProcessId -Port 8069
 
-Write-Host "New UI started."
-Write-Host "Frontend PID: $frontendProcessId on http://localhost:8069"
+Write-Host "ERP + preview UI started."
+Write-Host "ERP PID: $odooProcessId on http://localhost:8069"
 Write-Host "API PID: $apiProcessId on http://localhost:8000"
-Write-Host "Legacy ERP PID: $odooProcessId on http://localhost:8070"
+Write-Host "Portal preview PID: $frontendProcessId on http://localhost:3000"

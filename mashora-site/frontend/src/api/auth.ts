@@ -44,7 +44,9 @@ export async function getMe(): Promise<User> {
   return response.data
 }
 
-export async function refreshToken(): Promise<AuthResponse> {
-  const response = await client.post<AuthResponse>('/auth/refresh')
+export async function refreshToken(refreshTokenValue: string): Promise<AuthResponse> {
+  const response = await client.post<AuthResponse>('/auth/refresh', null, {
+    params: { refresh_token: refreshTokenValue },
+  })
   return response.data
 }

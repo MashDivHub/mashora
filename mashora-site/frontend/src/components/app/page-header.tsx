@@ -21,7 +21,7 @@ export function PageHeader({ eyebrow, title, description, actions, className }: 
           {description ? <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p> : null}
         </div>
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
+      {actions ? <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">{actions}</div> : null}
     </div>
   )
 }
