@@ -45,7 +45,7 @@ INVOICE_LINE_FIELDS = [
 PAYMENT_LIST_FIELDS = [
     "id", "name", "state", "payment_type", "partner_id",
     "amount", "date", "journal_id", "currency_id",
-    "payment_method_line_id", "ref",
+    "payment_method_line_id",
     "is_reconciled", "is_matched",
 ]
 
@@ -56,7 +56,7 @@ ACCOUNT_LIST_FIELDS = [
 
 JOURNAL_LIST_FIELDS = [
     "id", "name", "code", "type", "company_id",
-    "currency_id", "account_id",
+    "currency_id", "default_account_id",
 ]
 
 TAX_LIST_FIELDS = [
@@ -714,7 +714,7 @@ def get_aged_payable(uid=1, context=None):
 
 BANK_STATEMENT_FIELDS = [
     "id", "name", "journal_id", "date", "balance_start",
-    "balance_end_real", "state", "line_ids",
+    "balance_end_real", "line_ids",
     "create_date", "write_date",
 ]
 

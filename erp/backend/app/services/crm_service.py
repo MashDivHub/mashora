@@ -9,7 +9,7 @@ Provides high-level operations for the CRM module:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -22,7 +22,7 @@ LEAD_LIST_FIELDS = [
     "expected_revenue", "prorated_revenue", "probability",
     "priority", "won_status", "color",
     "date_deadline", "date_closed", "date_conversion",
-    "tag_ids", "company_id", "currency_id",
+    "tag_ids", "company_id",
     "activity_date_deadline",
     "create_date",
 ]

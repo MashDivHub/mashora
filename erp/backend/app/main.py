@@ -146,3 +146,4 @@ async def root():
         "phase": "0.0 — ORM Adapter PoC",
         "docs": "/docs",
     }
+

@@ -37,6 +37,8 @@ def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) ->
         domain.append(["name", "ilike", params["search"]])
         domain.append(["license_plate", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "fleet.vehicle" not in env.registry:
+            return {"records": [], "total": 0, "warning": "fleet module not installed"}
         V = env["fleet.vehicle"]
         total = V.search_count(domain)
         records = V.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "name asc"))
@@ -44,6 +46,8 @@ def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) ->
 
 def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "fleet.vehicle" not in env.registry:
+            return None
         v = env["fleet.vehicle"].browse(vehicle_id)
         if not v.exists():
             return None
@@ -51,6 +55,8 @@ def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -
 
 def update_vehicle(vehicle_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "fleet.vehicle" not in env.registry:
+            return None
         v = env["fleet.vehicle"].browse(vehicle_id)
         if not v.exists():
             return None
@@ -60,6 +66,8 @@ def update_vehicle(vehicle_id: int, vals: dict, uid: int = 1, context: Optional[
 def list_vehicle_costs(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = [["vehicle_id", "=", vehicle_id]]
     with mashora_env(uid=uid, context=context) as env:
+        if "fleet.vehicle.cost" not in env.registry:
+            return {"records": [], "total": 0, "warning": "fleet module not installed"}
         C = env["fleet.vehicle.cost"]
         total = C.search_count(domain)
         records = C.search(domain, order="date desc")
@@ -67,6 +75,8 @@ def list_vehicle_costs(vehicle_id: int, uid: int = 1, context: Optional[dict] = 
 
 def create_vehicle_cost(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "fleet.vehicle.cost" not in env.registry:
+            raise RuntimeError("fleet module not installed")
         c = env["fleet.vehicle.cost"].create(vals)
         return c.read(VEHICLE_COST_FIELDS)[0]
 
@@ -92,6 +102,8 @@ def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
         domain.append(["name", "ilike", params["search"]])
         domain.append(["product_id.name", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "repair.order" not in env.registry:
+            return {"records": [], "total": 0, "warning": "repair module not installed"}
         R = env["repair.order"]
         total = R.search_count(domain)
         records = R.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "name desc"))
@@ -99,6 +111,8 @@ def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
 
 def get_repair(repair_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "repair.order" not in env.registry:
+            return None
         r = env["repair.order"].browse(repair_id)
         if not r.exists():
             return None
@@ -106,6 +120,8 @@ def get_repair(repair_id: int, uid: int = 1, context: Optional[dict] = None) -> 
 
 def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "repair.order" not in env.registry:
+            return None
         r = env["repair.order"].browse(repair_id)
         if not r.exists():
             return None
@@ -114,6 +130,8 @@ def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optional[di
 
 def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "repair.order" not in env.registry:
+            raise RuntimeError("repair module not installed")
         r = env["repair.order"].browse(repair_id)
         getattr(r, action)()
         return r.read(REPAIR_FIELDS)[0]
@@ -146,6 +164,8 @@ def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None)
         domain.append(["name", "ilike", params["search"]])
         domain.append(["product_id.name", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.production" not in env.registry:
+            return {"records": [], "total": 0, "warning": "mrp module not installed"}
         P = env["mrp.production"]
         total = P.search_count(domain)
         records = P.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_start desc, name desc"))
@@ -153,6 +173,8 @@ def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None)
 
 def get_production(production_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.production" not in env.registry:
+            return None
         p = env["mrp.production"].browse(production_id)
         if not p.exists():
             return None
@@ -160,6 +182,8 @@ def get_production(production_id: int, uid: int = 1, context: Optional[dict] = N
 
 def update_production(production_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.production" not in env.registry:
+            return None
         p = env["mrp.production"].browse(production_id)
         if not p.exists():
             return None
@@ -168,6 +192,8 @@ def update_production(production_id: int, vals: dict, uid: int = 1, context: Opt
 
 def production_action(production_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.production" not in env.registry:
+            raise RuntimeError("mrp module not installed")
         p = env["mrp.production"].browse(production_id)
         getattr(p, action)()
         return p.read(PRODUCTION_FIELDS)[0]
@@ -183,6 +209,8 @@ def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dic
         domain.append(["code", "ilike", params["search"]])
         domain.append(["product_tmpl_id.name", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.bom" not in env.registry:
+            return {"records": [], "total": 0, "warning": "mrp module not installed"}
         B = env["mrp.bom"]
         total = B.search_count(domain)
         records = B.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "product_tmpl_id asc"))
@@ -190,6 +218,8 @@ def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dic
 
 def get_bom(bom_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mrp.bom" not in env.registry:
+            return None
         b = env["mrp.bom"].browse(bom_id)
         if not b.exists():
             return None
@@ -223,6 +253,8 @@ def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "event.event" not in env.registry:
+            return {"records": [], "total": 0, "warning": "event module not installed"}
         E = env["event.event"]
         total = E.search_count(domain)
         records = E.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_begin desc"))
@@ -230,6 +262,8 @@ def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
 
 def get_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "event.event" not in env.registry:
+            return None
         e = env["event.event"].browse(event_id)
         if not e.exists():
             return None
@@ -237,6 +271,8 @@ def get_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Op
 
 def update_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "event.event" not in env.registry:
+            return None
         e = env["event.event"].browse(event_id)
         if not e.exists():
             return None
@@ -245,6 +281,8 @@ def update_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict
 
 def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "event.event" not in env.registry:
+            raise RuntimeError("event module not installed")
         e = env["event.event"].browse(event_id)
         getattr(e, action)()
         return e.read(EVENT_FIELDS)[0]
@@ -252,6 +290,8 @@ def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dic
 def list_registrations(event_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = [["event_id", "=", event_id]]
     with mashora_env(uid=uid, context=context) as env:
+        if "event.registration" not in env.registry:
+            return {"records": [], "total": 0, "warning": "event module not installed"}
         R = env["event.registration"]
         total = R.search_count(domain)
         records = R.search(domain, order="create_date desc")
@@ -259,6 +299,8 @@ def list_registrations(event_id: int, uid: int = 1, context: Optional[dict] = No
 
 def create_registration(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "event.registration" not in env.registry:
+            raise RuntimeError("event module not installed")
         r = env["event.registration"].create(vals)
         return r.read(EVENT_REGISTRATION_FIELDS)[0]
 
@@ -285,6 +327,8 @@ def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
     if params.get("search"):
         domain.append(["title", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "survey.survey" not in env.registry:
+            return {"records": [], "total": 0, "warning": "survey module not installed"}
         S = env["survey.survey"]
         total = S.search_count(domain)
         records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
@@ -292,6 +336,8 @@ def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
 
 def get_survey(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "survey.survey" not in env.registry:
+            return None
         s = env["survey.survey"].browse(survey_id)
         if not s.exists():
             return None
@@ -299,6 +345,8 @@ def get_survey(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> 
 
 def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "survey.survey" not in env.registry:
+            return None
         s = env["survey.survey"].browse(survey_id)
         if not s.exists():
             return None
@@ -307,6 +355,8 @@ def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optional[di
 
 def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "survey.survey" not in env.registry:
+            raise RuntimeError("survey module not installed")
         s = env["survey.survey"].browse(survey_id)
         getattr(s, action)()
         return s.read(SURVEY_FIELDS)[0]
@@ -314,6 +364,8 @@ def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[d
 def list_survey_answers(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = [["survey_id", "=", survey_id]]
     with mashora_env(uid=uid, context=context) as env:
+        if "survey.user_input" not in env.registry:
+            return {"records": [], "total": 0, "warning": "survey module not installed"}
         A = env["survey.user_input"]
         total = A.search_count(domain)
         records = A.search(domain, order="create_date desc")
@@ -339,6 +391,8 @@ def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) ->
         domain.append(["name", "ilike", params["search"]])
         domain.append(["subject", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "mailing.mailing" not in env.registry:
+            return {"records": [], "total": 0, "warning": "mass_mailing module not installed"}
         M = env["mailing.mailing"]
         total = M.search_count(domain)
         records = M.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
@@ -346,6 +400,8 @@ def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) ->
 
 def get_mailing(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mailing.mailing" not in env.registry:
+            return None
         m = env["mailing.mailing"].browse(mailing_id)
         if not m.exists():
             return None
@@ -353,6 +409,8 @@ def get_mailing(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -
 
 def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mailing.mailing" not in env.registry:
+            return None
         m = env["mailing.mailing"].browse(mailing_id)
         if not m.exists():
             return None
@@ -361,12 +419,16 @@ def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Optional[
 
 def mailing_action(mailing_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "mailing.mailing" not in env.registry:
+            raise RuntimeError("mass_mailing module not installed")
         m = env["mailing.mailing"].browse(mailing_id)
         getattr(m, action)()
         return m.read(MAILING_FIELDS)[0]
 
 def get_mailing_stats(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "mailing.mailing" not in env.registry:
+            return None
         m = env["mailing.mailing"].browse(mailing_id)
         if not m.exists():
             return None
@@ -399,6 +461,8 @@ def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "pos.session" not in env.registry:
+            return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
         S = env["pos.session"]
         total = S.search_count(domain)
         records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 20), order=params.get("order", "start_at desc"))
@@ -406,6 +470,8 @@ def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None
 
 def get_pos_session(session_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "pos.session" not in env.registry:
+            return None
         s = env["pos.session"].browse(session_id)
         if not s.exists():
             return None
@@ -426,6 +492,8 @@ def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) 
         domain.append(["name", "ilike", params["search"]])
         domain.append(["pos_reference", "ilike", params["search"]])
     with mashora_env(uid=uid, context=context) as env:
+        if "pos.order" not in env.registry:
+            return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
         O = env["pos.order"]
         total = O.search_count(domain)
         records = O.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "date_order desc"))
@@ -433,6 +501,8 @@ def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) 
 
 def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "pos.order" not in env.registry:
+            return None
         o = env["pos.order"].browse(order_id)
         if not o.exists():
             return None
@@ -440,6 +510,8 @@ def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -
 
 def pos_session_action(session_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "pos.session" not in env.registry:
+            raise RuntimeError("point_of_sale module not installed")
         s = env["pos.session"].browse(session_id)
         getattr(s, action)()
         return s.read(POS_SESSION_FIELDS)[0]

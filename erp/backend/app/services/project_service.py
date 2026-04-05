@@ -416,46 +416,77 @@ def delete_project(project_id: int, uid: int = 1, context: Optional[dict] = None
 
 PROJECT_FIELDS = PROJECT_LIST_FIELDS
 
-TIMESHEET_FIELDS = [
-    "id", "project_id", "task_id", "employee_id", "user_id",
-    "name", "date", "unit_amount",
+TIMESHEET_BASE_FIELDS = [
+    "id", "name", "date", "unit_amount", "user_id",
+    "account_id", "partner_id", "amount",
     "create_date", "write_date",
 ]
+
+TIMESHEET_OPTIONAL_FIELDS = ["project_id", "task_id", "employee_id"]
+
+# TIMESHEET_FIELDS is set dynamically; this default is used as a fallback
+TIMESHEET_FIELDS = TIMESHEET_BASE_FIELDS
+
+
+def _timesheet_fields(env) -> list:
+    """Return the timesheet field list, including optional fields if available."""
+    model_fields = env['account.analytic.line']._fields
+    extra = [f for f in TIMESHEET_OPTIONAL_FIELDS if f in model_fields]
+    return TIMESHEET_BASE_FIELDS + extra
+
+
+def _timesheet_guard(env) -> bool:
+    """Return True if the timesheet module fields are available."""
+    return 'project_id' in env['account.analytic.line']._fields
 
 
 def list_timesheets(uid: int = 1, context: Optional[dict] = None, domain=None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
     with mashora_env(uid=uid, context=context) as env:
-        d = domain or []
+        if not _timesheet_guard(env):
+            return {"records": [], "total": 0, "warning": "timesheet module not installed"}
+        fields = _timesheet_fields(env)
+        d = list(domain) if domain else []
         d.append(('project_id', '!=', False))
         total = env['account.analytic.line'].search_count(d)
         records = env['account.analytic.line'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(TIMESHEET_FIELDS)
+        data = records.read(fields)
         return {"records": data, "total": total}
 
 
 def get_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if not _timesheet_guard(env):
+            return None
+        fields = _timesheet_fields(env)
         record = env['account.analytic.line'].browse(timesheet_id)
         if not record.exists():
             return None
-        return record.read(TIMESHEET_FIELDS)[0]
+        return record.read(fields)[0]
 
 
 def create_timesheet(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if not _timesheet_guard(env):
+            raise RuntimeError("timesheet module not installed; cannot create timesheet")
+        fields = _timesheet_fields(env)
         record = env['account.analytic.line'].create(vals)
-        return record.read(TIMESHEET_FIELDS)[0]
+        return record.read(fields)[0]
 
 
 def update_timesheet(timesheet_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if not _timesheet_guard(env):
+            raise RuntimeError("timesheet module not installed; cannot update timesheet")
+        fields = _timesheet_fields(env)
         record = env['account.analytic.line'].browse(timesheet_id)
         record.write(vals)
-        return record.read(TIMESHEET_FIELDS)[0]
+        return record.read(fields)[0]
 
 
 def delete_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
     with mashora_env(uid=uid, context=context) as env:
+        if not _timesheet_guard(env):
+            raise RuntimeError("timesheet module not installed; cannot delete timesheet")
         record = env['account.analytic.line'].browse(timesheet_id)
         if not record.exists():
             from mashora.exceptions import MissingError
@@ -474,6 +505,8 @@ def get_timesheet_summary(
 ) -> dict:
     """Get timesheet summary grouped by project and employee."""
     with mashora_env(uid=uid, context=context) as env:
+        if not _timesheet_guard(env):
+            return {"by_project": [], "by_employee": [], "total_hours": 0, "warning": "timesheet module not installed"}
         domain = [('project_id', '!=', False)]
         if project_id:
             domain.append(('project_id', '=', project_id))

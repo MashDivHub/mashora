@@ -38,7 +38,7 @@ EMPLOYEE_DETAIL_FIELDS = EMPLOYEE_LIST_FIELDS + [
 ]
 
 DEPARTMENT_FIELDS = [
-    "id", "name", "complete_name", "parent_id", "child_ids",
+    "id", "name", "parent_id", "child_ids",
     "manager_id", "total_employee", "company_id",
     "color", "parent_path",
 ]
@@ -171,7 +171,7 @@ def list_departments(params: dict, uid: int = 1, context: Optional[dict] = None)
             domain,
             offset=params.get("offset", 0),
             limit=params.get("limit", 100),
-            order=params.get("order", "complete_name asc"),
+            order=params.get("order", "name asc"),
         )
         return {"records": records.read(DEPARTMENT_FIELDS), "total": total}
 
@@ -201,6 +201,8 @@ def list_attendance(params: dict, uid: int = 1, context: Optional[dict] = None) 
         domain.append(["employee_id.name", "ilike", params["search"]])
 
     with mashora_env(uid=uid, context=context) as env:
+        if 'hr.attendance' not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_attendance module not installed"}
         Att = env["hr.attendance"]
         total = Att.search_count(domain)
         records = Att.search(
@@ -232,6 +234,8 @@ def list_leaves(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
         domain.append(["employee_id.name", "ilike", params["search"]])
 
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
         Leave = env["hr.leave"]
         total = Leave.search_count(domain)
         records = Leave.search(
@@ -243,8 +247,20 @@ def list_leaves(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
         return {"records": records.read(LEAVE_LIST_FIELDS), "total": total}
 
 
+def get_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            return None
+        leave = env["hr.leave"].browse(leave_id)
+        if not leave.exists():
+            return None
+        return leave.read(LEAVE_LIST_FIELDS)[0]
+
+
 def create_leave(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed; cannot create leave")
         clean_vals = {k: v for k, v in vals.items() if v is not None}
         leave = env["hr.leave"].create(clean_vals)
         return leave.read(LEAVE_LIST_FIELDS)[0]
@@ -252,6 +268,8 @@ def create_leave(vals: dict, uid: int = 1, context: Optional[dict] = None) -> di
 
 def approve_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         leave = env["hr.leave"].browse(leave_id)
         leave.action_approve()
         return leave.read(LEAVE_LIST_FIELDS)[0]
@@ -259,6 +277,8 @@ def approve_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -
 
 def refuse_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         leave = env["hr.leave"].browse(leave_id)
         leave.action_refuse()
         return leave.read(LEAVE_LIST_FIELDS)[0]
@@ -266,6 +286,8 @@ def refuse_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) ->
 
 def reset_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         leave = env["hr.leave"].browse(leave_id)
         leave.action_draft()
         return leave.read(LEAVE_LIST_FIELDS)[0]
@@ -275,6 +297,8 @@ def reset_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> 
 
 def list_leave_types(uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.type" not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
         Type = env["hr.leave.type"]
         records = Type.search([], order="sequence asc")
         return {"records": records.read(LEAVE_TYPE_FIELDS), "total": len(records)}
@@ -326,6 +350,8 @@ def get_hr_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
 
 def list_allocations(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
         d = domain or []
         total = env['hr.leave.allocation'].search_count(d)
         records = env['hr.leave.allocation'].search(d, offset=offset, limit=limit, order=order)
@@ -335,6 +361,8 @@ def list_allocations(uid: int = 1, context: Optional[dict] = None, domain: Optio
 
 def get_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            return None
         record = env['hr.leave.allocation'].browse(allocation_id)
         if not record.exists():
             return None
@@ -343,12 +371,16 @@ def get_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = N
 
 def create_allocation(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed; cannot create allocation")
         record = env['hr.leave.allocation'].create(vals)
         return record.read(ALLOCATION_FIELDS)[0]
 
 
 def approve_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         record = env['hr.leave.allocation'].browse(allocation_id)
         record.action_validate()
         return record.read(ALLOCATION_FIELDS)[0]
@@ -356,6 +388,8 @@ def approve_allocation(allocation_id: int, uid: int = 1, context: Optional[dict]
 
 def refuse_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         record = env['hr.leave.allocation'].browse(allocation_id)
         record.action_refuse()
         return record.read(ALLOCATION_FIELDS)[0]
@@ -363,6 +397,8 @@ def refuse_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] 
 
 def reset_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.leave.allocation" not in env.registry:
+            raise RuntimeError("hr_holidays module not installed")
         record = env['hr.leave.allocation'].browse(allocation_id)
         record.action_draft()
         return record.read(ALLOCATION_FIELDS)[0]
@@ -372,6 +408,8 @@ def reset_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] =
 
 def list_expenses(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense" not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
         d = domain or []
         total = env['hr.expense'].search_count(d)
         records = env['hr.expense'].search(d, offset=offset, limit=limit, order=order)
@@ -380,6 +418,8 @@ def list_expenses(uid: int = 1, context: Optional[dict] = None, domain: Optional
 
 def get_expense(expense_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense" not in env.registry:
+            return None
         record = env['hr.expense'].browse(expense_id)
         if not record.exists():
             return None
@@ -388,6 +428,8 @@ def get_expense(expense_id: int, uid: int = 1, context: Optional[dict] = None) -
 
 def create_expense(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense" not in env.registry:
+            raise RuntimeError("hr_expense module not installed; cannot create expense")
         clean_vals = {k: v for k, v in vals.items() if v is not None}
         record = env['hr.expense'].create(clean_vals)
         return record.read(EXPENSE_FIELDS)[0]
@@ -395,6 +437,8 @@ def create_expense(vals: dict, uid: int = 1, context: Optional[dict] = None) -> 
 
 def update_expense(expense_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense" not in env.registry:
+            raise RuntimeError("hr_expense module not installed")
         record = env['hr.expense'].browse(expense_id)
         if not record.exists():
             from mashora.exceptions import MissingError
@@ -407,6 +451,8 @@ def update_expense(expense_id: int, vals: dict, uid: int = 1, context: Optional[
 def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dict] = None):
     """Create expense sheet from selected expenses."""
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense" not in env.registry:
+            raise RuntimeError("hr_expense module not installed")
         expenses = env['hr.expense'].browse(expense_ids)
         sheet = expenses.action_submit_expenses()
         if hasattr(sheet, 'read'):
@@ -418,6 +464,8 @@ def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dict] = N
 
 def list_expense_sheets(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense.sheet" not in env.registry:
+            return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
         d = domain or []
         total = env['hr.expense.sheet'].search_count(d)
         records = env['hr.expense.sheet'].search(d, offset=offset, limit=limit, order=order)
@@ -426,6 +474,8 @@ def list_expense_sheets(uid: int = 1, context: Optional[dict] = None, domain: Op
 
 def approve_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense.sheet" not in env.registry:
+            raise RuntimeError("hr_expense module not installed")
         sheet = env['hr.expense.sheet'].browse(sheet_id)
         sheet.approve_expense_sheets()
         return sheet.read(EXPENSE_SHEET_FIELDS)[0]
@@ -433,6 +483,8 @@ def approve_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] =
 
 def refuse_expense_sheet(sheet_id: int, reason: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense.sheet" not in env.registry:
+            raise RuntimeError("hr_expense module not installed")
         sheet = env['hr.expense.sheet'].browse(sheet_id)
         sheet.action_sheet_refuse()
         return sheet.read(EXPENSE_SHEET_FIELDS)[0]
@@ -440,6 +492,8 @@ def refuse_expense_sheet(sheet_id: int, reason: str, uid: int = 1, context: Opti
 
 def post_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "hr.expense.sheet" not in env.registry:
+            raise RuntimeError("hr_expense module not installed")
         sheet = env['hr.expense.sheet'].browse(sheet_id)
         sheet.action_sheet_move_create()
         return sheet.read(EXPENSE_SHEET_FIELDS)[0]

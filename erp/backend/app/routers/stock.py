@@ -186,7 +186,7 @@ async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
 # Inventory Adjustments
 # ============================================
 
-@router.post("/inventory/adjustments")
+@router.post("/adjustments")
 async def get_inventory_adjustments(
     params: InventoryAdjustmentListParams | None = None,
     user: CurrentUser | None = Depends(get_optional_user),
@@ -211,7 +211,7 @@ async def get_inventory_adjustments(
     )
 
 
-@router.post("/inventory/adjustments/{quant_id}/count")
+@router.post("/adjustments/{quant_id}/count")
 async def set_inventory_count(
     quant_id: int,
     body: InventoryCountBody,
@@ -225,7 +225,7 @@ async def set_inventory_count(
     )
 
 
-@router.post("/inventory/adjustments/apply")
+@router.post("/adjustments/apply")
 async def apply_adjustments(
     body: InventoryApplyBody,
     user: CurrentUser | None = Depends(get_optional_user),

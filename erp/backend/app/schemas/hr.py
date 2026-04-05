@@ -59,7 +59,7 @@ class DepartmentListParams(BaseModel):
     search: Optional[str] = None
     offset: int = 0
     limit: int = 100
-    order: str = "complete_name asc"
+    order: str = "name asc"
 
 
 class AttendanceListParams(BaseModel):

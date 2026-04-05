@@ -20,7 +20,7 @@ class ProductListParams(BaseModel):
     published_only: bool = True
     offset: int = 0
     limit: int = 20
-    order: str = "website_sequence asc, name asc"
+    order: str = "name asc"
 
 
 class CategoryListParams(BaseModel):

@@ -8,7 +8,7 @@ Provides high-level operations for the sales module:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 

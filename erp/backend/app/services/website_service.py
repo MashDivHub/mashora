@@ -18,23 +18,43 @@ _logger = logging.getLogger(__name__)
 
 # --- Field lists ---
 
-PRODUCT_LIST_FIELDS = [
-    "id", "name", "list_price", "website_published",
+# Core fields that always exist on product.template
+PRODUCT_LIST_FIELDS_BASE = [
+    "id", "name", "list_price",
     "image_128", "default_code",
-    "public_categ_ids", "website_sequence",
-    "description_sale", "rating_avg", "rating_count",
-    "compare_list_price", "currency_id",
+    "description_sale", "currency_id",
     "type", "qty_available",
 ]
 
-PRODUCT_DETAIL_FIELDS = PRODUCT_LIST_FIELDS + [
-    "website_description", "description_ecommerce",
+# Optional fields present only when website_sale / website_rating are installed
+PRODUCT_LIST_FIELDS_OPTIONAL = [
+    "website_published", "public_categ_ids", "website_sequence",
+    "rating_avg", "rating_count", "compare_list_price",
+]
+
+# Combined list kept for backward compatibility; actual reads are filtered at runtime
+PRODUCT_LIST_FIELDS = PRODUCT_LIST_FIELDS_BASE + PRODUCT_LIST_FIELDS_OPTIONAL
+
+PRODUCT_DETAIL_FIELDS_BASE = PRODUCT_LIST_FIELDS_BASE + [
     "product_variant_ids", "attribute_line_ids",
-    "alternative_product_ids", "accessory_product_ids",
-    "website_ribbon_id",
+    "accessory_product_ids",
     "product_template_image_ids",
     "categ_id",
 ]
+
+PRODUCT_DETAIL_FIELDS_OPTIONAL = PRODUCT_LIST_FIELDS_OPTIONAL + [
+    "website_description", "description_ecommerce",
+    "alternative_product_ids",
+    "website_ribbon_id",
+]
+
+PRODUCT_DETAIL_FIELDS = PRODUCT_DETAIL_FIELDS_BASE + PRODUCT_DETAIL_FIELDS_OPTIONAL
+
+
+def _safe_product_fields(model, base_fields, optional_fields):
+    """Return base_fields plus whichever optional_fields exist on the model."""
+    mf = model._fields
+    return [f for f in base_fields] + [f for f in optional_fields if f in mf]
 
 CATEGORY_FIELDS = [
     "id", "name", "parent_id", "child_id",
@@ -80,6 +100,8 @@ WEBSITE_FIELDS = [
 
 def get_website_config(website_id: Optional[int] = None, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
+        if "website" not in env.registry:
+            return {}
         Website = env["website"]
         if website_id:
             site = Website.browse(website_id)
@@ -102,6 +124,8 @@ def list_pages(params: dict, uid: int = 1, context: Optional[dict] = None) -> di
         domain.append(["url", "ilike", params["search"]])
 
     with mashora_env(uid=uid, context=context) as env:
+        if "website.page" not in env.registry:
+            return {"records": [], "total": 0, "warning": "website module not installed"}
         Page = env["website.page"]
         total = Page.search_count(domain)
         records = Page.search(
@@ -124,6 +148,8 @@ def list_menus(params: Optional[dict] = None, uid: int = 1, context: Optional[di
         domain.append(["parent_id", "=", params["parent_id"] or False])
 
     with mashora_env(uid=uid, context=context) as env:
+        if "website.menu" not in env.registry:
+            return {"records": [], "total": 0, "warning": "website module not installed"}
         Menu = env["website.menu"]
         records = Menu.search(domain, order="sequence asc")
         return {"records": records.read(MENU_FIELDS), "total": len(records)}
@@ -132,38 +158,47 @@ def list_menus(params: Optional[dict] = None, uid: int = 1, context: Optional[di
 # --- Product Catalog ---
 
 def list_products(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    domain: list[Any] = [["sale_ok", "=", True]]
-    if params.get("published_only", True):
-        domain.append(["website_published", "=", True])
-    if params.get("category_id"):
-        domain.append(["public_categ_ids", "child_of", params["category_id"]])
-    if params.get("search"):
-        domain.append("|")
-        domain.append(["name", "ilike", params["search"]])
-        domain.append(["default_code", "ilike", params["search"]])
-    if params.get("min_price") is not None:
-        domain.append(["list_price", ">=", params["min_price"]])
-    if params.get("max_price") is not None:
-        domain.append(["list_price", "<=", params["max_price"]])
-
     with mashora_env(uid=uid, context=context) as env:
         Product = env["product.template"]
+        model_fields = Product._fields
+
+        domain: list[Any] = [["sale_ok", "=", True]]
+        if "website_published" in model_fields and params.get("published_only", False):
+            domain.append(["website_published", "=", True])
+        if "public_categ_ids" in model_fields and params.get("category_id"):
+            domain.append(["public_categ_ids", "child_of", params["category_id"]])
+        if params.get("search"):
+            domain.append("|")
+            domain.append(["name", "ilike", params["search"]])
+            domain.append(["default_code", "ilike", params["search"]])
+        if params.get("min_price") is not None:
+            domain.append(["list_price", ">=", params["min_price"]])
+        if params.get("max_price") is not None:
+            domain.append(["list_price", "<=", params["max_price"]])
+
+        order = "name asc"
+        if "website_sequence" in model_fields:
+            order = "website_sequence asc, name asc"
+
         total = Product.search_count(domain)
         records = Product.search(
             domain,
             offset=params.get("offset", 0),
             limit=params.get("limit", 20),
-            order=params.get("order", "website_sequence asc, name asc"),
+            order=params.get("order", order),
         )
-        return {"records": records.read(PRODUCT_LIST_FIELDS), "total": total}
+        safe_fields = _safe_product_fields(Product, PRODUCT_LIST_FIELDS_BASE, PRODUCT_LIST_FIELDS_OPTIONAL)
+        return {"records": records.read(safe_fields), "total": total}
 
 
 def get_product(product_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
-        product = env["product.template"].browse(product_id)
+        Product = env["product.template"]
+        product = Product.browse(product_id)
         if not product.exists():
             return None
-        data = product.read(PRODUCT_DETAIL_FIELDS)[0]
+        safe_fields = _safe_product_fields(Product, PRODUCT_DETAIL_FIELDS_BASE, PRODUCT_DETAIL_FIELDS_OPTIONAL)
+        data = product.read(safe_fields)[0]
 
         # Read variants
         variant_ids = data.get("product_variant_ids", [])
@@ -192,6 +227,8 @@ def list_categories(params: Optional[dict] = None, uid: int = 1, context: Option
         domain.append(["name", "ilike", params["search"]])
 
     with mashora_env(uid=uid, context=context) as env:
+        if "product.public.category" not in env.registry:
+            return {"records": [], "total": 0, "warning": "website_sale module not installed"}
         Category = env["product.public.category"]
         records = Category.search(domain, order="sequence asc, name asc")
         return {"records": records.read(CATEGORY_FIELDS), "total": len(records)}
@@ -363,42 +400,54 @@ def get_customer_addresses(partner_id: int, uid: int = 1, context: Optional[dict
 # --- Dashboard ---
 
 def get_website_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    import datetime
     with mashora_env(uid=uid, context=context) as env:
         Product = env["product.template"]
         Order = env["sale.order"]
-        Page = env["website.page"]
+        pt_fields = Product._fields
+        so_fields = Order._fields
 
-        published_products = Product.search_count([
-            ["website_published", "=", True],
-            ["sale_ok", "=", True],
-        ])
-        unpublished_products = Product.search_count([
-            ["website_published", "=", False],
-            ["sale_ok", "=", True],
-        ])
-        total_pages = Page.search_count([])
+        has_website_published = "website_published" in pt_fields
+        has_website_id = "website_id" in so_fields
+        has_cart_quantity = "cart_quantity" in so_fields
 
-        # Online orders (from website)
-        import datetime
+        published_products = (
+            Product.search_count([["website_published", "=", True], ["sale_ok", "=", True]])
+            if has_website_published else 0
+        )
+        unpublished_products = (
+            Product.search_count([["website_published", "=", False], ["sale_ok", "=", True]])
+            if has_website_published
+            else Product.search_count([["sale_ok", "=", True]])
+        )
+
+        total_pages = 0
+        if "website.page" in env.registry:
+            total_pages = env["website.page"].search_count([])
+
         first_of_month = datetime.date.today().replace(day=1)
-        orders_this_month = Order.search_count([
-            ("website_id", "!=", False),
-            ("state", "=", "sale"),
-            ("date_order", ">=", first_of_month.isoformat()),
-        ])
-        abandoned_carts = Order.search_count([
-            ("website_id", "!=", False),
-            ("state", "=", "draft"),
-            ("cart_quantity", ">", 0),
-        ])
+        orders_this_month = 0
+        abandoned_carts = 0
+        online_revenue = 0.0
 
-        # Revenue from online orders this month
-        month_orders = Order.search([
-            ("website_id", "!=", False),
-            ("state", "=", "sale"),
-            ("date_order", ">=", first_of_month.isoformat()),
-        ], limit=1000)
-        online_revenue = sum(r["amount_total"] for r in month_orders.read(["amount_total"]))
+        if has_website_id:
+            orders_this_month = Order.search_count([
+                ("website_id", "!=", False),
+                ("state", "=", "sale"),
+                ("date_order", ">=", first_of_month.isoformat()),
+            ])
+            if has_cart_quantity:
+                abandoned_carts = Order.search_count([
+                    ("website_id", "!=", False),
+                    ("state", "=", "draft"),
+                    ("cart_quantity", ">", 0),
+                ])
+            month_orders = Order.search([
+                ("website_id", "!=", False),
+                ("state", "=", "sale"),
+                ("date_order", ">=", first_of_month.isoformat()),
+            ], limit=1000)
+            online_revenue = sum(r["amount_total"] for r in month_orders.read(["amount_total"]))
 
         return {
             "products": {
