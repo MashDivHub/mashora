@@ -1,0 +1,17 @@
+# Mashora ERP Backend — Phase 0.0 PoC
+# FastAPI + Mashora ORM adapter
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0
+pydantic-settings>=2.0
+
+# Mashora ORM dependencies (must match mashora/requirements.txt)
+psycopg2-binary>=2.9
+werkzeug>=3.0.1
+lxml>=5.2.1
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4

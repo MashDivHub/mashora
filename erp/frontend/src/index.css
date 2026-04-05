@@ -1,0 +1,14 @@
+/* Tailwind CSS base */
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* Design system theme (semantic color tokens + theme inline) */
+@import "@mashora/design-system/theme";
+@import "@mashora/design-system/globals";
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* App-specific overrides */
+#root {
+  min-height: 100vh;
+}

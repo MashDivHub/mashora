@@ -1,0 +1,92 @@
+version: "3.8"
+
+# Mashora ERP — Modern Stack Deployment
+# Usage: docker compose -f docker-compose.erp.yml up -d
+
+services:
+  # ============================================
+  # ERP Backend (FastAPI + Mashora ORM Adapter)
+  # ============================================
+  mashora-erp-api:
+    build:
+      context: .
+      dockerfile: erp/backend/Dockerfile
+    container_name: mashora-erp-api
+    ports:
+      - "8001:8001"
+    environment:
+      - MASHORA_DB_NAME=${MASHORA_DB_NAME:-mashora}
+      - MASHORA_DB_HOST=postgres
+      - MASHORA_DB_PORT=5432
+      - MASHORA_DB_USER=${MASHORA_DB_USER:-mashora}
+      - MASHORA_DB_PASSWORD=${MASHORA_DB_PASSWORD:-mashora_secret}
+      - MASHORA_DB_MAXCONN=16
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - DEBUG=${DEBUG:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mashora-net
+
+  # ============================================
+  # ERP Frontend (React + Vite → Nginx)
+  # ============================================
+  mashora-erp-web:
+    build:
+      context: .
+      dockerfile: erp/frontend/Dockerfile
+    container_name: mashora-erp-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mashora-erp-api
+    restart: unless-stopped
+    networks:
+      - mashora-net
+
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: mashora-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${MASHORA_DB_USER:-mashora}
+      - POSTGRES_PASSWORD=${MASHORA_DB_PASSWORD:-mashora_secret}
+      - POSTGRES_DB=${MASHORA_DB_NAME:-mashora}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MASHORA_DB_USER:-mashora}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mashora-net
+
+  # ============================================
+  # Redis (for Celery task queue, caching)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: mashora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - mashora-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  mashora-net:
+    driver: bridge
