@@ -1,448 +1,274 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  PageHeader, Button, Badge, Skeleton, cn,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Input, Label, Textarea, Separator,
-} from '@mashora/design-system'
-import {
-  ArrowLeft, Trophy, X, RotateCcw, FileText, UserPlus,
-  Mail, Phone, Globe, MapPin, Star, DollarSign, Calendar,
-  TrendingUp, Users,
-} from 'lucide-react'
+import { Input, Textarea, Badge, Button, Skeleton, cn } from '@mashora/design-system'
+import { Star, Trophy, XCircle, FileText, ShoppingCart } from 'lucide-react'
+import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, stepsFromSelection, type SmartButton, type FormTab } from '@/components/shared'
+import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
-import { useState } from 'react'
 
-const wonStatusVariants: Record<string, string> = {
-  pending: 'secondary',
-  won: 'success',
-  lost: 'destructive',
-}
-
-const priorityLabels = ['Normal', 'Medium', 'High', 'Very High']
-const priorityColors = ['', 'text-amber-400', 'text-orange-400', 'text-red-400']
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
-}
-
-function InfoRow({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 text-sm">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="leading-relaxed">{children}</span>
-    </div>
-  )
-}
-
-function MetricRow({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: 'success' | 'muted' }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={cn(
-        'font-mono font-medium tabular-nums',
-        highlight === 'success' && 'text-emerald-500',
-        highlight === 'muted' && 'text-muted-foreground',
-      )}>
-        {value}
-      </span>
-    </div>
-  )
-}
+const FORM_FIELDS = [
+  'id', 'name', 'partner_id', 'partner_name', 'contact_name', 'email_from', 'phone', 'mobile',
+  'stage_id', 'user_id', 'team_id', 'company_id', 'expected_revenue', 'probability',
+  'priority', 'type', 'date_deadline', 'date_open', 'date_closed',
+  'street', 'street2', 'city', 'state_id', 'zip', 'country_id',
+  'description', 'tag_ids', 'won_status',
+  'campaign_id', 'medium_id', 'source_id', 'referred',
+  'sale_order_count', 'quotation_count',
+  'active', 'lost_reason_id',
+]
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isNew = id === 'new'
-  const [showLostDialog, setShowLostDialog] = useState(false)
-  const [lostReasonId, setLostReasonId] = useState<string>('')
-  const [lostFeedback, setLostFeedback] = useState('')
+  const recordId = isNew ? null : parseInt(id || '0')
+  const [editing, setEditing] = useState(isNew)
+  const [form, setForm] = useState<Record<string, any>>({})
+  const [dirty, setDirty] = useState(false)
 
-  const [formName, setFormName] = useState('')
-  const [formContact, setFormContact] = useState('')
-  const [formEmail, setFormEmail] = useState('')
-  const [formPhone, setFormPhone] = useState('')
-  const [formType, setFormType] = useState<'lead' | 'opportunity'>('lead')
+  // Load stages for status bar
+  const { data: stages } = useQuery({
+    queryKey: ['crm-stages'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/crm.stage', {
+        fields: ['id', 'name', 'sequence', 'is_won'], order: 'sequence asc', limit: 20,
+      })
+      return data.records || []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
-  const createMut = useMutation({
-    mutationFn: (vals: Record<string, any>) =>
-      erpClient.raw.post('/crm/leads/create', vals).then((r) => r.data),
-    onSuccess: (result) => {
+  const { data: record, isLoading } = useQuery({
+    queryKey: ['crm-lead', recordId],
+    queryFn: async () => {
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/crm.lead/defaults', { fields: FORM_FIELDS })
+        return { ...data, id: null, type: 'opportunity', priority: '1' }
+      }
+      const { data } = await erpClient.raw.get(`/model/crm.lead/${recordId}`)
+      return data
+    },
+  })
+
+  useEffect(() => { if (record) { setForm({ ...record }); setDirty(false) } }, [record])
+
+  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })); setDirty(true) }, [])
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const vals: Record<string, any> = {}
+      const simple = ['name', 'partner_name', 'contact_name', 'email_from', 'phone', 'mobile',
+        'expected_revenue', 'probability', 'priority', 'type', 'date_deadline',
+        'street', 'street2', 'city', 'zip', 'description', 'referred']
+      for (const f of simple) if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+      for (const f of ['partner_id', 'stage_id', 'user_id', 'team_id', 'state_id', 'country_id', 'campaign_id', 'medium_id', 'source_id', 'lost_reason_id']) {
+        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
+        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        if (nv !== ov) vals[f] = nv || false
+      }
+      if (JSON.stringify(form.tag_ids) !== JSON.stringify(record?.tag_ids)) {
+        const ids = (form.tag_ids || []).map((t: any) => Array.isArray(t) ? t[0] : typeof t === 'object' ? t.id : t)
+        vals.tag_ids = [[6, 0, ids]]
+      }
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/crm.lead/create', { vals: { ...form, ...vals } })
+        return data
+      }
+      const { data } = await erpClient.raw.put(`/model/crm.lead/${recordId}`, { vals })
+      return data
+    },
+    onSuccess: (data) => {
+      setDirty(false); setEditing(false)
       queryClient.invalidateQueries({ queryKey: ['crm-lead'] })
-      navigate(`/crm/leads/${result.id}`, { replace: true })
+      queryClient.invalidateQueries({ queryKey: ['crm-pipeline'] })
+      if (isNew && data?.id) navigate(`/crm/leads/${data.id}`, { replace: true })
     },
   })
 
-  const { data: lead, isLoading } = useQuery({
-    queryKey: ['crm-lead', id],
-    queryFn: () => erpClient.raw.get(`/crm/leads/${id}`).then((r) => r.data),
-    enabled: !isNew,
+  // Won / Lost actions
+  const wonMut = useMutation({
+    mutationFn: () => erpClient.raw.post(`/model/crm.lead/call`, { record_ids: [recordId], method: 'action_set_won_rainbowman' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', recordId] }),
+  })
+  const lostMut = useMutation({
+    mutationFn: () => erpClient.raw.post(`/model/crm.lead/call`, { record_ids: [recordId], method: 'action_set_lost' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', recordId] }),
   })
 
-  const { data: lostReasons } = useQuery({
-    queryKey: ['lost-reasons'],
-    queryFn: () => erpClient.raw.get('/crm/lost-reasons').then((r) => r.data),
-    enabled: !isNew,
-  })
+  // M2O search
+  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const searchM2o = useCallback(async (model: string, query: string, field: string) => {
+    if (!query) { setM2oResults(p => ({ ...p, [field]: [] })); return }
+    try {
+      const { data } = await erpClient.raw.post(`/model/${model}/name_search`, { name: query, limit: 8 })
+      setM2oResults(p => ({ ...p, [field]: data.results || [] }))
+    } catch { setM2oResults(p => ({ ...p, [field]: [] })) }
+  }, [])
 
-  const wonMutation = useMutation({
-    mutationFn: () => erpClient.raw.post(`/crm/leads/${id}/won`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', id] }),
-  })
+  if (isLoading || !record) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
+  }
 
-  const lostMutation = useMutation({
-    mutationFn: (data: { lost_reason_id: number; lost_feedback?: string }) =>
-      erpClient.raw.post(`/crm/leads/${id}/lost`, data),
-    onSuccess: () => {
-      setShowLostDialog(false)
-      queryClient.invalidateQueries({ queryKey: ['crm-lead', id] })
-    },
-  })
+  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const stageSteps = (stages || []).map((s: any) => ({ key: String(s.id), label: s.name, color: s.is_won ? 'success' as const : undefined }))
+  const currentStage = Array.isArray(form.stage_id) ? String(form.stage_id[0]) : String(form.stage_id || '')
+  const isWon = form.won_status === 'won'
+  const isLost = form.won_status === 'lost' || !form.active
 
-  const restoreMutation = useMutation({
-    mutationFn: () => erpClient.raw.post(`/crm/leads/${id}/restore`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', id] }),
-  })
+  const smartButtons: SmartButton[] = [
+    form.quotation_count > 0 && { label: 'Quotations', value: form.quotation_count, icon: <FileText className="h-5 w-5" /> },
+    form.sale_order_count > 0 && { label: 'Orders', value: form.sale_order_count, icon: <ShoppingCart className="h-5 w-5" /> },
+  ].filter(Boolean) as SmartButton[]
 
-  const quotationMutation = useMutation({
-    mutationFn: () => erpClient.raw.post(`/crm/leads/${id}/new-quotation`),
-    onSuccess: (res) => {
-      if (res.data?.id) navigate(`/sales/orders/${res.data.id}`)
-    },
-  })
-
-  // ── Create mode ──
-  if (isNew) {
+  // M2O field helper
+  const M2O = ({ field, model, label }: { field: string; model: string; label: string }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    if (!editing) return <ReadonlyField label={label} value={m2oVal(form[field])} />
     return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">CRM</p>
-          <h1 className="text-2xl font-bold tracking-tight">New Lead</h1>
+      <FormField label={label}>
+        <div className="relative">
+          <Input value={open ? q : m2oVal(form[field])} className="rounded-xl h-9" autoComplete="off"
+            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+            onFocus={() => { setQ(m2oVal(form[field])); setOpen(true) }}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
+          {open && (m2oResults[field] || []).length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+              {(m2oResults[field] || []).map((r: any) => (
+                <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
+                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}>{r.display_name}</button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <p className="text-sm font-semibold">Lead Details</p>
-          </div>
-          <div className="p-6 space-y-4 max-w-lg">
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-name">Name</Label>
-              <Input id="lead-name" placeholder="Lead subject" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-contact">Contact Name</Label>
-              <Input id="lead-contact" placeholder="Contact person" value={formContact} onChange={(e) => setFormContact(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-email">Email</Label>
-              <Input id="lead-email" type="email" placeholder="email@example.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-phone">Phone</Label>
-              <Input id="lead-phone" type="tel" placeholder="+1 555 000 0000" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="lead-type">Type</Label>
-              <select
-                id="lead-type"
-                value={formType}
-                onChange={(e) => setFormType(e.target.value as 'lead' | 'opportunity')}
-                className="w-full rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="lead">Lead</option>
-                <option value="opportunity">Opportunity</option>
-              </select>
-            </div>
-          </div>
-          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
-            <Button
-              onClick={() => createMut.mutate({ name: formName, contact_name: formContact, email_from: formEmail, phone: formPhone, type: formType })}
-              disabled={createMut.isPending || !formName}
-              className="rounded-2xl"
-            >
-              {createMut.isPending ? 'Creating…' : 'Create Lead'}
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/crm/leads')}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
+      </FormField>
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64 rounded-2xl" />
-        <Skeleton className="h-96 w-full rounded-3xl" />
-      </div>
-    )
+  const TF = ({ field, label, required, type = 'text' }: { field: string; label: string; required?: boolean; type?: string }) => {
+    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    return <FormField label={label} required={required}><Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" /></FormField>
   }
-  if (!lead) return <div className="text-muted-foreground">Lead not found.</div>
 
-  const isPending = lead.won_status === 'pending'
-  const isWon = lead.won_status === 'won'
-  const isLost = lead.won_status === 'lost'
-  const isOpportunity = lead.type === 'opportunity'
+  const tabs: FormTab[] = [
+    {
+      key: 'notes', label: 'Internal Notes',
+      content: editing
+        ? <Textarea value={form.description || ''} onChange={e => setField('description', e.target.value)} rows={6} placeholder="Internal notes..." className="rounded-xl resize-y" />
+        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.description }} /> : <p className="text-sm text-muted-foreground">No notes</p>,
+    },
+    {
+      key: 'extra', label: 'Extra Info',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="space-y-2">
+            <FormSection title="Marketing">
+              <M2O field="campaign_id" model="utm.campaign" label="Campaign" />
+              <M2O field="medium_id" model="utm.medium" label="Medium" />
+              <M2O field="source_id" model="utm.source" label="Source" />
+              <TF field="referred" label="Referred By" />
+            </FormSection>
+          </div>
+          <div className="space-y-2">
+            <FormSection title="Assignment">
+              <M2O field="user_id" model="res.users" label="Salesperson" />
+              <M2O field="team_id" model="crm.team" label="Sales Team" />
+            </FormSection>
+          </div>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={lead.name}
-        eyebrow={isOpportunity ? 'Opportunity' : 'Lead'}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {isPending && isOpportunity && (
-              <>
-                <Button variant="success" onClick={() => wonMutation.mutate()} disabled={wonMutation.isPending} className="rounded-2xl">
-                  <Trophy className="h-4 w-4" />
-                  Won
-                </Button>
-                <Button variant="destructive" onClick={() => setShowLostDialog(true)} className="rounded-2xl">
-                  <X className="h-4 w-4" />
-                  Lost
-                </Button>
-              </>
-            )}
-            {isPending && isOpportunity && (
-              <Button variant="outline" onClick={() => quotationMutation.mutate()} disabled={quotationMutation.isPending} className="rounded-2xl">
-                <FileText className="h-4 w-4" />
-                New Quotation
-              </Button>
-            )}
-            {isPending && !isOpportunity && (
-              <Button
-                className="rounded-2xl"
-                onClick={() => erpClient.raw.post(`/crm/leads/${id}/convert`).then(() => queryClient.invalidateQueries({ queryKey: ['crm-lead', id] }))}
-              >
-                <UserPlus className="h-4 w-4" />
-                Convert to Opportunity
-              </Button>
-            )}
-            {isLost && (
-              <Button variant="outline" onClick={() => restoreMutation.mutate()} disabled={restoreMutation.isPending} className="rounded-2xl">
-                <RotateCcw className="h-4 w-4" />
-                Restore
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate('/crm/pipeline')} className="rounded-2xl">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-          </div>
-        }
-      />
-
-      {/* Status strip */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant={(wonStatusVariants[lead.won_status] as any) || 'secondary'}
-          className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
-        >
-          {lead.won_status === 'won' ? 'Won' : lead.won_status === 'lost' ? 'Lost' : 'In Progress'}
-        </Badge>
-        {lead.stage_id && (
-          <Badge variant="outline" className="rounded-full px-3 py-1 text-[11px] font-medium">
-            {lead.stage_id[1]}
-          </Badge>
-        )}
-        {Number(lead.priority) > 0 && (
-          <span className={cn('flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-[11px] font-semibold', priorityColors[Number(lead.priority)])}>
-            <Star className="h-3 w-3 fill-current" />
-            {priorityLabels[Number(lead.priority)]}
-          </span>
-        )}
-        {lead.tag_ids?.length > 0 && lead.tag_ids.map((tag: any) => (
-          <Badge key={typeof tag === 'number' ? tag : tag[0]} variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
-            {typeof tag === 'number' ? `Tag ${tag}` : tag[1]}
-          </Badge>
-        ))}
-      </div>
-
-      {/* Two-column detail */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Contact card */}
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/60 bg-muted/20 px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Contact</p>
-          </div>
-          <div className="p-6 space-y-4">
-            {lead.partner_id && (
-              <InfoRow icon={Users}>
-                <span className="font-semibold">{lead.partner_id[1]}</span>
-              </InfoRow>
-            )}
-            {lead.contact_name && (
-              <InfoRow icon={UserPlus}>
-                <span>
-                  {lead.contact_name}
-                  {lead.function && <span className="text-muted-foreground"> — {lead.function}</span>}
-                </span>
-              </InfoRow>
-            )}
-            {lead.email_from && (
-              <InfoRow icon={Mail}>
-                <a href={`mailto:${lead.email_from}`} className="hover:underline underline-offset-4">
-                  {lead.email_from}
-                </a>
-              </InfoRow>
-            )}
-            {lead.phone && (
-              <InfoRow icon={Phone}>
-                <a href={`tel:${lead.phone}`} className="hover:underline underline-offset-4">
-                  {lead.phone}
-                </a>
-              </InfoRow>
-            )}
-            {lead.website && (
-              <InfoRow icon={Globe}>
-                <a href={lead.website} target="_blank" rel="noopener noreferrer" className="hover:underline underline-offset-4">
-                  {lead.website}
-                </a>
-              </InfoRow>
-            )}
-            {(lead.city || lead.country_id) && (
-              <InfoRow icon={MapPin}>
-                {[lead.street, lead.city, lead.country_id?.[1]].filter(Boolean).join(', ')}
-              </InfoRow>
-            )}
-            {!lead.partner_id && !lead.contact_name && !lead.email_from && !lead.phone && (
-              <p className="text-sm text-muted-foreground italic">No contact details recorded.</p>
-            )}
+    <RecordForm
+      editing={editing} onEdit={() => setEditing(true)} onSave={() => saveMut.mutate()}
+      onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setDirty(false); setEditing(false) } }}
+      backTo="/crm/pipeline"
+      statusBar={stageSteps.length > 0 ? (
+        <StatusBar steps={stageSteps} current={currentStage}
+          onChange={editing ? (key) => {
+            const stage = stages?.find((s: any) => String(s.id) === key)
+            if (stage) setField('stage_id', [stage.id, stage.name])
+          } : undefined} />
+      ) : undefined}
+      headerActions={
+        !isNew && !isLost && !isWon ? (
+          <>
+            <Button variant="default" size="sm" className="rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => wonMut.mutate()}><Trophy className="h-3.5 w-3.5" /> Won</Button>
+            <Button variant="outline" size="sm" className="rounded-xl gap-1.5 text-red-400 border-red-400/30 hover:bg-red-500/10"
+              onClick={() => lostMut.mutate()}><XCircle className="h-3.5 w-3.5" /> Lost</Button>
+          </>
+        ) : isWon ? (
+          <Badge variant="default" className="bg-emerald-600 text-white rounded-full px-3">Won</Badge>
+        ) : isLost ? (
+          <Badge variant="destructive" className="rounded-full px-3">Lost</Badge>
+        ) : undefined
+      }
+      smartButtons={smartButtons}
+      topContent={
+        <div className="space-y-2 mb-2">
+          {editing ? (
+            <Input value={form.name || ''} onChange={e => setField('name', e.target.value)} placeholder="Opportunity name"
+              className="text-xl font-bold border-0 border-b border-border/40 rounded-none px-0 h-auto py-1 focus-visible:ring-0 focus-visible:border-primary" />
+          ) : (
+            <h2 className="text-2xl font-bold tracking-tight">{form.name || 'New Opportunity'}</h2>
+          )}
+          {/* Priority stars */}
+          <div className="flex items-center gap-1">
+            {[1,2,3].map(i => (
+              <button key={i} onClick={() => editing && setField('priority', String(i === parseInt(form.priority) ? 0 : i))}
+                className={cn(editing && 'cursor-pointer')}>
+                <Star className={cn('h-4 w-4', i <= (parseInt(form.priority) || 0) ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30')} />
+              </button>
+            ))}
           </div>
         </div>
-
-        {/* Revenue & Pipeline card */}
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/60 bg-muted/20 px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Revenue & Pipeline</p>
-          </div>
-          <div className="p-6 space-y-3">
-            <MetricRow label="Expected Revenue" value={`$${formatCurrency(lead.expected_revenue)}`} />
-            <MetricRow label="Probability" value={`${lead.probability}%`} />
-            <MetricRow label="Prorated Revenue" value={`$${formatCurrency(lead.prorated_revenue)}`} highlight="success" />
-            {lead.recurring_revenue > 0 && (
-              <>
-                <Separator className="opacity-50" />
-                <MetricRow label="Recurring Revenue" value={`$${formatCurrency(lead.recurring_revenue)}`} />
-                <MetricRow label="Monthly (MRR)" value={`$${formatCurrency(lead.recurring_revenue_monthly)}`} />
-              </>
-            )}
-            <Separator className="opacity-50" />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Salesperson</span>
-              <span className="font-medium">{lead.user_id ? lead.user_id[1] : '—'}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Team</span>
-              <span className="font-medium">{lead.team_id ? lead.team_id[1] : '—'}</span>
-            </div>
-            {lead.date_deadline && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Expected Closing</span>
-                <span className="font-medium tabular-nums">{lead.date_deadline}</span>
+      }
+      leftFields={
+        <>
+          <TF field="expected_revenue" label="Expected Revenue" type="number" />
+          <TF field="probability" label="Probability (%)" type="number" />
+          <M2O field="partner_id" model="res.partner" label="Contact" />
+          <TF field="partner_name" label="Company Name" />
+          <TF field="contact_name" label="Contact Name" />
+          <TF field="email_from" label="Email" type="email" />
+          <TF field="phone" label="Phone" type="tel" />
+        </>
+      }
+      rightFields={
+        <>
+          <M2O field="user_id" model="res.users" label="Salesperson" />
+          <M2O field="team_id" model="crm.team" label="Sales Team" />
+          <TF field="date_deadline" label="Expected Closing" type="date" />
+          {/* Tags */}
+          {!editing ? (
+            <ReadonlyField label="Tags" value={
+              Array.isArray(form.tag_ids) && form.tag_ids.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {form.tag_ids.map((t: any, i: number) => <Badge key={i} variant="secondary" className="rounded-full text-xs">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>)}
+                </div>
+              ) : undefined
+            } />
+          ) : (
+            <FormField label="Tags">
+              <div className="flex flex-wrap gap-1">
+                {(form.tag_ids || []).map((t: any, i: number) => (
+                  <Badge key={i} variant="secondary" className="rounded-full text-xs gap-1">
+                    {Array.isArray(t) ? t[1] : t?.display_name || t}
+                    <button onClick={() => { const n = [...(form.tag_ids || [])]; n.splice(i, 1); setField('tag_ids', n) }}>&times;</button>
+                  </Badge>
+                ))}
               </div>
-            )}
-            {lead.date_closed && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Closed On</span>
-                <span className="font-medium tabular-nums">{lead.date_closed}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Internal Notes */}
-      {lead.description && (
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/60 bg-muted/20 px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Internal Notes</p>
-          </div>
-          <div className="p-6">
-            <div
-              className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: lead.description }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Lost reason */}
-      {isLost && lead.lost_reason_id && (
-        <div className="rounded-3xl border border-red-500/20 bg-red-500/5 shadow-[0_20px_80px_-48px_rgba(239,68,68,0.15)] overflow-hidden">
-          <div className="border-b border-red-500/20 bg-red-500/10 px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-400">Lost Reason</p>
-          </div>
-          <div className="p-6">
-            <Badge variant="destructive" className="rounded-full px-4 py-1.5 text-sm font-semibold">
-              {lead.lost_reason_id[1]}
-            </Badge>
-            {lead.lost_feedback && (
-              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{lead.lost_feedback}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Lost Dialog */}
-      <Dialog open={showLostDialog} onOpenChange={setShowLostDialog}>
-        <DialogContent className="rounded-3xl border border-border/60 shadow-[0_40px_120px_-40px_rgba(15,23,42,0.6)] sm:max-w-md">
-          <DialogHeader className="border-b border-border/60 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-2.5">
-                <X className="h-4 w-4 text-red-400" />
-              </div>
-              <DialogTitle className="text-lg font-semibold">Mark as Lost</DialogTitle>
-            </div>
-          </DialogHeader>
-          <div className="space-y-5 py-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reason</Label>
-              <Select value={lostReasonId} onValueChange={setLostReasonId}>
-                <SelectTrigger className="rounded-2xl border-border/60 bg-muted/30">
-                  <SelectValue placeholder="Select a reason..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl">
-                  {(lostReasons?.records ?? []).map((r: any) => (
-                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Feedback <span className="normal-case tracking-normal text-muted-foreground/60">(optional)</span>
-              </Label>
-              <Textarea
-                value={lostFeedback}
-                onChange={(e) => setLostFeedback(e.target.value)}
-                placeholder="Additional context or notes..."
-                className="rounded-2xl border-border/60 bg-muted/30 resize-none"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter className="border-t border-border/60 pt-4 gap-2">
-            <Button variant="outline" onClick={() => setShowLostDialog(false)} className="rounded-2xl">
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!lostReasonId || lostMutation.isPending}
-              className="rounded-2xl"
-              onClick={() => lostMutation.mutate({
-                lost_reason_id: Number(lostReasonId),
-                lost_feedback: lostFeedback || undefined,
-              })}
-            >
-              {lostMutation.isPending ? 'Saving...' : 'Mark as Lost'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </FormField>
+          )}
+        </>
+      }
+      tabs={tabs}
+      chatter={recordId ? <Chatter model="crm.lead" resId={recordId} /> : undefined}
+    />
   )
 }

@@ -21,6 +21,16 @@ const ProjectDashboard = lazy(() => import('./pages/project/ProjectDashboard'))
 const SettingsPage = lazy(() => import('./engine/SettingsPage'))
 const ActivityDashboard = lazy(() => import('./engine/ActivityDashboard'))
 
+// Module pages — Contacts
+const ContactList = lazy(() => import('./pages/contacts/ContactList'))
+const ContactForm = lazy(() => import('./pages/contacts/ContactForm'))
+const ContactTags = lazy(() => import('./pages/contacts/ContactTags'))
+
+// Module pages — CRM
+const CrmPipeline = lazy(() => import('./pages/crm/Pipeline'))
+const CrmLeadList = lazy(() => import('./pages/crm/LeadList'))
+const CrmLeadDetail = lazy(() => import('./pages/crm/LeadDetail'))
+
 // ---------------------------------------------------------------------------
 // Boneyard skeleton descriptors for page-level loading
 // ---------------------------------------------------------------------------
@@ -185,6 +195,16 @@ export default function App() {
           {/* Settings & Activities */}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="activities" element={<ActivityDashboard />} />
+
+          {/* Contacts module */}
+          <Route path="contacts" element={<ContactList />} />
+          <Route path="contacts/tags" element={<ContactTags />} />
+          <Route path="contacts/:id" element={<ContactForm />} />
+
+          {/* CRM module */}
+          <Route path="crm/pipeline" element={<CrmPipeline />} />
+          <Route path="crm/leads" element={<CrmLeadList />} />
+          <Route path="crm/leads/:id" element={<CrmLeadDetail />} />
 
           {/* Dynamic view engine routes */}
           <Route path="action/:actionId/*" element={<ActionRouter />} />

@@ -70,7 +70,7 @@ const navSections = [
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Activities', href: '/activities', icon: CalendarCheck },
-      { name: 'Contacts', href: '/partners', icon: Users },
+      { name: 'Contacts', href: '/contacts', icon: Users },
     ],
   },
   {
