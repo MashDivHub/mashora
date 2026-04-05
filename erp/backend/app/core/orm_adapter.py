@@ -26,7 +26,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache
-from typing import Any, Generator
+from typing import Any, Generator, Optional
 
 _logger = logging.getLogger(__name__)
 

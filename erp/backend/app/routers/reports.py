@@ -5,14 +5,22 @@ Wraps Mashora's QWeb report engine to generate PDFs and HTML reports
 via the REST API.
 """
 import base64
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import orm_call, mashora_env
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 def _get_available_reports(model: str | None = None, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -50,9 +58,12 @@ def _generate_report(report_name: str, record_ids: list[int], report_type: str =
 
 
 @router.get("/available")
-async def list_reports(model: str | None = Query(default=None, description="Filter by model name")):
+async def list_reports(
+    model: str | None = Query(default=None, description="Filter by model name"),
+    user: CurrentUser = Depends(get_current_user),
+):
     """List available reports."""
-    return await orm_call(_get_available_reports, model=model)
+    return await orm_call(_get_available_reports, model=model, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/generate")
@@ -60,12 +71,13 @@ async def generate_report(
     report_name: str = Query(description="Technical report name, e.g. 'account.report_invoice'"),
     record_ids: str = Query(description="Comma-separated record IDs"),
     report_type: str = Query(default="pdf", description="pdf or html"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Generate a report. Returns base64-encoded content."""
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No record IDs provided")
-    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type=report_type)
+    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type=report_type, uid=_uid(user), context=_ctx(user))
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -75,12 +87,13 @@ async def generate_report(
 async def download_report(
     report_name: str = Query(description="Technical report name"),
     record_ids: str = Query(description="Comma-separated record IDs"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Download a report as a PDF file directly."""
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No record IDs provided")
-    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type="pdf")
+    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type="pdf", uid=_uid(user), context=_ctx(user))
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
 

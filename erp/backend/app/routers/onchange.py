@@ -7,12 +7,20 @@ This mimics Mashora's @api.onchange mechanism.
 """
 from typing import Any, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import mashora_env, orm_call
 
 router = APIRouter(tags=["onchange"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 class OnchangeRequest(BaseModel):
@@ -85,7 +93,7 @@ def _execute_onchange(
 
 
 @router.post("/model/{model_name}/onchange", response_model=OnchangeResponse)
-async def onchange(model_name: str, body: OnchangeRequest):
+async def onchange(model_name: str, body: OnchangeRequest, user: CurrentUser = Depends(get_current_user)):
     """
     Execute an onchange for a form field.
 
@@ -99,5 +107,7 @@ async def onchange(model_name: str, body: OnchangeRequest):
         field_name=body.field_name,
         field_value=body.field_value,
         current_values=body.current_values,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     return result

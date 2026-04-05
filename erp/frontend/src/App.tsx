@@ -1,5 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Skeleton as BoneSkeleton } from 'boneyard-js/react'
+import { computeLayout } from 'boneyard-js/layout'
 import Layout from './components/Layout'
 
 // Lazy-loaded pages
@@ -47,18 +49,141 @@ const EmailMarketing = lazy(() => import('./pages/secondary/EmailMarketing'))
 const PointOfSale = lazy(() => import('./pages/secondary/PointOfSale'))
 const CalendarPage = lazy(() => import('./pages/secondary/CalendarPage'))
 
+// ---------------------------------------------------------------------------
+// Boneyard skeleton descriptors for page-level loading
+// ---------------------------------------------------------------------------
+
+// Dashboard skeleton: header + 4 stat cards + 3 action cards
+const dashboardDescriptor = {
+  display: 'flex' as const,
+  flexDirection: 'column' as const,
+  gap: 32,
+  children: [
+    // Page header
+    {
+      display: 'flex' as const,
+      flexDirection: 'column' as const,
+      gap: 8,
+      children: [
+        { height: 14, maxWidth: 80, borderRadius: 4 },
+        { height: 32, maxWidth: 280, borderRadius: 6 },
+        { height: 16, maxWidth: 500, borderRadius: 4 },
+      ],
+    },
+    // Stat cards row
+    {
+      display: 'flex' as const,
+      gap: 16,
+      children: [
+        { height: 140, borderRadius: 24, leaf: true },
+        { height: 140, borderRadius: 24, leaf: true },
+        { height: 140, borderRadius: 24, leaf: true },
+        { height: 140, borderRadius: 24, leaf: true },
+      ],
+    },
+    // Action cards row
+    {
+      display: 'flex' as const,
+      gap: 16,
+      children: [
+        { height: 180, borderRadius: 24, leaf: true },
+        { height: 180, borderRadius: 24, leaf: true },
+        { height: 180, borderRadius: 24, leaf: true },
+      ],
+    },
+    // Health card
+    { height: 160, borderRadius: 24, leaf: true },
+  ],
+}
+
+// List page skeleton: header + filter bar + table rows
+const listDescriptor = {
+  display: 'flex' as const,
+  flexDirection: 'column' as const,
+  gap: 24,
+  children: [
+    // Page header
+    {
+      display: 'flex' as const,
+      flexDirection: 'column' as const,
+      gap: 8,
+      children: [
+        { height: 14, maxWidth: 80, borderRadius: 4 },
+        { height: 28, maxWidth: 240, borderRadius: 6 },
+      ],
+    },
+    // Table card
+    {
+      display: 'flex' as const,
+      flexDirection: 'column' as const,
+      borderRadius: 24,
+      children: [
+        // Filter bar
+        { height: 56, borderRadius: 0, leaf: true },
+        // Table header
+        { height: 44, borderRadius: 0, leaf: true },
+        // Table rows
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+        { height: 48, borderRadius: 0, leaf: true },
+      ],
+    },
+  ],
+}
+
+// Detail page skeleton: header + two-column info + table
+const detailDescriptor = {
+  display: 'flex' as const,
+  flexDirection: 'column' as const,
+  gap: 24,
+  children: [
+    // Back + title
+    {
+      display: 'flex' as const,
+      flexDirection: 'column' as const,
+      gap: 8,
+      children: [
+        { height: 14, maxWidth: 100, borderRadius: 4 },
+        { height: 28, maxWidth: 300, borderRadius: 6 },
+        { height: 16, maxWidth: 200, borderRadius: 4 },
+      ],
+    },
+    // Status bar
+    { height: 48, borderRadius: 24, leaf: true },
+    // Two info cards side by side
+    {
+      display: 'flex' as const,
+      gap: 16,
+      children: [
+        { height: 200, borderRadius: 24, leaf: true },
+        { height: 200, borderRadius: 24, leaf: true },
+      ],
+    },
+    // Lines table
+    { height: 300, borderRadius: 24, leaf: true },
+  ],
+}
+
+// Pre-compute bones at 1280px width
+const dashboardBones = computeLayout(dashboardDescriptor, 1100, 'dashboard-loading')
+const listBones = computeLayout(listDescriptor, 1100, 'list-loading')
+const detailBones = computeLayout(detailDescriptor, 1100, 'detail-loading')
+
 function LoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="animate-pulse rounded-3xl border border-border/60 bg-card/90 shadow-xl px-6 py-4 flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-zinc-900 text-white text-sm font-bold select-none">
-          M
-        </div>
-        <span className="text-sm text-muted-foreground">Loading...</span>
-      </div>
-    </div>
+    <BoneSkeleton name="page-loading" loading={true} initialBones={dashboardBones} animate="shimmer">
+      <div />
+    </BoneSkeleton>
   )
 }
+
+// Exported for use in individual pages
+export { BoneSkeleton, dashboardBones, listBones, detailBones }
 
 export default function App() {
   return (

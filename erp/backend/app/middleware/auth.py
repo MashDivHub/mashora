@@ -6,7 +6,7 @@ Creates JWT tokens with user context (uid, company_id, allowed_company_ids).
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer

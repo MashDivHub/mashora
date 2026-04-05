@@ -10,7 +10,7 @@ Provides high-level operations for the accounting module:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env, call_method
 
@@ -515,3 +515,286 @@ def get_accounting_dashboard(
                 "total_payable": total_payable,
             },
         }
+
+
+# --- Financial Reports ---
+
+def get_trial_balance(date_from=None, date_to=None, uid=1, context=None):
+    """Get trial balance data."""
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [('account_id', '!=', False)]
+        if date_from:
+            domain.append(('date', '>=', date_from))
+        if date_to:
+            domain.append(('date', '<=', date_to))
+
+        lines = env['account.move.line'].read_group(
+            domain,
+            ['account_id', 'debit', 'credit', 'balance'],
+            ['account_id'],
+            orderby='account_id',
+        )
+        return {"records": lines, "total": len(lines)}
+
+
+def get_profit_and_loss(date_from=None, date_to=None, uid=1, context=None):
+    """Get P&L report data grouped by account type."""
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [('account_id.account_type', 'in', [
+            'income', 'income_other',
+            'expense', 'expense_depreciation', 'expense_direct_cost',
+        ])]
+        if date_from:
+            domain.append(('date', '>=', date_from))
+        if date_to:
+            domain.append(('date', '<=', date_to))
+        domain.append(('parent_state', '=', 'posted'))
+
+        lines = env['account.move.line'].read_group(
+            domain,
+            ['account_id', 'debit', 'credit', 'balance'],
+            ['account_id'],
+            orderby='account_id',
+        )
+
+        # Group by income vs expense
+        income_lines = []
+        expense_lines = []
+        total_income = 0
+        total_expense = 0
+
+        for line in lines:
+            account = env['account.account'].browse(line['account_id'][0])
+            entry = {
+                'account_id': line['account_id'],
+                'debit': line['debit'],
+                'credit': line['credit'],
+                'balance': abs(line['balance']),
+                'account_type': account.account_type,
+            }
+            if 'income' in account.account_type:
+                income_lines.append(entry)
+                total_income += abs(line['balance'])
+            else:
+                expense_lines.append(entry)
+                total_expense += abs(line['balance'])
+
+        return {
+            "income": income_lines,
+            "expense": expense_lines,
+            "total_income": total_income,
+            "total_expense": total_expense,
+            "net_profit": total_income - total_expense,
+        }
+
+
+def get_balance_sheet(date_to=None, uid=1, context=None):
+    """Get balance sheet data grouped by account type."""
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [('account_id.account_type', 'in', [
+            'asset_receivable', 'asset_cash', 'asset_current',
+            'asset_non_current', 'asset_prepayments', 'asset_fixed',
+            'liability_payable', 'liability_credit_card',
+            'liability_current', 'liability_non_current',
+            'equity', 'equity_unaffected',
+        ])]
+        if date_to:
+            domain.append(('date', '<=', date_to))
+        domain.append(('parent_state', '=', 'posted'))
+
+        lines = env['account.move.line'].read_group(
+            domain,
+            ['account_id', 'debit', 'credit', 'balance'],
+            ['account_id'],
+            orderby='account_id',
+        )
+
+        assets = []
+        liabilities = []
+        equity = []
+        total_assets = 0
+        total_liabilities = 0
+        total_equity = 0
+
+        for line in lines:
+            account = env['account.account'].browse(line['account_id'][0])
+            entry = {
+                'account_id': line['account_id'],
+                'debit': line['debit'],
+                'credit': line['credit'],
+                'balance': line['balance'],
+                'account_type': account.account_type,
+            }
+            if account.account_type.startswith('asset'):
+                assets.append(entry)
+                total_assets += line['balance']
+            elif account.account_type.startswith('liability'):
+                liabilities.append(entry)
+                total_liabilities += abs(line['balance'])
+            else:
+                equity.append(entry)
+                total_equity += abs(line['balance'])
+
+        return {
+            "assets": assets,
+            "liabilities": liabilities,
+            "equity": equity,
+            "total_assets": total_assets,
+            "total_liabilities": total_liabilities,
+            "total_equity": total_equity,
+        }
+
+
+def get_aged_receivable(uid=1, context=None):
+    """Get aged receivable report."""
+    with mashora_env(uid=uid, context=context) as env:
+        from datetime import date, timedelta
+        today = date.today()
+
+        domain = [
+            ('account_id.account_type', '=', 'asset_receivable'),
+            ('parent_state', '=', 'posted'),
+            ('reconciled', '=', False),
+            ('balance', '!=', 0),
+        ]
+
+        lines = env['account.move.line'].search_read(
+            domain,
+            ['partner_id', 'date_maturity', 'balance', 'move_id'],
+            order='partner_id, date_maturity',
+        )
+
+        # Bucket: current, 1-30, 31-60, 61-90, 90+
+        result = []
+        for line in lines:
+            due = line.get('date_maturity') or today
+            if isinstance(due, str):
+                from datetime import datetime
+                due = datetime.strptime(due, '%Y-%m-%d').date()
+            days = (today - due).days
+            bucket = 'current' if days <= 0 else '1_30' if days <= 30 else '31_60' if days <= 60 else '61_90' if days <= 90 else '90_plus'
+            result.append({**line, 'days_overdue': max(0, days), 'bucket': bucket})
+
+        return {"records": result, "total": len(result)}
+
+
+def get_aged_payable(uid=1, context=None):
+    """Get aged payable report."""
+    with mashora_env(uid=uid, context=context) as env:
+        from datetime import date
+        today = date.today()
+
+        domain = [
+            ('account_id.account_type', '=', 'liability_payable'),
+            ('parent_state', '=', 'posted'),
+            ('reconciled', '=', False),
+            ('balance', '!=', 0),
+        ]
+
+        lines = env['account.move.line'].search_read(
+            domain,
+            ['partner_id', 'date_maturity', 'balance', 'move_id'],
+            order='partner_id, date_maturity',
+        )
+
+        result = []
+        for line in lines:
+            due = line.get('date_maturity') or today
+            if isinstance(due, str):
+                from datetime import datetime
+                due = datetime.strptime(due, '%Y-%m-%d').date()
+            days = (today - due).days
+            bucket = 'current' if days <= 0 else '1_30' if days <= 30 else '31_60' if days <= 60 else '61_90' if days <= 90 else '90_plus'
+            result.append({**line, 'days_overdue': max(0, days), 'bucket': bucket})
+
+        return {"records": result, "total": len(result)}
+
+
+# --- Bank Reconciliation ---
+
+BANK_STATEMENT_FIELDS = [
+    "id", "name", "journal_id", "date", "balance_start",
+    "balance_end_real", "state", "line_ids",
+    "create_date", "write_date",
+]
+
+BANK_STATEMENT_LINE_FIELDS = [
+    "id", "statement_id", "date", "payment_ref", "partner_id",
+    "amount", "amount_currency", "currency_id",
+    "is_reconciled", "move_id",
+]
+
+
+def list_bank_statements(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        total = env['account.bank.statement'].search_count(d)
+        records = env['account.bank.statement'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(BANK_STATEMENT_FIELDS)
+        return {"records": data, "total": total}
+
+
+def get_bank_statement(statement_id, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['account.bank.statement'].browse(statement_id)
+        if not record.exists():
+            return None
+        data = record.read(BANK_STATEMENT_FIELDS)[0]
+        if data.get('line_ids'):
+            lines = env['account.bank.statement.line'].browse(data['line_ids'])
+            data['lines'] = lines.read(BANK_STATEMENT_LINE_FIELDS)
+        return data
+
+
+def list_unreconciled_lines(journal_id=None, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [('is_reconciled', '=', False), ('amount', '!=', 0)]
+        if journal_id:
+            domain.append(('journal_id', '=', journal_id))
+        lines = env['account.bank.statement.line'].search_read(
+            domain,
+            BANK_STATEMENT_LINE_FIELDS,
+            order='date desc',
+        )
+        return {"records": lines, "total": len(lines)}
+
+
+def reconcile_statement_line(line_id, counterpart_ids=None, uid=1, context=None):
+    """Reconcile a bank statement line with counterpart journal items."""
+    with mashora_env(uid=uid, context=context) as env:
+        line = env['account.bank.statement.line'].browse(line_id)
+        if counterpart_ids:
+            counterparts = env['account.move.line'].browse(counterpart_ids)
+            line.reconcile(lines_vals_list=[{
+                'counterpart_aml_id': cp.id
+            } for cp in counterparts])
+        else:
+            # Auto-reconcile
+            line.action_undo_reconciliation() if line.is_reconciled else None
+        return line.read(BANK_STATEMENT_LINE_FIELDS)[0]
+
+
+# --- Journal Entries ---
+
+JOURNAL_ENTRY_FIELDS = [
+    "id", "name", "ref", "date", "journal_id", "state",
+    "line_ids", "amount_total", "partner_id",
+    "create_date", "write_date",
+]
+
+
+def list_journal_entries(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        d.append(('move_type', '=', 'entry'))
+        total = env['account.move'].search_count(d)
+        records = env['account.move'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(JOURNAL_ENTRY_FIELDS)
+        return {"records": data, "total": total}
+
+
+def create_journal_entry(vals, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        vals['move_type'] = 'entry'
+        record = env['account.move'].create(vals)
+        return record.read(JOURNAL_ENTRY_FIELDS)[0]

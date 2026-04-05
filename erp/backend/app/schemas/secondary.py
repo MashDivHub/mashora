@@ -26,6 +26,23 @@ class VehicleCreate(BaseModel):
     acquisition_date: Optional[date] = None
     seats: Optional[int] = None
 
+class VehicleUpdate(BaseModel):
+    license_plate: Optional[str] = None
+    driver_id: Optional[int] = None
+    state_id: Optional[int] = None
+    fuel_type: Optional[str] = None
+    seats: Optional[int] = None
+    color: Optional[int] = None
+    horsepower: Optional[int] = None
+
+class VehicleCostCreate(BaseModel):
+    vehicle_id: int
+    cost_subtype_id: Optional[int] = None
+    amount: float
+    date: Optional[date] = None
+    description: Optional[str] = None
+
+
 # --- Repair ---
 class RepairListParams(BaseModel):
     state: Optional[list[str]] = Field(default=None, description="draft, confirmed, under_repair, done, cancel")
@@ -41,6 +58,13 @@ class RepairCreate(BaseModel):
     lot_id: Optional[int] = None
     description: Optional[str] = None
     priority: str = "0"
+
+class RepairUpdate(BaseModel):
+    partner_id: Optional[int] = None
+    lot_id: Optional[int] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+
 
 # --- MRP (Manufacturing) ---
 class ProductionListParams(BaseModel):
@@ -58,6 +82,12 @@ class ProductionCreate(BaseModel):
     date_start: Optional[datetime] = None
     date_finished: Optional[datetime] = None
 
+class ProductionUpdate(BaseModel):
+    product_qty: Optional[float] = None
+    bom_id: Optional[int] = None
+    date_start: Optional[datetime] = None
+    date_finished: Optional[datetime] = None
+
 class BomListParams(BaseModel):
     product_tmpl_id: Optional[int] = None
     type: Optional[str] = None
@@ -65,6 +95,7 @@ class BomListParams(BaseModel):
     offset: int = 0
     limit: int = 50
     order: str = "product_tmpl_id asc"
+
 
 # --- Event ---
 class EventListParams(BaseModel):
@@ -85,6 +116,22 @@ class EventCreate(BaseModel):
     organizer_id: Optional[int] = None
     seats_max: int = 0
 
+class EventUpdate(BaseModel):
+    name: Optional[str] = None
+    event_type_id: Optional[int] = None
+    date_begin: Optional[datetime] = None
+    date_end: Optional[datetime] = None
+    address_id: Optional[int] = None
+    seats_max: Optional[int] = None
+
+class RegistrationCreate(BaseModel):
+    event_id: int
+    partner_id: Optional[int] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
 # --- Survey ---
 class SurveyListParams(BaseModel):
     survey_type: Optional[str] = None
@@ -98,6 +145,13 @@ class SurveyCreate(BaseModel):
     survey_type: str = "survey"
     description: Optional[str] = None
     questions_layout: str = "page_per_section"
+
+class SurveyUpdate(BaseModel):
+    title: Optional[str] = None
+    survey_type: Optional[str] = None
+    description: Optional[str] = None
+    questions_layout: Optional[str] = None
+
 
 # --- Mass Mailing ---
 class MailingListParams(BaseModel):
@@ -113,6 +167,13 @@ class MailingCreate(BaseModel):
     body_html: Optional[str] = None
     email_from: Optional[str] = None
     contact_list_ids: list[int] = Field(default_factory=list)
+
+class MailingUpdate(BaseModel):
+    name: Optional[str] = None
+    subject: Optional[str] = None
+    body_html: Optional[str] = None
+    email_from: Optional[str] = None
+
 
 # --- POS ---
 class PosSessionListParams(BaseModel):
@@ -133,6 +194,7 @@ class PosOrderListParams(BaseModel):
     limit: int = 50
     order: str = "date_order desc"
 
+
 # --- Calendar ---
 class CalendarEventListParams(BaseModel):
     user_id: Optional[int] = None
@@ -151,3 +213,11 @@ class CalendarEventCreate(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
     partner_ids: list[int] = Field(default_factory=list)
+
+class CalendarEventUpdate(BaseModel):
+    name: Optional[str] = None
+    start: Optional[datetime] = None
+    stop: Optional[datetime] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    partner_ids: Optional[list[int]] = None

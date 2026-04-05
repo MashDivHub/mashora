@@ -10,7 +10,7 @@ Provides high-level operations for:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -216,6 +216,21 @@ def get_cart(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Opt
         return data
 
 
+def _read_cart_in_env(env, order_id: int) -> Optional[dict]:
+    """Read cart data within an already-open env (no second transaction)."""
+    order = env["sale.order"].browse(order_id)
+    if not order.exists():
+        return None
+    data = order.read(CART_FIELDS)[0]
+    line_ids = data.get("order_line", [])
+    if line_ids:
+        lines = env["sale.order.line"].browse(line_ids)
+        data["lines"] = lines.read(CART_LINE_FIELDS)
+    else:
+        data["lines"] = []
+    return data
+
+
 def add_to_cart(
     order_id: int,
     product_id: int,
@@ -233,7 +248,7 @@ def add_to_cart(
         if product_uom_id:
             line_vals["product_uom_id"] = product_uom_id
         order.write({"order_line": [(0, 0, line_vals)]})
-        return get_cart(order_id, uid=uid, context=context)
+        return _read_cart_in_env(env, order_id)
 
 
 def update_cart_line(
@@ -250,7 +265,7 @@ def update_cart_line(
         else:
             order_id = line.order_id.id
             line.write({"product_uom_qty": quantity})
-        return get_cart(order_id, uid=uid, context=context)
+        return _read_cart_in_env(env, order_id)
 
 
 def remove_cart_line(
@@ -262,7 +277,7 @@ def remove_cart_line(
     with mashora_env(uid=uid, context=context) as env:
         order = env["sale.order"].browse(order_id)
         order.write({"order_line": [(2, line_id, 0)]})
-        return get_cart(order_id, uid=uid, context=context)
+        return _read_cart_in_env(env, order_id)
 
 
 def clear_cart(order_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -271,7 +286,78 @@ def clear_cart(order_id: int, uid: int = 1, context: Optional[dict] = None) -> d
         line_ids = order.order_line.ids
         if line_ids:
             order.write({"order_line": [(2, lid, 0) for lid in line_ids]})
-        return get_cart(order_id, uid=uid, context=context)
+        return _read_cart_in_env(env, order_id)
+
+
+# --- Checkout ---
+
+CHECKOUT_FIELDS = [
+    "id", "name", "partner_id", "partner_invoice_id", "partner_shipping_id",
+    "amount_untaxed", "amount_tax", "amount_total", "state",
+    "order_line", "payment_term_id", "note",
+]
+
+
+def get_checkout_info(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Get checkout info including addresses and payment terms."""
+    with mashora_env(uid=uid, context=context) as env:
+        order = env["sale.order"].browse(order_id)
+        if not order.exists():
+            return None
+        data = order.read(CHECKOUT_FIELDS)[0]
+        if data.get("order_line"):
+            lines = env["sale.order.line"].browse(data["order_line"])
+            data["lines"] = lines.read(CART_LINE_FIELDS)
+        else:
+            data["lines"] = []
+        terms = env["account.payment.term"].search_read([], ["id", "name", "note"])
+        data["available_payment_terms"] = terms
+        return data
+
+
+def set_checkout_addresses(
+    order_id: int,
+    invoice_partner_id: int,
+    shipping_partner_id: Optional[int] = None,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> Optional[dict]:
+    """Set billing and shipping addresses for checkout."""
+    with mashora_env(uid=uid, context=context) as env:
+        order = env["sale.order"].browse(order_id)
+        if not order.exists():
+            return None
+        vals = {"partner_invoice_id": invoice_partner_id}
+        if shipping_partner_id:
+            vals["partner_shipping_id"] = shipping_partner_id
+        order.write(vals)
+        return order.read(CHECKOUT_FIELDS)[0]
+
+
+def confirm_checkout(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Confirm the sale order (checkout complete)."""
+    with mashora_env(uid=uid, context=context) as env:
+        order = env["sale.order"].browse(order_id)
+        if not order.exists():
+            return None
+        order.action_confirm()
+        return order.read(CHECKOUT_FIELDS)[0]
+
+
+def get_customer_addresses(partner_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Get all addresses for a customer (for address selection at checkout)."""
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [
+            "|",
+            ("id", "=", partner_id),
+            ("parent_id", "=", partner_id),
+        ]
+        addresses = env["res.partner"].search_read(
+            domain,
+            ["id", "name", "type", "street", "street2", "city", "zip", "state_id", "country_id", "phone", "email"],
+            order="type",
+        )
+        return {"records": addresses, "total": len(addresses)}
 
 
 # --- Dashboard ---

@@ -111,3 +111,33 @@ class StatusUpdateCreate(BaseModel):
     status: Literal["on_track", "at_risk", "off_track", "on_hold", "done"] = "on_track"
     description: Optional[str] = None
     progress: int = 0
+
+
+class TimesheetCreate(BaseModel):
+    """Create a new timesheet entry."""
+    project_id: int
+    task_id: Optional[int] = None
+    employee_id: Optional[int] = None
+    name: str = "/"
+    date: Optional[date] = None
+    unit_amount: float = 0.0
+
+
+class TimesheetUpdate(BaseModel):
+    """Update an existing timesheet entry."""
+    task_id: Optional[int] = None
+    employee_id: Optional[int] = None
+    name: Optional[str] = None
+    date: Optional[date] = None
+    unit_amount: Optional[float] = None
+
+
+class TimesheetListParams(BaseModel):
+    """Parameters for listing timesheets."""
+    project_id: Optional[int] = None
+    employee_id: Optional[int] = None
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    offset: int = 0
+    limit: int = 50
+    order: str = "date desc"

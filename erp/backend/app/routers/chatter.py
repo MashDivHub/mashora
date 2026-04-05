@@ -6,12 +6,20 @@ in every business record (143 models inherit mail.thread).
 """
 from typing import Any, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import orm_call, mashora_env
 
 router = APIRouter(prefix="/chatter", tags=["chatter"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 class MessagePost(BaseModel):
@@ -152,63 +160,65 @@ async def get_messages(
     model_name: str, res_id: int,
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Get messages/chatter for a record."""
-    return await orm_call(_get_messages, model=model_name, res_id=res_id, limit=limit, offset=offset)
+    return await orm_call(_get_messages, model=model_name, res_id=res_id, limit=limit, offset=offset, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/{model_name}/{res_id}/messages")
-async def post_message(model_name: str, res_id: int, body: MessagePost):
+async def post_message(model_name: str, res_id: int, body: MessagePost, user: CurrentUser = Depends(get_current_user)):
     """Post a message on a record's chatter."""
     return await orm_call(
         _post_message, model=model_name, res_id=res_id,
         body=body.body, message_type=body.message_type, subtype_xmlid=body.subtype_xmlid,
+        uid=_uid(user), context=_ctx(user),
     )
 
 
 @router.get("/{model_name}/{res_id}/followers")
-async def get_followers(model_name: str, res_id: int):
+async def get_followers(model_name: str, res_id: int, user: CurrentUser = Depends(get_current_user)):
     """Get followers of a record."""
-    return await orm_call(_get_followers, model=model_name, res_id=res_id)
+    return await orm_call(_get_followers, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/{model_name}/{res_id}/followers/{partner_id}")
-async def add_follower(model_name: str, res_id: int, partner_id: int):
+async def add_follower(model_name: str, res_id: int, partner_id: int, user: CurrentUser = Depends(get_current_user)):
     """Subscribe a partner to a record."""
-    return await orm_call(_add_follower, model=model_name, res_id=res_id, partner_id=partner_id)
+    return await orm_call(_add_follower, model=model_name, res_id=res_id, partner_id=partner_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.delete("/{model_name}/{res_id}/followers/{partner_id}")
-async def remove_follower(model_name: str, res_id: int, partner_id: int):
+async def remove_follower(model_name: str, res_id: int, partner_id: int, user: CurrentUser = Depends(get_current_user)):
     """Unsubscribe a partner from a record."""
-    return await orm_call(_remove_follower, model=model_name, res_id=res_id, partner_id=partner_id)
+    return await orm_call(_remove_follower, model=model_name, res_id=res_id, partner_id=partner_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/{model_name}/{res_id}/activities")
-async def get_activities(model_name: str, res_id: int):
+async def get_activities(model_name: str, res_id: int, user: CurrentUser = Depends(get_current_user)):
     """Get activities for a record."""
-    return await orm_call(_get_activities, model=model_name, res_id=res_id)
+    return await orm_call(_get_activities, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/{model_name}/{res_id}/activities")
-async def create_activity(model_name: str, res_id: int, body: ActivityCreate):
+async def create_activity(model_name: str, res_id: int, body: ActivityCreate, user: CurrentUser = Depends(get_current_user)):
     """Create an activity on a record."""
-    return await orm_call(_create_activity, model=model_name, res_id=res_id, vals=body.model_dump(exclude_none=True))
+    return await orm_call(_create_activity, model=model_name, res_id=res_id, vals=body.model_dump(exclude_none=True), uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/activities/{activity_id}/done")
-async def complete_activity(activity_id: int, feedback: str | None = Query(default=None)):
+async def complete_activity(activity_id: int, feedback: str | None = Query(default=None), user: CurrentUser = Depends(get_current_user)):
     """Mark an activity as done."""
-    return await orm_call(_mark_activity_done, activity_id=activity_id, feedback=feedback)
+    return await orm_call(_mark_activity_done, activity_id=activity_id, feedback=feedback, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/activity-types")
-async def get_activity_types():
+async def get_activity_types(user: CurrentUser = Depends(get_current_user)):
     """List available activity types."""
-    return await orm_call(_get_activity_types)
+    return await orm_call(_get_activity_types, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/{model_name}/{res_id}/tracking")
-async def get_tracking(model_name: str, res_id: int):
+async def get_tracking(model_name: str, res_id: int, user: CurrentUser = Depends(get_current_user)):
     """Get field change tracking history for a record."""
-    return await orm_call(_get_tracking, model=model_name, res_id=res_id)
+    return await orm_call(_get_tracking, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))

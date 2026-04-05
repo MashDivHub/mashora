@@ -6,15 +6,23 @@ Wraps Mashora's base_import module and export functionality.
 import base64
 import csv
 import io
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import orm_call, mashora_env
 
 router = APIRouter(prefix="/import-export", tags=["import/export"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 class ImportPreview(BaseModel):
@@ -140,6 +148,7 @@ async def export_records(
     fields: str = Query(description="Comma-separated field names"),
     domain: str = Query(default="[]", description="JSON domain filter"),
     format: str = Query(default="csv", description="Export format: csv"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Export records from any model as CSV."""
     import json
@@ -148,7 +157,7 @@ async def export_records(
         domain_list = json.loads(domain)
     except Exception:
         domain_list = []
-    result = await orm_call(_export_records, model=model, domain=domain_list, fields=field_list, format=format)
+    result = await orm_call(_export_records, model=model, domain=domain_list, fields=field_list, format=format, uid=_uid(user), context=_ctx(user))
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
@@ -159,6 +168,7 @@ async def export_download(
     model: str = Query(description="Model name"),
     fields: str = Query(description="Comma-separated field names"),
     domain: str = Query(default="[]", description="JSON domain filter"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Download exported records as a CSV file."""
     import json
@@ -167,7 +177,7 @@ async def export_download(
         domain_list = json.loads(domain)
     except Exception:
         domain_list = []
-    result = await orm_call(_export_records, model=model, domain=domain_list, fields=field_list, format="csv")
+    result = await orm_call(_export_records, model=model, domain=domain_list, fields=field_list, format="csv", uid=_uid(user), context=_ctx(user))
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
@@ -180,17 +190,19 @@ async def export_download(
 
 
 @router.post("/import/preview")
-async def import_preview(body: ImportPreview):
+async def import_preview(body: ImportPreview, user: CurrentUser = Depends(get_current_user)):
     """Preview an import file — shows columns and sample rows for mapping."""
     return await orm_call(
         _import_preview, model=body.model, file_content=body.file_content, file_type=body.file_type,
+        uid=_uid(user), context=_ctx(user),
     )
 
 
 @router.post("/import/execute")
-async def import_execute(body: ImportExecute):
+async def import_execute(body: ImportExecute, user: CurrentUser = Depends(get_current_user)):
     """Execute a CSV import with field mapping. Returns created count and errors."""
     return await orm_call(
         _import_execute, model=body.model, file_content=body.file_content,
         file_type=body.file_type, field_mapping=body.field_mapping,
+        uid=_uid(user), context=_ctx(user),
     )

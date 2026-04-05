@@ -10,7 +10,7 @@ Provides high-level operations for:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -371,4 +371,129 @@ def get_project_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
                 "overdue": overdue_tasks,
                 "my_tasks": my_tasks,
             },
+        }
+
+
+def delete_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    """Delete a task."""
+    with mashora_env(uid=uid, context=context) as env:
+        task = env['project.task'].browse(task_id)
+        if not task.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Task {task_id} not found")
+        task.unlink()
+        return True
+
+
+def archive_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Archive a project (set active=False)."""
+    with mashora_env(uid=uid, context=context) as env:
+        project = env['project.project'].browse(project_id)
+        project.write({'active': False})
+        return project.read(PROJECT_LIST_FIELDS)[0]
+
+
+def restore_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Restore an archived project (set active=True)."""
+    with mashora_env(uid=uid, context=context) as env:
+        project = env['project.project'].browse(project_id)
+        project.with_context(active_test=False).write({'active': True})
+        return project.read(PROJECT_LIST_FIELDS)[0]
+
+
+def delete_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    """Delete a project."""
+    with mashora_env(uid=uid, context=context) as env:
+        project = env['project.project'].browse(project_id)
+        if not project.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Project {project_id} not found")
+        project.unlink()
+        return True
+
+
+# --- Timesheets ---
+
+PROJECT_FIELDS = PROJECT_LIST_FIELDS
+
+TIMESHEET_FIELDS = [
+    "id", "project_id", "task_id", "employee_id", "user_id",
+    "name", "date", "unit_amount",
+    "create_date", "write_date",
+]
+
+
+def list_timesheets(uid: int = 1, context: Optional[dict] = None, domain=None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        d.append(('project_id', '!=', False))
+        total = env['account.analytic.line'].search_count(d)
+        records = env['account.analytic.line'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(TIMESHEET_FIELDS)
+        return {"records": data, "total": total}
+
+
+def get_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['account.analytic.line'].browse(timesheet_id)
+        if not record.exists():
+            return None
+        return record.read(TIMESHEET_FIELDS)[0]
+
+
+def create_timesheet(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['account.analytic.line'].create(vals)
+        return record.read(TIMESHEET_FIELDS)[0]
+
+
+def update_timesheet(timesheet_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['account.analytic.line'].browse(timesheet_id)
+        record.write(vals)
+        return record.read(TIMESHEET_FIELDS)[0]
+
+
+def delete_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['account.analytic.line'].browse(timesheet_id)
+        if not record.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Timesheet {timesheet_id} not found")
+        record.unlink()
+        return True
+
+
+def get_timesheet_summary(
+    project_id: Optional[int] = None,
+    employee_id: Optional[int] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> dict:
+    """Get timesheet summary grouped by project and employee."""
+    with mashora_env(uid=uid, context=context) as env:
+        domain = [('project_id', '!=', False)]
+        if project_id:
+            domain.append(('project_id', '=', project_id))
+        if employee_id:
+            domain.append(('employee_id', '=', employee_id))
+        if date_from:
+            domain.append(('date', '>=', date_from))
+        if date_to:
+            domain.append(('date', '<=', date_to))
+
+        by_project = env['account.analytic.line'].read_group(
+            domain, ['project_id', 'unit_amount'], ['project_id']
+        )
+        by_employee = env['account.analytic.line'].read_group(
+            domain, ['employee_id', 'unit_amount'], ['employee_id']
+        )
+        total = sum(g['unit_amount'] for g in by_project)
+
+        return {
+            "by_project": by_project,
+            "by_employee": by_employee,
+            "total_hours": total,
         }

@@ -5,11 +5,19 @@ Serves translated strings for the React frontend from Mashora's translation syst
 Every UI string in Mashora passes through _() / LazyGettext with .po files.
 """
 from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import orm_call, mashora_env
 
 router = APIRouter(prefix="/i18n", tags=["i18n"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 def _get_installed_languages(uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -68,22 +76,23 @@ def _get_model_translations(model: str, lang: str, uid: int = 1, context: Option
 
 
 @router.get("/languages")
-async def get_languages():
+async def get_languages(user: CurrentUser = Depends(get_current_user)):
     """List all installed/active languages."""
-    return await orm_call(_get_installed_languages)
+    return await orm_call(_get_installed_languages, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/translations/{lang}")
 async def get_translations(
     lang: str,
     modules: str | None = Query(default=None, description="Comma-separated module names"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Get translations for a language, optionally filtered by modules."""
     module_list = modules.split(",") if modules else None
-    return await orm_call(_get_translations, lang=lang, modules=module_list)
+    return await orm_call(_get_translations, lang=lang, modules=module_list, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/translations/{lang}/model/{model_name}")
-async def get_model_translations(lang: str, model_name: str):
+async def get_model_translations(lang: str, model_name: str, user: CurrentUser = Depends(get_current_user)):
     """Get translated field labels for a model in a given language."""
-    return await orm_call(_get_model_translations, model=model_name, lang=lang)
+    return await orm_call(_get_model_translations, model=model_name, lang=lang, uid=_uid(user), context=_ctx(user))

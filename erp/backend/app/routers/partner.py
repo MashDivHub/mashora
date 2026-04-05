@@ -7,8 +7,9 @@ create, read, update, delete a partner record.
 """
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import (
     create_record,
     delete_record,
@@ -19,6 +20,13 @@ from app.core.orm_adapter import (
 )
 
 router = APIRouter(prefix="/partners", tags=["partners (PoC)"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 # Default fields to read for partner — keeps responses concise
 # Only include fields guaranteed in base; extras are added dynamically
@@ -50,6 +58,7 @@ async def list_partners(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=200),
     order: str = Query(default="name asc"),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """List partners with optional search and filters."""
     domain: list[Any] = []
@@ -66,18 +75,22 @@ async def list_partners(
         offset=offset,
         limit=limit,
         order=order,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     return result
 
 
 @router.get("/{partner_id}")
-async def get_partner(partner_id: int):
+async def get_partner(partner_id: int, user: CurrentUser = Depends(get_current_user)):
     """Read a single partner by ID."""
     result = await orm_call(
         read_record,
         model="res.partner",
         record_id=partner_id,
         fields=PARTNER_FIELDS_BASE,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     if result is None:
         raise HTTPException(status_code=404, detail=f"Partner {partner_id} not found")
@@ -90,6 +103,7 @@ async def create_partner(
     email: str | None = Query(default=None),
     phone: str | None = Query(default=None),
     is_company: bool = Query(default=False),
+    user: CurrentUser = Depends(get_current_user),
 ):
     """
     Create a new partner — simplified endpoint for PoC testing.
@@ -108,12 +122,14 @@ async def create_partner(
         create_record,
         model="res.partner",
         vals=vals,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     return result
 
 
 @router.put("/{partner_id}")
-async def update_partner(partner_id: int, name: str | None = None, email: str | None = None):
+async def update_partner(partner_id: int, name: str | None = None, email: str | None = None, user: CurrentUser = Depends(get_current_user)):
     """Update a partner's name and/or email."""
     vals: dict[str, Any] = {}
     if name is not None:
@@ -129,16 +145,20 @@ async def update_partner(partner_id: int, name: str | None = None, email: str | 
         model="res.partner",
         record_id=partner_id,
         vals=vals,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     return result
 
 
 @router.delete("/{partner_id}")
-async def delete_partner(partner_id: int):
+async def delete_partner(partner_id: int, user: CurrentUser = Depends(get_current_user)):
     """Delete a partner."""
     await orm_call(
         delete_record,
         model="res.partner",
         record_id=partner_id,
+        uid=_uid(user),
+        context=_ctx(user),
     )
     return {"deleted": True, "id": partner_id}

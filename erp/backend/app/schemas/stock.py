@@ -77,3 +77,77 @@ class LocationListParams(BaseModel):
     offset: int = 0
     limit: int = 200
     order: str = "complete_name asc"
+
+
+# --- Inventory Adjustments ---
+
+class InventoryAdjustmentListParams(BaseModel):
+    """Parameters for listing stock quants for inventory adjustment."""
+    product_id: Optional[int] = None
+    location_id: Optional[int] = None
+    lot_id: Optional[int] = None
+    search: Optional[str] = None
+    offset: int = 0
+    limit: int = 50
+    order: str = "product_id"
+
+
+class InventoryCountBody(BaseModel):
+    """Body for setting the counted inventory quantity."""
+    inventory_quantity: float
+
+
+class InventoryApplyBody(BaseModel):
+    """Body for applying inventory adjustments."""
+    quant_ids: list[int]
+
+
+# --- Scraps ---
+
+class ScrapListParams(BaseModel):
+    """Parameters for listing scrap orders."""
+    product_id: Optional[int] = None
+    state: Optional[str] = None
+    search: Optional[str] = None
+    offset: int = 0
+    limit: int = 50
+    order: str = "create_date desc"
+
+
+class ScrapCreate(BaseModel):
+    """Create a scrap order."""
+    product_id: int
+    scrap_qty: float = 1.0
+    product_uom_id: Optional[int] = None
+    lot_id: Optional[int] = None
+    location_id: Optional[int] = None
+    scrap_location_id: Optional[int] = None
+    picking_id: Optional[int] = None
+    origin: Optional[str] = None
+
+
+# --- Lots/Serials ---
+
+class LotListParams(BaseModel):
+    """Parameters for listing lots/serial numbers."""
+    product_id: Optional[int] = None
+    search: Optional[str] = None
+    offset: int = 0
+    limit: int = 50
+    order: str = "name"
+
+
+class LotCreate(BaseModel):
+    """Create a lot/serial number."""
+    name: str
+    product_id: int
+    company_id: Optional[int] = None
+    ref: Optional[str] = None
+    note: Optional[str] = None
+
+
+class LotUpdate(BaseModel):
+    """Update a lot/serial number."""
+    name: Optional[str] = None
+    ref: Optional[str] = None
+    note: Optional[str] = None

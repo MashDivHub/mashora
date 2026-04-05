@@ -10,7 +10,8 @@ class TestConfig:
         from app.config import Settings
         s = Settings()
         assert s.app_name == "Mashora ERP API"
-        assert s.mashora_db_name == "mashora"
+        # Default is "mashora" but .env may override to "mashora_erp"
+        assert s.mashora_db_name in ("mashora", "mashora_erp")
         assert s.jwt_algorithm == "HS256"
         assert s.orm_thread_pool_size == 8
 

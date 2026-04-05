@@ -8,7 +8,7 @@ Provides high-level operations for the stock module:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -348,3 +348,127 @@ def get_inventory_dashboard(uid: int = 1, context: Optional[dict] = None) -> dic
             "late": late_pickings,
             "waiting": waiting_pickings,
         }
+
+
+# --- Inventory Adjustments ---
+
+INVENTORY_QUANT_FIELDS = [
+    "id", "product_id", "location_id", "lot_id",
+    "quantity", "reserved_quantity", "available_quantity",
+    "inventory_quantity", "inventory_diff_quantity",
+]
+
+
+def list_inventory_adjustments(uid=1, context=None, domain=None, offset=0, limit=50, order="product_id"):
+    """List stock quants for inventory adjustment."""
+    with mashora_env(uid=uid, context=context) as env:
+        d = list(domain) if domain else []
+        d.append(('location_id.usage', '=', 'internal'))
+        total = env['stock.quant'].search_count(d)
+        records = env['stock.quant'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(INVENTORY_QUANT_FIELDS)
+        return {"records": data, "total": total}
+
+
+def set_inventory_quantity(quant_id: int, inventory_quantity: float, uid=1, context=None):
+    """Set the counted quantity for an inventory adjustment."""
+    with mashora_env(uid=uid, context=context) as env:
+        quant = env['stock.quant'].browse(quant_id)
+        quant.write({'inventory_quantity': inventory_quantity})
+        return quant.read(INVENTORY_QUANT_FIELDS)[0]
+
+
+def apply_inventory_adjustment(quant_ids: list, uid=1, context=None):
+    """Apply inventory adjustments for the given quants."""
+    with mashora_env(uid=uid, context=context) as env:
+        quants = env['stock.quant'].browse(quant_ids)
+        quants.action_apply_inventory()
+        return quants.read(INVENTORY_QUANT_FIELDS)
+
+
+# --- Scrap ---
+
+SCRAP_FIELDS = [
+    "id", "name", "product_id", "lot_id", "scrap_qty",
+    "product_uom_id", "location_id", "scrap_location_id",
+    "picking_id", "state", "date_done",
+    "create_date", "write_date",
+]
+
+
+def list_scraps(uid=1, context=None, domain=None, offset=0, limit=50, order="create_date desc"):
+    with mashora_env(uid=uid, context=context) as env:
+        d = list(domain) if domain else []
+        total = env['stock.scrap'].search_count(d)
+        records = env['stock.scrap'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(SCRAP_FIELDS)
+        return {"records": data, "total": total}
+
+
+def create_scrap(vals: dict, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['stock.scrap'].create(vals)
+        return record.read(SCRAP_FIELDS)[0]
+
+
+def validate_scrap(scrap_id: int, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        scrap = env['stock.scrap'].browse(scrap_id)
+        scrap.action_validate()
+        return scrap.read(SCRAP_FIELDS)[0]
+
+
+# --- Returns ---
+
+def create_return(picking_id: int, uid=1, context=None):
+    """Create a return transfer using the return wizard."""
+    with mashora_env(uid=uid, context=context) as env:
+        picking = env['stock.picking'].browse(picking_id)
+        if not picking.exists():
+            return None
+        ctx = dict(env.context, active_id=picking_id, active_ids=[picking_id], active_model='stock.picking')
+        wizard = env['stock.return.picking'].with_context(ctx).create({})
+        result = wizard.action_create_returns()
+        if isinstance(result, dict) and result.get('res_id'):
+            new_picking = env['stock.picking'].browse(result['res_id'])
+            return new_picking.read(PICKING_LIST_FIELDS)[0]
+        return result
+
+
+# --- Lot/Serial Numbers ---
+
+LOT_FIELDS = [
+    "id", "name", "product_id", "company_id",
+    "ref", "note", "product_qty",
+    "create_date", "write_date",
+]
+
+
+def list_lots(uid=1, context=None, domain=None, offset=0, limit=50, order="name"):
+    with mashora_env(uid=uid, context=context) as env:
+        d = list(domain) if domain else []
+        total = env['stock.lot'].search_count(d)
+        records = env['stock.lot'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(LOT_FIELDS)
+        return {"records": data, "total": total}
+
+
+def get_lot(lot_id: int, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['stock.lot'].browse(lot_id)
+        if not record.exists():
+            return None
+        return record.read(LOT_FIELDS)[0]
+
+
+def create_lot(vals: dict, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['stock.lot'].create(vals)
+        return record.read(LOT_FIELDS)[0]
+
+
+def update_lot(lot_id: int, vals: dict, uid=1, context=None):
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['stock.lot'].browse(lot_id)
+        record.write(vals)
+        return record.read(LOT_FIELDS)[0]

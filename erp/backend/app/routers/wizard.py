@@ -10,14 +10,22 @@ They have a different lifecycle than regular records:
 
 Examples: Register Payment, Send Invoice, Confirm Order
 """
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import mashora_env, orm_call
 
 router = APIRouter(prefix="/wizard", tags=["wizards"])
+
+
+def _uid(user: CurrentUser | None) -> int:
+    return user.uid if user else 1
+
+def _ctx(user: CurrentUser | None) -> dict | None:
+    return user.get_context() if user else None
 
 
 class WizardCreate(BaseModel):
@@ -90,21 +98,22 @@ def _execute_wizard(
 
 
 @router.post("/{model_name}", status_code=201)
-async def create_wizard(model_name: str, body: WizardCreate):
+async def create_wizard(model_name: str, body: WizardCreate, user: CurrentUser = Depends(get_current_user)):
     """Create a new wizard instance with context."""
     result = await orm_call(
         _create_wizard,
         model=model_name,
         context=body.context,
         defaults=body.defaults,
+        uid=_uid(user),
     )
     return result
 
 
 @router.get("/{model_name}/{wizard_id}")
-async def get_wizard(model_name: str, wizard_id: int):
+async def get_wizard(model_name: str, wizard_id: int, user: CurrentUser = Depends(get_current_user)):
     """Read wizard state."""
-    result = await orm_call(_read_wizard, model=model_name, wizard_id=wizard_id)
+    result = await orm_call(_read_wizard, model=model_name, wizard_id=wizard_id, uid=_uid(user))
     if result is None:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Wizard not found or expired")
@@ -112,13 +121,14 @@ async def get_wizard(model_name: str, wizard_id: int):
 
 
 @router.put("/{model_name}/{wizard_id}")
-async def update_wizard(model_name: str, wizard_id: int, body: WizardUpdate):
+async def update_wizard(model_name: str, wizard_id: int, body: WizardUpdate, user: CurrentUser = Depends(get_current_user)):
     """Update wizard fields."""
     result = await orm_call(
         _update_wizard,
         model=model_name,
         wizard_id=wizard_id,
         vals=body.vals,
+        uid=_uid(user),
     )
     return result
 
@@ -129,6 +139,7 @@ async def execute_wizard_action(
     wizard_id: int,
     action: str,
     body: WizardAction | None = None,
+    user: CurrentUser = Depends(get_current_user),
 ):
     """Execute a wizard action (e.g., action_create_payments)."""
     b = body or WizardAction()
@@ -139,5 +150,6 @@ async def execute_wizard_action(
         action=action,
         args=b.args,
         kwargs=b.kwargs,
+        uid=_uid(user),
     )
     return result

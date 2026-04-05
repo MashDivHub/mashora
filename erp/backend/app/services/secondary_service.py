@@ -4,7 +4,7 @@ Service layer for Phase 4 secondary modules.
 Covers: fleet, repair, mrp, event, survey, mass_mailing, pos, calendar.
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -19,6 +19,11 @@ VEHICLE_FIELDS = [
     "id", "name", "license_plate", "model_id", "driver_id",
     "state_id", "fuel_type", "acquisition_date", "seats",
     "company_id", "image_128",
+]
+
+VEHICLE_COST_FIELDS = [
+    "id", "vehicle_id", "cost_subtype_id", "amount", "date",
+    "description", "create_date",
 ]
 
 def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -44,6 +49,27 @@ def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -
             return None
         return v.read(VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])[0]
 
+def update_vehicle(vehicle_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        v = env["fleet.vehicle"].browse(vehicle_id)
+        if not v.exists():
+            return None
+        v.write(vals)
+        return v.read(VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])[0]
+
+def list_vehicle_costs(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    domain: list[Any] = [["vehicle_id", "=", vehicle_id]]
+    with mashora_env(uid=uid, context=context) as env:
+        C = env["fleet.vehicle.cost"]
+        total = C.search_count(domain)
+        records = C.search(domain, order="date desc")
+        return {"records": records.read(VEHICLE_COST_FIELDS), "total": total}
+
+def create_vehicle_cost(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        c = env["fleet.vehicle.cost"].create(vals)
+        return c.read(VEHICLE_COST_FIELDS)[0]
+
 
 # ============================================
 # REPAIR
@@ -52,6 +78,7 @@ def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -
 REPAIR_FIELDS = [
     "id", "name", "state", "product_id", "partner_id",
     "lot_id", "priority", "company_id", "description",
+    "operations",
 ]
 
 def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -70,6 +97,21 @@ def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
         records = R.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "name desc"))
         return {"records": records.read(REPAIR_FIELDS), "total": total}
 
+def get_repair(repair_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        r = env["repair.order"].browse(repair_id)
+        if not r.exists():
+            return None
+        return r.read(REPAIR_FIELDS)[0]
+
+def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        r = env["repair.order"].browse(repair_id)
+        if not r.exists():
+            return None
+        r.write(vals)
+        return r.read(REPAIR_FIELDS)[0]
+
 def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
         r = env["repair.order"].browse(repair_id)
@@ -85,6 +127,7 @@ PRODUCTION_FIELDS = [
     "id", "name", "state", "product_id", "product_qty",
     "bom_id", "date_start", "date_finished",
     "company_id", "user_id",
+    "move_raw_ids",
 ]
 
 BOM_FIELDS = [
@@ -108,6 +151,21 @@ def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None)
         records = P.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_start desc, name desc"))
         return {"records": records.read(PRODUCTION_FIELDS), "total": total}
 
+def get_production(production_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        p = env["mrp.production"].browse(production_id)
+        if not p.exists():
+            return None
+        return p.read(PRODUCTION_FIELDS)[0]
+
+def update_production(production_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        p = env["mrp.production"].browse(production_id)
+        if not p.exists():
+            return None
+        p.write(vals)
+        return p.read(PRODUCTION_FIELDS)[0]
+
 def production_action(production_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
         p = env["mrp.production"].browse(production_id)
@@ -130,6 +188,13 @@ def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dic
         records = B.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "product_tmpl_id asc"))
         return {"records": records.read(BOM_FIELDS), "total": total}
 
+def get_bom(bom_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        b = env["mrp.bom"].browse(bom_id)
+        if not b.exists():
+            return None
+        return b.read(BOM_FIELDS)[0]
+
 
 # ============================================
 # EVENT
@@ -140,6 +205,11 @@ EVENT_FIELDS = [
     "address_id", "organizer_id", "kanban_state",
     "seats_max", "seats_reserved", "seats_available", "seats_used",
     "company_id",
+]
+
+EVENT_REGISTRATION_FIELDS = [
+    "id", "event_id", "partner_id", "name", "email",
+    "phone", "state", "create_date",
 ]
 
 def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -158,6 +228,40 @@ def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
         records = E.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_begin desc"))
         return {"records": records.read(EVENT_FIELDS), "total": total}
 
+def get_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["event.event"].browse(event_id)
+        if not e.exists():
+            return None
+        return e.read(EVENT_FIELDS + ["registration_ids"])[0]
+
+def update_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["event.event"].browse(event_id)
+        if not e.exists():
+            return None
+        e.write(vals)
+        return e.read(EVENT_FIELDS)[0]
+
+def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["event.event"].browse(event_id)
+        getattr(e, action)()
+        return e.read(EVENT_FIELDS)[0]
+
+def list_registrations(event_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    domain: list[Any] = [["event_id", "=", event_id]]
+    with mashora_env(uid=uid, context=context) as env:
+        R = env["event.registration"]
+        total = R.search_count(domain)
+        records = R.search(domain, order="create_date desc")
+        return {"records": records.read(EVENT_REGISTRATION_FIELDS), "total": total}
+
+def create_registration(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        r = env["event.registration"].create(vals)
+        return r.read(EVENT_REGISTRATION_FIELDS)[0]
+
 
 # ============================================
 # SURVEY
@@ -167,6 +271,11 @@ SURVEY_FIELDS = [
     "id", "title", "survey_type", "description",
     "questions_layout", "user_id", "active",
     "access_token", "session_state",
+]
+
+SURVEY_ANSWER_FIELDS = [
+    "id", "survey_id", "partner_id", "state",
+    "scoring_total", "create_date",
 ]
 
 def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -180,6 +289,35 @@ def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
         total = S.search_count(domain)
         records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
         return {"records": records.read(SURVEY_FIELDS), "total": total}
+
+def get_survey(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        s = env["survey.survey"].browse(survey_id)
+        if not s.exists():
+            return None
+        return s.read(SURVEY_FIELDS + ["question_ids"])[0]
+
+def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        s = env["survey.survey"].browse(survey_id)
+        if not s.exists():
+            return None
+        s.write(vals)
+        return s.read(SURVEY_FIELDS)[0]
+
+def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        s = env["survey.survey"].browse(survey_id)
+        getattr(s, action)()
+        return s.read(SURVEY_FIELDS)[0]
+
+def list_survey_answers(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    domain: list[Any] = [["survey_id", "=", survey_id]]
+    with mashora_env(uid=uid, context=context) as env:
+        A = env["survey.user_input"]
+        total = A.search_count(domain)
+        records = A.search(domain, order="create_date desc")
+        return {"records": records.read(SURVEY_ANSWER_FIELDS), "total": total}
 
 
 # ============================================
@@ -206,11 +344,34 @@ def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) ->
         records = M.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
         return {"records": records.read(MAILING_FIELDS), "total": total}
 
+def get_mailing(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        m = env["mailing.mailing"].browse(mailing_id)
+        if not m.exists():
+            return None
+        return m.read(MAILING_FIELDS)[0]
+
+def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        m = env["mailing.mailing"].browse(mailing_id)
+        if not m.exists():
+            return None
+        m.write(vals)
+        return m.read(MAILING_FIELDS)[0]
+
 def mailing_action(mailing_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
         m = env["mailing.mailing"].browse(mailing_id)
         getattr(m, action)()
         return m.read(MAILING_FIELDS)[0]
+
+def get_mailing_stats(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        m = env["mailing.mailing"].browse(mailing_id)
+        if not m.exists():
+            return None
+        data = m.read(["id", "name", "subject", "state", "sent", "delivered", "opened", "bounced", "clicked"])[0]
+        return data
 
 
 # ============================================
@@ -226,7 +387,7 @@ POS_SESSION_FIELDS = [
 POS_ORDER_FIELDS = [
     "id", "name", "state", "session_id", "partner_id",
     "date_order", "amount_total", "amount_tax",
-    "pos_reference",
+    "pos_reference", "lines",
 ]
 
 def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -242,6 +403,13 @@ def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None
         total = S.search_count(domain)
         records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 20), order=params.get("order", "start_at desc"))
         return {"records": records.read(POS_SESSION_FIELDS), "total": total}
+
+def get_pos_session(session_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        s = env["pos.session"].browse(session_id)
+        if not s.exists():
+            return None
+        return s.read(POS_SESSION_FIELDS + ["order_ids"])[0]
 
 def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
@@ -262,6 +430,13 @@ def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) 
         total = O.search_count(domain)
         records = O.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "date_order desc"))
         return {"records": records.read(POS_ORDER_FIELDS), "total": total}
+
+def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        o = env["pos.order"].browse(order_id)
+        if not o.exists():
+            return None
+        return o.read(POS_ORDER_FIELDS)[0]
 
 def pos_session_action(session_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     with mashora_env(uid=uid, context=context) as env:
@@ -297,3 +472,32 @@ def list_calendar_events(params: dict, uid: int = 1, context: Optional[dict] = N
         total = E.search_count(domain)
         records = E.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "start desc"))
         return {"records": records.read(CALENDAR_FIELDS), "total": total}
+
+def get_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["calendar.event"].browse(event_id)
+        if not e.exists():
+            return None
+        return e.read(CALENDAR_FIELDS)[0]
+
+def update_calendar_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["calendar.event"].browse(event_id)
+        if not e.exists():
+            return None
+        e.write(vals)
+        return e.read(CALENDAR_FIELDS)[0]
+
+def delete_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["calendar.event"].browse(event_id)
+        if not e.exists():
+            return False
+        e.unlink()
+        return True
+
+def calendar_event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        e = env["calendar.event"].browse(event_id)
+        getattr(e, action)()
+        return e.read(CALENDAR_FIELDS)[0]

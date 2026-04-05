@@ -9,7 +9,7 @@ Provides high-level operations for:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -74,10 +74,21 @@ LEAVE_TYPE_FIELDS = [
 ]
 
 ALLOCATION_FIELDS = [
-    "id", "employee_id", "holiday_status_id", "state",
-    "number_of_days", "number_of_days_display",
-    "date_from", "date_to",
-    "name", "notes",
+    "id", "employee_id", "holiday_status_id", "number_of_days",
+    "state", "date_from", "date_to", "notes",
+    "create_date", "write_date",
+]
+
+EXPENSE_FIELDS = [
+    "id", "name", "employee_id", "product_id", "unit_amount",
+    "quantity", "total_amount", "date", "state", "payment_mode",
+    "description", "sheet_id", "create_date", "write_date",
+]
+
+EXPENSE_SHEET_FIELDS = [
+    "id", "name", "employee_id", "expense_line_ids", "total_amount",
+    "state", "payment_state", "company_id",
+    "create_date", "write_date",
 ]
 
 
@@ -309,3 +320,126 @@ def get_hr_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
             "departments": dept_data,
             "pending_leaves": pending_leaves,
         }
+
+
+# --- Leave Allocations ---
+
+def list_allocations(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        total = env['hr.leave.allocation'].search_count(d)
+        records = env['hr.leave.allocation'].search(d, offset=offset, limit=limit, order=order)
+        data = records.read(ALLOCATION_FIELDS)
+        return {"records": data, "total": total}
+
+
+def get_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.leave.allocation'].browse(allocation_id)
+        if not record.exists():
+            return None
+        return record.read(ALLOCATION_FIELDS)[0]
+
+
+def create_allocation(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.leave.allocation'].create(vals)
+        return record.read(ALLOCATION_FIELDS)[0]
+
+
+def approve_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.leave.allocation'].browse(allocation_id)
+        record.action_validate()
+        return record.read(ALLOCATION_FIELDS)[0]
+
+
+def refuse_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.leave.allocation'].browse(allocation_id)
+        record.action_refuse()
+        return record.read(ALLOCATION_FIELDS)[0]
+
+
+def reset_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.leave.allocation'].browse(allocation_id)
+        record.action_draft()
+        return record.read(ALLOCATION_FIELDS)[0]
+
+
+# --- Expenses ---
+
+def list_expenses(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        total = env['hr.expense'].search_count(d)
+        records = env['hr.expense'].search(d, offset=offset, limit=limit, order=order)
+        return {"records": records.read(EXPENSE_FIELDS), "total": total}
+
+
+def get_expense(expense_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.expense'].browse(expense_id)
+        if not record.exists():
+            return None
+        return record.read(EXPENSE_FIELDS)[0]
+
+
+def create_expense(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        clean_vals = {k: v for k, v in vals.items() if v is not None}
+        record = env['hr.expense'].create(clean_vals)
+        return record.read(EXPENSE_FIELDS)[0]
+
+
+def update_expense(expense_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        record = env['hr.expense'].browse(expense_id)
+        if not record.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Expense {expense_id} not found")
+        clean_vals = {k: v for k, v in vals.items() if v is not None}
+        record.write(clean_vals)
+        return record.read(EXPENSE_FIELDS)[0]
+
+
+def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dict] = None):
+    """Create expense sheet from selected expenses."""
+    with mashora_env(uid=uid, context=context) as env:
+        expenses = env['hr.expense'].browse(expense_ids)
+        sheet = expenses.action_submit_expenses()
+        if hasattr(sheet, 'read'):
+            return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+        return sheet
+
+
+# --- Expense Sheets ---
+
+def list_expense_sheets(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        d = domain or []
+        total = env['hr.expense.sheet'].search_count(d)
+        records = env['hr.expense.sheet'].search(d, offset=offset, limit=limit, order=order)
+        return {"records": records.read(EXPENSE_SHEET_FIELDS), "total": total}
+
+
+def approve_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        sheet = env['hr.expense.sheet'].browse(sheet_id)
+        sheet.approve_expense_sheets()
+        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+
+
+def refuse_expense_sheet(sheet_id: int, reason: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        sheet = env['hr.expense.sheet'].browse(sheet_id)
+        sheet.action_sheet_refuse()
+        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+
+
+def post_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    with mashora_env(uid=uid, context=context) as env:
+        sheet = env['hr.expense.sheet'].browse(sheet_id)
+        sheet.action_sheet_move_create()
+        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
