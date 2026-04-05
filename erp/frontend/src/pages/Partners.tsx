@@ -115,7 +115,7 @@ export default function Partners() {
         title="Contacts"
         description={`${data?.total ?? '—'} contacts in the system`}
         actions={
-          <Button className="rounded-2xl">
+          <Button className="rounded-2xl" onClick={() => navigate('/partners/new')}>
             <Plus className="h-4 w-4" />
             New Contact
           </Button>

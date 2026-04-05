@@ -76,7 +76,7 @@ def _get_model_translations(model: str, lang: str, uid: int = 1, context: Option
 
 
 @router.get("/languages")
-async def get_languages(user: CurrentUser = Depends(get_current_user)):
+async def get_languages(user: CurrentUser | None = Depends(get_optional_user)):
     """List all installed/active languages."""
     return await orm_call(_get_installed_languages, uid=_uid(user), context=_ctx(user))
 
@@ -85,7 +85,7 @@ async def get_languages(user: CurrentUser = Depends(get_current_user)):
 async def get_translations(
     lang: str,
     modules: str | None = Query(default=None, description="Comma-separated module names"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get translations for a language, optionally filtered by modules."""
     module_list = modules.split(",") if modules else None
@@ -93,6 +93,6 @@ async def get_translations(
 
 
 @router.get("/translations/{lang}/model/{model_name}")
-async def get_model_translations(lang: str, model_name: str, user: CurrentUser = Depends(get_current_user)):
+async def get_model_translations(lang: str, model_name: str, user: CurrentUser | None = Depends(get_optional_user)):
     """Get translated field labels for a model in a given language."""
     return await orm_call(_get_model_translations, model=model_name, lang=lang, uid=_uid(user), context=_ctx(user))

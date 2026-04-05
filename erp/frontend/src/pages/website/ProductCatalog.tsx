@@ -81,7 +81,7 @@ export default function ProductCatalog() {
             {isLoading ? 'Loading...' : `${data?.total ?? 0} products`}
           </p>
         </div>
-        <Button className="rounded-2xl">
+        <Button className="rounded-2xl" onClick={() => navigate('/website/products/new')}>
           <Plus className="h-4 w-4" />
           New Product
         </Button>

@@ -98,7 +98,7 @@ def _execute_wizard(
 
 
 @router.post("/{model_name}", status_code=201)
-async def create_wizard(model_name: str, body: WizardCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_wizard(model_name: str, body: WizardCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new wizard instance with context."""
     result = await orm_call(
         _create_wizard,
@@ -111,7 +111,7 @@ async def create_wizard(model_name: str, body: WizardCreate, user: CurrentUser =
 
 
 @router.get("/{model_name}/{wizard_id}")
-async def get_wizard(model_name: str, wizard_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_wizard(model_name: str, wizard_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Read wizard state."""
     result = await orm_call(_read_wizard, model=model_name, wizard_id=wizard_id, uid=_uid(user))
     if result is None:
@@ -121,7 +121,7 @@ async def get_wizard(model_name: str, wizard_id: int, user: CurrentUser = Depend
 
 
 @router.put("/{model_name}/{wizard_id}")
-async def update_wizard(model_name: str, wizard_id: int, body: WizardUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update_wizard(model_name: str, wizard_id: int, body: WizardUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update wizard fields."""
     result = await orm_call(
         _update_wizard,
@@ -139,7 +139,7 @@ async def execute_wizard_action(
     wizard_id: int,
     action: str,
     body: WizardAction | None = None,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Execute a wizard action (e.g., action_create_payments)."""
     b = body or WizardAction()

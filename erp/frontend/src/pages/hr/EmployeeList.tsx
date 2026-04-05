@@ -132,7 +132,7 @@ export default function EmployeeList() {
         title="Employees"
         description={isLoading ? 'Loading…' : `${data?.total ?? 0} employees in the directory`}
         actions={
-          <Button className="rounded-2xl">
+          <Button className="rounded-2xl" onClick={() => navigate('/hr/employees/new')}>
             <Plus className="size-4" />
             New Employee
           </Button>

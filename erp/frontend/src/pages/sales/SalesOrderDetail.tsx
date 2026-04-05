@@ -4,6 +4,7 @@ import {
   Button, Badge, Skeleton,
   CardTitle, CardDescription,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Input, Label,
   cn,
 } from '@mashora/design-system'
 import {
@@ -12,6 +13,7 @@ import {
   Receipt, TrendingUp,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -134,11 +136,24 @@ export default function SalesOrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formCustomer, setFormCustomer] = useState('')
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/sales/orders/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['sale-order'] })
+      navigate(`/sales/orders/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['sale-order', id],
     queryFn: () => erpClient.raw.get(`/sales/orders/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const confirmMutation = useMutation({
@@ -160,6 +175,57 @@ export default function SalesOrderDetail() {
     mutationFn: () => erpClient.raw.post(`/sales/orders/${id}/create-invoice`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sale-order', id] }),
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sales</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Order</h1>
+        </div>
+        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Order Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="so-customer">Customer</Label>
+              <Input
+                id="so-customer"
+                placeholder="Customer name"
+                value={formCustomer}
+                onChange={(e) => setFormCustomer(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="so-date">Order Date</Label>
+              <Input
+                id="so-date"
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ customer_name: formCustomer, date_order: formDate })}
+              disabled={createMut.isPending || !formCustomer}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Order'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/sales/orders')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Loading state ──
   if (isLoading) {

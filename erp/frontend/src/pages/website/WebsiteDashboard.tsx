@@ -5,7 +5,7 @@ import {
 } from '@mashora/design-system'
 import {
   Globe, Globe2, ShoppingBag, FileText, DollarSign, ShoppingCart,
-  ArrowRight, Package,
+  ArrowRight, Package, ExternalLink,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
@@ -117,6 +117,14 @@ export default function WebsiteDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Website &amp; eCommerce</h1>
           <p className="text-sm text-muted-foreground">Online store management</p>
         </div>
+        <Button
+          variant="outline"
+          className="rounded-2xl gap-2"
+          onClick={() => window.open('http://localhost:8069/shop', '_blank')}
+        >
+          <ExternalLink className="h-4 w-4" />
+          View Website
+        </Button>
       </div>
 
       {/* Stat cards */}
@@ -239,6 +247,21 @@ export default function WebsiteDashboard() {
                 <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 shrink-0" />
               </button>
             ))}
+            <a
+              href="http://localhost:8069/shop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group w-full flex items-center gap-4 rounded-2xl border border-border/70 bg-card/85 p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-zinc-900/20 hover:shadow-xl dark:hover:border-zinc-100/20"
+            >
+              <div className="rounded-xl border border-border/70 bg-muted/60 p-2.5 text-muted-foreground transition-colors group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:border-zinc-700 dark:group-hover:bg-zinc-800 dark:group-hover:text-zinc-50 shrink-0">
+                <Globe className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">View Website</p>
+                <p className="text-xs text-muted-foreground leading-5">Open your public storefront in a new tab.</p>
+              </div>
+              <ExternalLink className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 shrink-0" />
+            </a>
           </div>
         </div>
       </div>

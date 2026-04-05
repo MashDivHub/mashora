@@ -54,14 +54,14 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 # ============================================
 
 @router.post("/leads")
-async def get_leads(params: LeadListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_leads(params: LeadListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List leads/opportunities with filters."""
     p = params or LeadListParams()
     return await orm_call(list_leads, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/leads/{lead_id}")
-async def get_lead_detail(lead_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_lead_detail(lead_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get full lead/opportunity details."""
     result = await orm_call(get_lead, lead_id=lead_id, uid=_uid(user), context=_ctx(user))
     if result is None:
@@ -70,32 +70,32 @@ async def get_lead_detail(lead_id: int, user: CurrentUser = Depends(get_current_
 
 
 @router.post("/leads/create", status_code=201)
-async def create_new_lead(body: LeadCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_new_lead(body: LeadCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new lead or opportunity."""
     return await orm_call(create_lead, vals=body.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.put("/leads/{lead_id}")
-async def update_existing_lead(lead_id: int, body: LeadUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update_existing_lead(lead_id: int, body: LeadUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a lead/opportunity."""
     vals = body.model_dump(exclude_none=True)
     return await orm_call(update_lead, lead_id=lead_id, vals=vals, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leads/{lead_id}/move-stage")
-async def move_lead_stage(lead_id: int, stage_id: int = Query(description="Target stage ID"), user: CurrentUser = Depends(get_current_user)):
+async def move_lead_stage(lead_id: int, stage_id: int = Query(description="Target stage ID"), user: CurrentUser | None = Depends(get_optional_user)):
     """Move a lead to a different pipeline stage (kanban drag-and-drop)."""
     return await orm_call(move_stage, lead_id=lead_id, stage_id=stage_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leads/{lead_id}/won")
-async def mark_lead_won(lead_id: int, user: CurrentUser = Depends(get_current_user)):
+async def mark_lead_won(lead_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Mark an opportunity as won."""
     return await orm_call(mark_won, lead_id=lead_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leads/{lead_id}/lost")
-async def mark_lead_lost(lead_id: int, body: LeadMarkLost, user: CurrentUser = Depends(get_current_user)):
+async def mark_lead_lost(lead_id: int, body: LeadMarkLost, user: CurrentUser | None = Depends(get_optional_user)):
     """Mark an opportunity as lost (requires reason)."""
     return await orm_call(
         mark_lost,
@@ -108,13 +108,13 @@ async def mark_lead_lost(lead_id: int, body: LeadMarkLost, user: CurrentUser = D
 
 
 @router.post("/leads/{lead_id}/restore")
-async def restore_lost_lead(lead_id: int, user: CurrentUser = Depends(get_current_user)):
+async def restore_lost_lead(lead_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Restore a lost (archived) lead."""
     return await orm_call(restore_lead, lead_id=lead_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leads/{lead_id}/convert")
-async def convert_lead(lead_id: int, body: LeadConvert | None = None, user: CurrentUser = Depends(get_current_user)):
+async def convert_lead(lead_id: int, body: LeadConvert | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """Convert a lead to an opportunity."""
     b = body or LeadConvert()
     return await orm_call(
@@ -129,7 +129,7 @@ async def convert_lead(lead_id: int, body: LeadConvert | None = None, user: Curr
 
 
 @router.post("/leads/{lead_id}/new-quotation")
-async def create_quotation(lead_id: int, user: CurrentUser = Depends(get_current_user)):
+async def create_quotation(lead_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a sale quotation from an opportunity."""
     return await orm_call(create_quotation_from_lead, lead_id=lead_id, uid=_uid(user), context=_ctx(user))
 
@@ -142,7 +142,7 @@ async def create_quotation(lead_id: int, user: CurrentUser = Depends(get_current
 async def get_pipeline(
     team_id: int | None = Query(default=None),
     user_id: int | None = Query(default=None),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get pipeline data grouped by stage (for kanban view)."""
     return await orm_call(get_pipeline_data, team_id=team_id, user_id=user_id, uid=_uid(user), context=_ctx(user))
@@ -153,7 +153,7 @@ async def get_pipeline(
 # ============================================
 
 @router.post("/stages")
-async def get_stages(params: StageListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_stages(params: StageListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List pipeline stages."""
     p = params or StageListParams()
     return await orm_call(list_stages, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
@@ -164,7 +164,7 @@ async def get_stages(params: StageListParams | None = None, user: CurrentUser = 
 # ============================================
 
 @router.get("/lost-reasons")
-async def get_lost_reasons(user: CurrentUser = Depends(get_current_user)):
+async def get_lost_reasons(user: CurrentUser | None = Depends(get_optional_user)):
     """List lost reasons."""
     return await orm_call(list_lost_reasons, uid=_uid(user), context=_ctx(user))
 
@@ -174,6 +174,6 @@ async def get_lost_reasons(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.get("/dashboard")
-async def dashboard(user: CurrentUser = Depends(get_current_user)):
+async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get CRM dashboard summary metrics."""
     return await orm_call(get_crm_dashboard, uid=_uid(user), context=_ctx(user))

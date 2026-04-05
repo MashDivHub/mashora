@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Badge, Separator, cn } from '@mashora/design-system'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Badge, Separator, Button, Input, Label, CardTitle, cn } from '@mashora/design-system'
 import {
   ArrowLeft, Mail, Phone, MapPin, Building2, Briefcase,
   Calendar, Shield, Circle, User, ChevronRight,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,12 +129,75 @@ function DetailSkeleton() {
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formName, setFormName] = useState('')
+  const [formJobTitle, setFormJobTitle] = useState('')
+  const [formDepartment, setFormDepartment] = useState('')
+  const [formEmail, setFormEmail] = useState('')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/hr/employees/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['employee'] })
+      navigate(`/hr/employees/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: emp, isLoading } = useQuery({
     queryKey: ['employee', id],
     queryFn: () => erpClient.raw.get(`/hr/employees/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Human Resources</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Employee</h1>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Employee Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-name">Name</Label>
+              <Input id="emp-name" placeholder="Full name" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-job">Job Title</Label>
+              <Input id="emp-job" placeholder="Job title" value={formJobTitle} onChange={(e) => setFormJobTitle(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-dept">Department</Label>
+              <Input id="emp-dept" placeholder="Department name" value={formDepartment} onChange={(e) => setFormDepartment(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp-email">Work Email</Label>
+              <Input id="emp-email" type="email" placeholder="work@company.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="rounded-2xl" />
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ name: formName, job_title: formJobTitle || undefined, department_name: formDepartment || undefined, work_email: formEmail || undefined })}
+              disabled={createMut.isPending || !formName}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Employee'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/hr/employees')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) return <DetailSkeleton />
 

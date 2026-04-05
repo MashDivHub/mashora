@@ -55,19 +55,36 @@ export default function LeadDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isNew = id === 'new'
   const [showLostDialog, setShowLostDialog] = useState(false)
   const [lostReasonId, setLostReasonId] = useState<string>('')
   const [lostFeedback, setLostFeedback] = useState('')
 
+  const [formName, setFormName] = useState('')
+  const [formContact, setFormContact] = useState('')
+  const [formEmail, setFormEmail] = useState('')
+  const [formPhone, setFormPhone] = useState('')
+  const [formType, setFormType] = useState<'lead' | 'opportunity'>('lead')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/crm/leads/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['crm-lead'] })
+      navigate(`/crm/leads/${result.id}`, { replace: true })
+    },
+  })
+
   const { data: lead, isLoading } = useQuery({
     queryKey: ['crm-lead', id],
     queryFn: () => erpClient.raw.get(`/crm/leads/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const { data: lostReasons } = useQuery({
     queryKey: ['lost-reasons'],
     queryFn: () => erpClient.raw.get('/crm/lost-reasons').then((r) => r.data),
+    enabled: !isNew,
   })
 
   const wonMutation = useMutation({
@@ -95,6 +112,65 @@ export default function LeadDetail() {
       if (res.data?.id) navigate(`/sales/orders/${res.data.id}`)
     },
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">CRM</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Lead</h1>
+        </div>
+        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <p className="text-sm font-semibold">Lead Details</p>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-name">Name</Label>
+              <Input id="lead-name" placeholder="Lead subject" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-contact">Contact Name</Label>
+              <Input id="lead-contact" placeholder="Contact person" value={formContact} onChange={(e) => setFormContact(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-email">Email</Label>
+              <Input id="lead-email" type="email" placeholder="email@example.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-phone">Phone</Label>
+              <Input id="lead-phone" type="tel" placeholder="+1 555 000 0000" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-type">Type</Label>
+              <select
+                id="lead-type"
+                value={formType}
+                onChange={(e) => setFormType(e.target.value as 'lead' | 'opportunity')}
+                className="w-full rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="lead">Lead</option>
+                <option value="opportunity">Opportunity</option>
+              </select>
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ name: formName, contact_name: formContact, email_from: formEmail, phone: formPhone, type: formType })}
+              disabled={createMut.isPending || !formName}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Lead'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/crm/leads')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

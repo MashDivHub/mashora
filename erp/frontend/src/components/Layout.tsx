@@ -51,6 +51,7 @@ import {
   cn,
 } from '@mashora/design-system'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 // ---------------------------------------------------------------------------
 // Navigation structure – grouped into labelled sections
@@ -115,10 +116,10 @@ const HEADER_HEIGHT = 'h-16'
 
 // Available locales
 const LOCALES = [
-  { code: 'en', label: 'English' },
-  { code: 'ar', label: 'العربية' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
+  { code: 'en_US', label: 'English' },
+  { code: 'ar_001', label: 'العربية' },
+  { code: 'fr_FR', label: 'Français' },
+  { code: 'es_ES', label: 'Español' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -404,7 +405,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
-  const [locale, setLocale] = useState('en')
+  const { lang: locale, setLang: setLocale } = useLanguage()
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -586,24 +587,38 @@ export default function Layout() {
                 </DropdownMenu>
 
                 {/* Notifications */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Notifications"
-                      className="relative rounded-full border border-border/70 bg-background/70 backdrop-blur"
-                    >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label="Notifications" className="relative rounded-full border border-border/70 bg-background/70 backdrop-blur">
                       <Bell className="h-4 w-4" />
                       <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-white">
                         3
                       </span>
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Notifications</p>
-                  </TooltipContent>
-                </Tooltip>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="max-h-64 overflow-y-auto">
+                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
+                        <span className="text-sm font-medium">System Ready</span>
+                        <span className="text-xs text-muted-foreground">Mashora ERP backend is connected and operational.</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
+                        <span className="text-sm font-medium">104 Modules Loaded</span>
+                        <span className="text-xs text-muted-foreground">All installed modules are active and ready.</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
+                        <span className="text-sm font-medium">Welcome to Mashora</span>
+                        <span className="text-xs text-muted-foreground">Your enterprise workspace is configured.</span>
+                      </DropdownMenuItem>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="justify-center text-sm text-muted-foreground cursor-pointer rounded-lg">
+                      View all notifications
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* Profile dropdown */}
                 <DropdownMenu>

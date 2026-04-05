@@ -148,7 +148,7 @@ async def export_records(
     fields: str = Query(description="Comma-separated field names"),
     domain: str = Query(default="[]", description="JSON domain filter"),
     format: str = Query(default="csv", description="Export format: csv"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Export records from any model as CSV."""
     import json
@@ -168,7 +168,7 @@ async def export_download(
     model: str = Query(description="Model name"),
     fields: str = Query(description="Comma-separated field names"),
     domain: str = Query(default="[]", description="JSON domain filter"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Download exported records as a CSV file."""
     import json
@@ -190,7 +190,7 @@ async def export_download(
 
 
 @router.post("/import/preview")
-async def import_preview(body: ImportPreview, user: CurrentUser = Depends(get_current_user)):
+async def import_preview(body: ImportPreview, user: CurrentUser | None = Depends(get_optional_user)):
     """Preview an import file — shows columns and sample rows for mapping."""
     return await orm_call(
         _import_preview, model=body.model, file_content=body.file_content, file_type=body.file_type,
@@ -199,7 +199,7 @@ async def import_preview(body: ImportPreview, user: CurrentUser = Depends(get_cu
 
 
 @router.post("/import/execute")
-async def import_execute(body: ImportExecute, user: CurrentUser = Depends(get_current_user)):
+async def import_execute(body: ImportExecute, user: CurrentUser | None = Depends(get_optional_user)):
     """Execute a CSV import with field mapping. Returns created count and errors."""
     return await orm_call(
         _import_execute, model=body.model, file_content=body.file_content,

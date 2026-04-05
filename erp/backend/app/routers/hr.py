@@ -78,14 +78,14 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 # ============================================
 
 @router.post("/employees")
-async def get_employees(params: EmployeeListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_employees(params: EmployeeListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List employees with filters."""
     p = params or EmployeeListParams()
     return await orm_call(list_employees, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/employees/{employee_id}")
-async def get_employee_detail(employee_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_employee_detail(employee_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get full employee details."""
     result = await orm_call(get_employee, employee_id=employee_id, uid=_uid(user), context=_ctx(user))
     if result is None:
@@ -94,13 +94,13 @@ async def get_employee_detail(employee_id: int, user: CurrentUser = Depends(get_
 
 
 @router.post("/employees/create", status_code=201)
-async def create_new_employee(body: EmployeeCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_new_employee(body: EmployeeCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new employee."""
     return await orm_call(create_employee, vals=body.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.put("/employees/{employee_id}")
-async def update_existing_employee(employee_id: int, body: EmployeeUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update_existing_employee(employee_id: int, body: EmployeeUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update an employee."""
     vals = body.model_dump(exclude_none=True)
     return await orm_call(update_employee, employee_id=employee_id, vals=vals, uid=_uid(user), context=_ctx(user))
@@ -111,7 +111,7 @@ async def update_existing_employee(employee_id: int, body: EmployeeUpdate, user:
 # ============================================
 
 @router.post("/departments")
-async def get_departments(params: DepartmentListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_departments(params: DepartmentListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List departments (hierarchical)."""
     p = params or DepartmentListParams()
     return await orm_call(list_departments, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
@@ -122,7 +122,7 @@ async def get_departments(params: DepartmentListParams | None = None, user: Curr
 # ============================================
 
 @router.get("/jobs")
-async def get_jobs(user: CurrentUser = Depends(get_current_user)):
+async def get_jobs(user: CurrentUser | None = Depends(get_optional_user)):
     """List job positions."""
     return await orm_call(list_jobs, uid=_uid(user), context=_ctx(user))
 
@@ -132,7 +132,7 @@ async def get_jobs(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.post("/attendance")
-async def get_attendance(params: AttendanceListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_attendance(params: AttendanceListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List attendance records."""
     p = params or AttendanceListParams()
     return await orm_call(list_attendance, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
@@ -143,32 +143,32 @@ async def get_attendance(params: AttendanceListParams | None = None, user: Curre
 # ============================================
 
 @router.post("/leaves")
-async def get_leaves(params: LeaveListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_leaves(params: LeaveListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List leave/time-off requests."""
     p = params or LeaveListParams()
     return await orm_call(list_leaves, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leaves/create", status_code=201)
-async def create_leave_request(body: LeaveCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_leave_request(body: LeaveCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new leave request."""
     return await orm_call(create_leave, vals=body.model_dump(exclude_none=True), uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leaves/{leave_id}/approve")
-async def approve_leave_request(leave_id: int, user: CurrentUser = Depends(get_current_user)):
+async def approve_leave_request(leave_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Approve a leave request."""
     return await orm_call(approve_leave, leave_id=leave_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leaves/{leave_id}/refuse")
-async def refuse_leave_request(leave_id: int, user: CurrentUser = Depends(get_current_user)):
+async def refuse_leave_request(leave_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Refuse a leave request."""
     return await orm_call(refuse_leave, leave_id=leave_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/leaves/{leave_id}/reset")
-async def reset_leave_request(leave_id: int, user: CurrentUser = Depends(get_current_user)):
+async def reset_leave_request(leave_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Reset a leave request back to draft."""
     return await orm_call(reset_leave, leave_id=leave_id, uid=_uid(user), context=_ctx(user))
 
@@ -178,7 +178,7 @@ async def reset_leave_request(leave_id: int, user: CurrentUser = Depends(get_cur
 # ============================================
 
 @router.get("/leave-types")
-async def get_leave_types(user: CurrentUser = Depends(get_current_user)):
+async def get_leave_types(user: CurrentUser | None = Depends(get_optional_user)):
     """List leave types (Sick, Annual, etc.)."""
     return await orm_call(list_leave_types, uid=_uid(user), context=_ctx(user))
 
@@ -188,7 +188,7 @@ async def get_leave_types(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.get("/dashboard")
-async def dashboard(user: CurrentUser = Depends(get_current_user)):
+async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get HR dashboard summary metrics."""
     return await orm_call(get_hr_dashboard, uid=_uid(user), context=_ctx(user))
 
@@ -198,7 +198,7 @@ async def dashboard(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.post("/allocations")
-async def get_allocations(params: AllocationListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_allocations(params: AllocationListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List leave allocations with filters."""
     p = params or AllocationListParams()
     domain = []
@@ -212,7 +212,7 @@ async def get_allocations(params: AllocationListParams | None = None, user: Curr
 
 
 @router.get("/allocations/{allocation_id}")
-async def get_allocation_detail(allocation_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_allocation_detail(allocation_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get a single leave allocation."""
     result = await orm_call(get_allocation, allocation_id=allocation_id, uid=_uid(user), context=_ctx(user))
     if result is None:
@@ -221,25 +221,25 @@ async def get_allocation_detail(allocation_id: int, user: CurrentUser = Depends(
 
 
 @router.post("/allocations/create", status_code=201)
-async def create_allocation_endpoint(body: AllocationCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_allocation_endpoint(body: AllocationCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new leave allocation."""
     return await orm_call(create_allocation, vals=body.model_dump(exclude_none=True), uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/allocations/{allocation_id}/approve")
-async def approve_allocation_endpoint(allocation_id: int, user: CurrentUser = Depends(get_current_user)):
+async def approve_allocation_endpoint(allocation_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Approve a leave allocation."""
     return await orm_call(approve_allocation, allocation_id=allocation_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/allocations/{allocation_id}/refuse")
-async def refuse_allocation_endpoint(allocation_id: int, user: CurrentUser = Depends(get_current_user)):
+async def refuse_allocation_endpoint(allocation_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Refuse a leave allocation."""
     return await orm_call(refuse_allocation, allocation_id=allocation_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/allocations/{allocation_id}/reset")
-async def reset_allocation_endpoint(allocation_id: int, user: CurrentUser = Depends(get_current_user)):
+async def reset_allocation_endpoint(allocation_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Reset a leave allocation back to draft."""
     return await orm_call(reset_allocation, allocation_id=allocation_id, uid=_uid(user), context=_ctx(user))
 
@@ -249,7 +249,7 @@ async def reset_allocation_endpoint(allocation_id: int, user: CurrentUser = Depe
 # ============================================
 
 @router.post("/expenses")
-async def get_expenses(params: ExpenseListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_expenses(params: ExpenseListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List expenses with filters."""
     p = params or ExpenseListParams()
     domain = []
@@ -265,7 +265,7 @@ async def get_expenses(params: ExpenseListParams | None = None, user: CurrentUse
 
 
 @router.get("/expenses/{expense_id}")
-async def get_expense_detail(expense_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_expense_detail(expense_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get a single expense."""
     result = await orm_call(get_expense, expense_id=expense_id, uid=_uid(user), context=_ctx(user))
     if result is None:
@@ -274,20 +274,20 @@ async def get_expense_detail(expense_id: int, user: CurrentUser = Depends(get_cu
 
 
 @router.post("/expenses/create", status_code=201)
-async def create_expense_endpoint(body: ExpenseCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_expense_endpoint(body: ExpenseCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new expense."""
     return await orm_call(create_expense, vals=body.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.put("/expenses/{expense_id}")
-async def update_expense_endpoint(expense_id: int, body: ExpenseUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update_expense_endpoint(expense_id: int, body: ExpenseUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update an expense."""
     vals = body.model_dump(exclude_none=True)
     return await orm_call(update_expense, expense_id=expense_id, vals=vals, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/expenses/submit")
-async def submit_expenses_endpoint(body: ExpenseSubmitBody, user: CurrentUser = Depends(get_current_user)):
+async def submit_expenses_endpoint(body: ExpenseSubmitBody, user: CurrentUser | None = Depends(get_optional_user)):
     """Create an expense sheet from selected expenses."""
     return await orm_call(submit_expenses, expense_ids=body.expense_ids, uid=_uid(user), context=_ctx(user))
 
@@ -297,7 +297,7 @@ async def submit_expenses_endpoint(body: ExpenseSubmitBody, user: CurrentUser = 
 # ============================================
 
 @router.post("/expense-sheets")
-async def get_expense_sheets(params: ExpenseSheetListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_expense_sheets(params: ExpenseSheetListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List expense sheets with filters."""
     p = params or ExpenseSheetListParams()
     domain = []
@@ -309,18 +309,18 @@ async def get_expense_sheets(params: ExpenseSheetListParams | None = None, user:
 
 
 @router.post("/expense-sheets/{sheet_id}/approve")
-async def approve_expense_sheet_endpoint(sheet_id: int, user: CurrentUser = Depends(get_current_user)):
+async def approve_expense_sheet_endpoint(sheet_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Approve an expense sheet."""
     return await orm_call(approve_expense_sheet, sheet_id=sheet_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/expense-sheets/{sheet_id}/refuse")
-async def refuse_expense_sheet_endpoint(sheet_id: int, body: ExpenseSheetRefuseBody, user: CurrentUser = Depends(get_current_user)):
+async def refuse_expense_sheet_endpoint(sheet_id: int, body: ExpenseSheetRefuseBody, user: CurrentUser | None = Depends(get_optional_user)):
     """Refuse an expense sheet."""
     return await orm_call(refuse_expense_sheet, sheet_id=sheet_id, reason=body.reason, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/expense-sheets/{sheet_id}/post")
-async def post_expense_sheet_endpoint(sheet_id: int, user: CurrentUser = Depends(get_current_user)):
+async def post_expense_sheet_endpoint(sheet_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Post an expense sheet (create journal entries)."""
     return await orm_call(post_expense_sheet, sheet_id=sheet_id, uid=_uid(user), context=_ctx(user))

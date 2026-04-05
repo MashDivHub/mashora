@@ -48,7 +48,7 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 
 
 @router.post("/{model_name}", response_model=SearchResult)
-async def list_records(model_name: str, params: SearchParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def list_records(model_name: str, params: SearchParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """
     Search and read records from any model.
 
@@ -76,7 +76,7 @@ async def get_fields(
         default=None,
         description="Comma-separated field attributes to return, e.g. 'string,type,required'",
     ),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get field definitions for a model."""
     attrs = attributes.split(",") if attributes else None
@@ -98,7 +98,7 @@ async def get_record(
         default=None,
         description="Comma-separated field names to read.",
     ),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Read a single record by ID."""
     field_list = fields.split(",") if fields else None
@@ -117,7 +117,7 @@ async def get_record(
 
 
 @router.post("/{model_name}/create", status_code=201)
-async def create(model_name: str, body: RecordCreate, user: CurrentUser = Depends(get_current_user)):
+async def create(model_name: str, body: RecordCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new record."""
     result = await orm_call(
         create_record,
@@ -130,7 +130,7 @@ async def create(model_name: str, body: RecordCreate, user: CurrentUser = Depend
 
 
 @router.put("/{model_name}/{record_id}")
-async def update(model_name: str, record_id: int, body: RecordUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update(model_name: str, record_id: int, body: RecordUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update an existing record."""
     result = await orm_call(
         write_record,
@@ -144,7 +144,7 @@ async def update(model_name: str, record_id: int, body: RecordUpdate, user: Curr
 
 
 @router.delete("/{model_name}/{record_id}")
-async def delete(model_name: str, record_id: int, user: CurrentUser = Depends(get_current_user)):
+async def delete(model_name: str, record_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Delete a record."""
     await orm_call(
         delete_record,
@@ -157,7 +157,7 @@ async def delete(model_name: str, record_id: int, user: CurrentUser = Depends(ge
 
 
 @router.post("/{model_name}/call")
-async def call_model_method(model_name: str, body: MethodCall, user: CurrentUser = Depends(get_current_user)):
+async def call_model_method(model_name: str, body: MethodCall, user: CurrentUser | None = Depends(get_optional_user)):
     """
     Call an arbitrary method on a recordset.
 

@@ -1,12 +1,13 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   PageHeader, Button, Badge, Separator, Skeleton, StatusBar,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  CardTitle, cn,
+  CardTitle, Input, Label, cn,
 } from '@mashora/design-system'
 import { ArrowLeft, Send, Ban, CreditCard, FileText, Hash, Calendar, Building2 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 const invoiceStates = [
   { value: 'draft', label: 'Draft' },
@@ -54,11 +55,26 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const isNew = id === 'new'
+
+  const [formPartner, setFormPartner] = useState('')
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
+  const [formMoveType, setFormMoveType] = useState(searchParams.get('type') ?? 'out_invoice')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/accounting/invoices/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['invoice'] })
+      navigate(`/accounting/invoices/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => erpClient.raw.get(`/accounting/invoices/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const postMutation = useMutation({
@@ -70,6 +86,76 @@ export default function InvoiceDetail() {
     mutationFn: () => erpClient.raw.post(`/accounting/invoices/${id}/cancel`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoice', id] }),
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    const moveTypeOptions = [
+      { value: 'out_invoice', label: 'Customer Invoice' },
+      { value: 'in_invoice', label: 'Vendor Bill' },
+      { value: 'out_refund', label: 'Credit Note' },
+      { value: 'in_refund', label: 'Vendor Refund' },
+    ]
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Accounting</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Invoice</h1>
+        </div>
+        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Invoice Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="inv-partner">Partner</Label>
+              <Input
+                id="inv-partner"
+                placeholder="Partner name"
+                value={formPartner}
+                onChange={(e) => setFormPartner(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="inv-date">Invoice Date</Label>
+              <Input
+                id="inv-date"
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="inv-type">Type</Label>
+              <select
+                id="inv-type"
+                value={formMoveType}
+                onChange={(e) => setFormMoveType(e.target.value)}
+                className="w-full rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {moveTypeOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ partner_name: formPartner, invoice_date: formDate, move_type: formMoveType })}
+              disabled={createMut.isPending || !formPartner}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Invoice'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/accounting/invoices')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

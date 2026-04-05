@@ -1,13 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Button, Badge, Skeleton, cn,
+  Button, Badge, Skeleton, Input, Label, CardTitle, cn,
 } from '@mashora/design-system'
 import {
   ArrowLeft, ListTodo, Target, Calendar, TrendingUp, Star,
   FolderKanban, User, CheckCircle2, Clock, ChevronRight,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -121,24 +122,82 @@ function DetailRow({ label, children, last = false }: { label: string; children:
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formName, setFormName] = useState('')
+  const [formManager, setFormManager] = useState('')
+  const [formCustomer, setFormCustomer] = useState('')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/projects/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['project'] })
+      navigate(`/projects/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
     queryFn: () => erpClient.raw.get(`/projects/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const { data: pipeline } = useQuery({
     queryKey: ['project-pipeline', id],
     queryFn: () => erpClient.raw.get(`/projects/${id}/pipeline`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const { data: milestones } = useQuery({
     queryKey: ['project-milestones', id],
     queryFn: () => erpClient.raw.get(`/projects/${id}/milestones`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Projects</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Project</h1>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Project Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-name">Name</Label>
+              <Input id="proj-name" placeholder="Project name" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-manager">Manager</Label>
+              <Input id="proj-manager" placeholder="Project manager" value={formManager} onChange={(e) => setFormManager(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-customer">Customer</Label>
+              <Input id="proj-customer" placeholder="Customer (optional)" value={formCustomer} onChange={(e) => setFormCustomer(e.target.value)} className="rounded-2xl" />
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ name: formName, manager_name: formManager, partner_name: formCustomer || undefined })}
+              disabled={createMut.isPending || !formName}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Project'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/projects/list')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

@@ -4,6 +4,7 @@ import {
   Button, Badge, Skeleton,
   CardTitle, CardDescription,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Input, Label,
   cn,
 } from '@mashora/design-system'
 import {
@@ -11,6 +12,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -125,11 +127,24 @@ export default function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formVendor, setFormVendor] = useState('')
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/purchase/orders/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-order'] })
+      navigate(`/purchase/orders/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['purchase-order', id],
     queryFn: () => erpClient.raw.get(`/purchase/orders/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const confirmMutation = useMutation({
@@ -156,6 +171,57 @@ export default function PurchaseOrderDetail() {
     mutationFn: () => erpClient.raw.post(`/purchase/orders/${id}/create-bill`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-order', id] }),
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Purchase</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Order</h1>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Order Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="po-vendor">Vendor</Label>
+              <Input
+                id="po-vendor"
+                placeholder="Vendor name"
+                value={formVendor}
+                onChange={(e) => setFormVendor(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="po-date">Order Date</Label>
+              <Input
+                id="po-date"
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ vendor_name: formVendor, date_order: formDate })}
+              disabled={createMut.isPending || !formVendor}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Order'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/purchase/orders')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Loading state ──
   if (isLoading) {

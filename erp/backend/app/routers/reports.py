@@ -60,7 +60,7 @@ def _generate_report(report_name: str, record_ids: list[int], report_type: str =
 @router.get("/available")
 async def list_reports(
     model: str | None = Query(default=None, description="Filter by model name"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List available reports."""
     return await orm_call(_get_available_reports, model=model, uid=_uid(user), context=_ctx(user))
@@ -71,7 +71,7 @@ async def generate_report(
     report_name: str = Query(description="Technical report name, e.g. 'account.report_invoice'"),
     record_ids: str = Query(description="Comma-separated record IDs"),
     report_type: str = Query(default="pdf", description="pdf or html"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Generate a report. Returns base64-encoded content."""
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]
@@ -87,7 +87,7 @@ async def generate_report(
 async def download_report(
     report_name: str = Query(description="Technical report name"),
     record_ids: str = Query(description="Comma-separated record IDs"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Download a report as a PDF file directly."""
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]

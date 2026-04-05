@@ -70,14 +70,14 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 # ============================================
 
 @router.post("/transfers")
-async def get_transfers(params: PickingListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_transfers(params: PickingListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List transfers (receipts, deliveries, internal) with filters."""
     p = params or PickingListParams()
     return await orm_call(list_pickings, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/transfers/{picking_id}")
-async def get_transfer_detail(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_transfer_detail(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get full transfer details including moves and move lines."""
     result = await orm_call(get_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
     if result is None:
@@ -86,7 +86,7 @@ async def get_transfer_detail(picking_id: int, user: CurrentUser = Depends(get_c
 
 
 @router.post("/transfers/create", status_code=201)
-async def create_transfer(body: PickingCreate, user: CurrentUser = Depends(get_current_user)):
+async def create_transfer(body: PickingCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new transfer."""
     vals = body.model_dump(exclude={"moves"}, exclude_none=True)
     moves = [m.model_dump(exclude_none=True) for m in body.moves] if body.moves else None
@@ -94,38 +94,38 @@ async def create_transfer(body: PickingCreate, user: CurrentUser = Depends(get_c
 
 
 @router.put("/transfers/{picking_id}")
-async def update_transfer(picking_id: int, body: PickingUpdate, user: CurrentUser = Depends(get_current_user)):
+async def update_transfer(picking_id: int, body: PickingUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a draft transfer."""
     vals = body.model_dump(exclude_none=True)
     return await orm_call(update_picking, picking_id=picking_id, vals=vals, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/transfers/{picking_id}/confirm")
-async def confirm_transfer(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def confirm_transfer(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Confirm a draft transfer."""
     return await orm_call(confirm_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/transfers/{picking_id}/assign")
-async def check_availability(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def check_availability(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Check availability / reserve stock for the transfer."""
     return await orm_call(assign_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/transfers/{picking_id}/validate")
-async def validate_transfer(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def validate_transfer(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Validate and complete the transfer."""
     return await orm_call(validate_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/transfers/{picking_id}/unreserve")
-async def unreserve_transfer(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def unreserve_transfer(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Release reserved stock."""
     return await orm_call(unreserve_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.post("/transfers/{picking_id}/cancel")
-async def cancel_transfer(picking_id: int, user: CurrentUser = Depends(get_current_user)):
+async def cancel_transfer(picking_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Cancel a transfer."""
     return await orm_call(cancel_picking, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
 
@@ -135,7 +135,7 @@ async def cancel_transfer(picking_id: int, user: CurrentUser = Depends(get_curre
 # ============================================
 
 @router.post("/stock")
-async def get_stock_levels(params: QuantListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_stock_levels(params: QuantListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """Query current stock levels by product, location, lot."""
     p = params or QuantListParams()
     return await orm_call(list_quants, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
@@ -146,7 +146,7 @@ async def get_stock_levels(params: QuantListParams | None = None, user: CurrentU
 # ============================================
 
 @router.post("/locations")
-async def get_locations(params: LocationListParams | None = None, user: CurrentUser = Depends(get_current_user)):
+async def get_locations(params: LocationListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List stock locations."""
     p = params or LocationListParams()
     return await orm_call(list_locations, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
@@ -157,7 +157,7 @@ async def get_locations(params: LocationListParams | None = None, user: CurrentU
 # ============================================
 
 @router.get("/warehouses")
-async def get_warehouses(user: CurrentUser = Depends(get_current_user)):
+async def get_warehouses(user: CurrentUser | None = Depends(get_optional_user)):
     """List all warehouses."""
     return await orm_call(list_warehouses, uid=_uid(user), context=_ctx(user))
 
@@ -167,7 +167,7 @@ async def get_warehouses(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.get("/picking-types")
-async def get_picking_types(user: CurrentUser = Depends(get_current_user)):
+async def get_picking_types(user: CurrentUser | None = Depends(get_optional_user)):
     """List all picking types with their counters."""
     return await orm_call(list_picking_types, uid=_uid(user), context=_ctx(user))
 
@@ -177,7 +177,7 @@ async def get_picking_types(user: CurrentUser = Depends(get_current_user)):
 # ============================================
 
 @router.get("/dashboard")
-async def dashboard(user: CurrentUser = Depends(get_current_user)):
+async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get inventory dashboard summary metrics."""
     return await orm_call(get_inventory_dashboard, uid=_uid(user), context=_ctx(user))
 
@@ -189,7 +189,7 @@ async def dashboard(user: CurrentUser = Depends(get_current_user)):
 @router.post("/inventory/adjustments")
 async def get_inventory_adjustments(
     params: InventoryAdjustmentListParams | None = None,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List stock quants for inventory adjustment (internal locations only)."""
     p = params or InventoryAdjustmentListParams()
@@ -215,7 +215,7 @@ async def get_inventory_adjustments(
 async def set_inventory_count(
     quant_id: int,
     body: InventoryCountBody,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Set the counted quantity for an inventory adjustment quant."""
     return await orm_call(
@@ -228,7 +228,7 @@ async def set_inventory_count(
 @router.post("/inventory/adjustments/apply")
 async def apply_adjustments(
     body: InventoryApplyBody,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Apply inventory adjustments for the given quant IDs."""
     return await orm_call(
@@ -245,7 +245,7 @@ async def apply_adjustments(
 @router.post("/scraps")
 async def get_scraps(
     params: ScrapListParams | None = None,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List scrap orders."""
     p = params or ScrapListParams()
@@ -266,7 +266,7 @@ async def get_scraps(
 @router.post("/scraps/create", status_code=201)
 async def create_scrap_order(
     body: ScrapCreate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create a new scrap order."""
     vals = body.model_dump(exclude_none=True)
@@ -276,7 +276,7 @@ async def create_scrap_order(
 @router.post("/scraps/{scrap_id}/validate")
 async def validate_scrap_order(
     scrap_id: int,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Validate (confirm) a scrap order."""
     return await orm_call(validate_scrap, scrap_id=scrap_id, uid=_uid(user), context=_ctx(user))
@@ -289,7 +289,7 @@ async def validate_scrap_order(
 @router.post("/transfers/{picking_id}/return")
 async def return_transfer(
     picking_id: int,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create a return transfer for the given picking."""
     result = await orm_call(create_return, picking_id=picking_id, uid=_uid(user), context=_ctx(user))
@@ -305,7 +305,7 @@ async def return_transfer(
 @router.post("/lots")
 async def get_lots(
     params: LotListParams | None = None,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List lot/serial numbers."""
     p = params or LotListParams()
@@ -324,7 +324,7 @@ async def get_lots(
 @router.get("/lots/{lot_id}")
 async def get_lot_detail(
     lot_id: int,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get a single lot/serial number by ID."""
     result = await orm_call(get_lot, lot_id=lot_id, uid=_uid(user), context=_ctx(user))
@@ -336,7 +336,7 @@ async def get_lot_detail(
 @router.post("/lots/create", status_code=201)
 async def create_lot_record(
     body: LotCreate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create a new lot/serial number."""
     vals = body.model_dump(exclude_none=True)
@@ -347,7 +347,7 @@ async def create_lot_record(
 async def update_lot_record(
     lot_id: int,
     body: LotUpdate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Update an existing lot/serial number."""
     vals = body.model_dump(exclude_none=True)

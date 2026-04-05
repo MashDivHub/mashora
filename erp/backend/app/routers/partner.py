@@ -58,7 +58,7 @@ async def list_partners(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=200),
     order: str = Query(default="name asc"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List partners with optional search and filters."""
     domain: list[Any] = []
@@ -82,7 +82,7 @@ async def list_partners(
 
 
 @router.get("/{partner_id}")
-async def get_partner(partner_id: int, user: CurrentUser = Depends(get_current_user)):
+async def get_partner(partner_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Read a single partner by ID."""
     result = await orm_call(
         read_record,
@@ -103,7 +103,7 @@ async def create_partner(
     email: str | None = Query(default=None),
     phone: str | None = Query(default=None),
     is_company: bool = Query(default=False),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """
     Create a new partner — simplified endpoint for PoC testing.
@@ -129,7 +129,7 @@ async def create_partner(
 
 
 @router.put("/{partner_id}")
-async def update_partner(partner_id: int, name: str | None = None, email: str | None = None, user: CurrentUser = Depends(get_current_user)):
+async def update_partner(partner_id: int, name: str | None = None, email: str | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a partner's name and/or email."""
     vals: dict[str, Any] = {}
     if name is not None:
@@ -152,7 +152,7 @@ async def update_partner(partner_id: int, name: str | None = None, email: str | 
 
 
 @router.delete("/{partner_id}")
-async def delete_partner(partner_id: int, user: CurrentUser = Depends(get_current_user)):
+async def delete_partner(partner_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Delete a partner."""
     await orm_call(
         delete_record,

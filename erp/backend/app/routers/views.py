@@ -26,14 +26,14 @@ async def get_view(
     model_name: str,
     view_type: str,
     view_id: int | None = Query(default=None),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get a parsed view definition (arch XML -> JSON) for a model."""
     return await orm_call(get_view_definition, model=model_name, view_type=view_type, view_id=view_id, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/{model_name}/search")
-async def get_search(model_name: str, user: CurrentUser = Depends(get_current_user)):
+async def get_search(model_name: str, user: CurrentUser | None = Depends(get_optional_user)):
     """Get search view filters and group-by options."""
     return await orm_call(get_search_view, model=model_name, uid=_uid(user), context=_ctx(user))
 
@@ -42,7 +42,7 @@ async def get_search(model_name: str, user: CurrentUser = Depends(get_current_us
 async def get_fields(
     model_name: str,
     fields: str | None = Query(default=None, description="Comma-separated field names"),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get enriched field metadata for dynamic form rendering."""
     field_list = fields.split(",") if fields else None
@@ -50,13 +50,13 @@ async def get_fields(
 
 
 @router.get("/{model_name}/info")
-async def get_model(model_name: str, user: CurrentUser = Depends(get_current_user)):
+async def get_model(model_name: str, user: CurrentUser | None = Depends(get_optional_user)):
     """Get model-level metadata (name, table, access rights)."""
     return await orm_call(get_model_info, model=model_name, uid=_uid(user), context=_ctx(user))
 
 
 @router.get("/{model_name}/selection/{field_name}")
-async def get_selection(model_name: str, field_name: str, user: CurrentUser = Depends(get_current_user)):
+async def get_selection(model_name: str, field_name: str, user: CurrentUser | None = Depends(get_optional_user)):
     """Get selection field values."""
     return await orm_call(get_selection_values, model=model_name, field=field_name, uid=_uid(user), context=_ctx(user))
 
@@ -67,7 +67,7 @@ async def search_related(
     field_name: str,
     q: str = Query(default="", description="Search text"),
     limit: int = Query(default=20, ge=1, le=100),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Search records in a related model (for Many2one autocomplete)."""
     return await orm_call(search_relation, model=model_name, field=field_name, search=q, limit=limit, uid=_uid(user), context=_ctx(user))

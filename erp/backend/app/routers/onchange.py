@@ -93,7 +93,7 @@ def _execute_onchange(
 
 
 @router.post("/model/{model_name}/onchange", response_model=OnchangeResponse)
-async def onchange(model_name: str, body: OnchangeRequest, user: CurrentUser = Depends(get_current_user)):
+async def onchange(model_name: str, body: OnchangeRequest, user: CurrentUser | None = Depends(get_optional_user)):
     """
     Execute an onchange for a form field.
 

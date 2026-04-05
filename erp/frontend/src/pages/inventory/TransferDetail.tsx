@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Button, Badge, Skeleton, StatusBar,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Input, Label, CardTitle,
   cn,
 } from '@mashora/design-system'
 import {
@@ -10,6 +11,7 @@ import {
   MapPin, Calendar, FileText, User, Truck, AlertCircle,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 const pickingStates = [
   { value: 'draft',     label: 'Draft' },
@@ -53,11 +55,25 @@ export default function TransferDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formType, setFormType] = useState('')
+  const [formSrcLoc, setFormSrcLoc] = useState('')
+  const [formDestLoc, setFormDestLoc] = useState('')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/inventory/transfers/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['transfer'] })
+      navigate(`/inventory/transfers/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: picking, isLoading } = useQuery({
     queryKey: ['transfer', id],
     queryFn: () => erpClient.raw.get(`/inventory/transfers/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
 
   const confirmMut = useMutation({
@@ -80,6 +96,67 @@ export default function TransferDetail() {
     mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/cancel`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Inventory</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Transfer</h1>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Transfer Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="tr-type">Transfer Type</Label>
+              <Input
+                id="tr-type"
+                placeholder="e.g. Receipts, Delivery Orders"
+                value={formType}
+                onChange={(e) => setFormType(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tr-src">Source Location</Label>
+              <Input
+                id="tr-src"
+                placeholder="e.g. WH/Stock"
+                value={formSrcLoc}
+                onChange={(e) => setFormSrcLoc(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tr-dest">Destination Location</Label>
+              <Input
+                id="tr-dest"
+                placeholder="e.g. Customers"
+                value={formDestLoc}
+                onChange={(e) => setFormDestLoc(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ picking_type_name: formType, location_src: formSrcLoc, location_dest: formDestLoc })}
+              disabled={createMut.isPending || !formType}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Transfer'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/inventory/transfers')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

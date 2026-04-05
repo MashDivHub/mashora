@@ -1,14 +1,16 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Button, Badge, Skeleton,
   CardTitle, CardDescription,
+  Input, Label,
   cn,
 } from '@mashora/design-system'
 import {
   ArrowLeft, Globe, Globe2, Tag, Package, Star, ChevronRight,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useState } from 'react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -75,12 +77,79 @@ function SectionCard({
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const isNew = id === 'new'
+
+  const [formName, setFormName] = useState('')
+  const [formPrice, setFormPrice] = useState('')
+  const [formType, setFormType] = useState('consu')
+
+  const createMut = useMutation({
+    mutationFn: (vals: Record<string, any>) =>
+      erpClient.raw.post('/website/products/create', vals).then((r) => r.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['website-product'] })
+      navigate(`/website/products/${result.id}`, { replace: true })
+    },
+  })
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['website-product', id],
     queryFn: () => erpClient.raw.get(`/website/products/${id}`).then((r) => r.data),
-    enabled: !!id,
+    enabled: !isNew,
   })
+
+  // ── Create mode ──
+  if (isNew) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Website</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Product</h1>
+        </div>
+        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
+            <CardTitle>Product Details</CardTitle>
+          </div>
+          <div className="p-6 space-y-4 max-w-lg">
+            <div className="space-y-1.5">
+              <Label htmlFor="prod-name">Name</Label>
+              <Input id="prod-name" placeholder="Product name" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prod-price">Sales Price</Label>
+              <Input id="prod-price" type="number" min="0" step="0.01" placeholder="0.00" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} className="rounded-2xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prod-type">Product Type</Label>
+              <select
+                id="prod-type"
+                value={formType}
+                onChange={(e) => setFormType(e.target.value)}
+                className="w-full rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="consu">Consumable</option>
+                <option value="service">Service</option>
+                <option value="product">Storable</option>
+              </select>
+            </div>
+          </div>
+          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
+            <Button
+              onClick={() => createMut.mutate({ name: formName, list_price: formPrice ? Number(formPrice) : 0, type: formType })}
+              disabled={createMut.isPending || !formName}
+              className="rounded-2xl"
+            >
+              {createMut.isPending ? 'Creating…' : 'Create Product'}
+            </Button>
+            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/website/products')}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Loading state ──
   if (isLoading) {
