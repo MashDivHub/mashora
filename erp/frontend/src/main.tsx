@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { configureBoneyard } from 'boneyard-js/react'
 import App from './App'
+import { preloadEngineModules } from './engine/preload'
 import '@mashora/design-system/theme'
 import '@mashora/design-system/globals'
 import './index.css'
@@ -19,8 +20,10 @@ configureBoneyard({
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 30_000,       // 30s stale time
       retry: 1,
+      refetchOnWindowFocus: false,  // Don't refetch on tab switch (ERP users switch tabs a lot)
+      gcTime: 5 * 60 * 1000,       // Keep cached data for 5 minutes
     },
   },
 })
@@ -36,3 +39,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </React.StrictMode>
 )
+
+preloadEngineModules()

@@ -288,6 +288,16 @@ def delete_record(
         return True
 
 
+# Blocked methods - these have dedicated endpoints or are dangerous
+BLOCKED_METHODS = frozenset({
+    'unlink', 'write', 'create', 'search', 'browse', 'sudo',
+    'with_user', 'with_env', 'with_context', 'mapped', 'filtered',
+    'sorted', 'read', 'read_group', 'search_read', 'search_count',
+    'fields_get', 'default_get', 'name_search', 'name_get',
+    'copy', 'export_data', 'load', 'onchange',
+})
+
+
 def call_method(
     model: str,
     record_ids: list[int],
@@ -303,6 +313,12 @@ def call_method(
     This is the escape hatch for business logic methods like
     action_confirm(), action_post(), etc.
     """
+    # Security validation
+    if method.startswith('_'):
+        raise ValueError(f"Cannot call private method '{method}'")
+    if method in BLOCKED_METHODS:
+        raise ValueError(f"Method '{method}' is not allowed via generic call endpoint")
+
     with mashora_env(uid=uid, context=context) as env:
         records = env[model].browse(record_ids)
         method_func = getattr(records, method)
@@ -334,6 +350,64 @@ def get_fields_metadata(
     with mashora_env(uid=uid, context=context) as env:
         Model = env[model]
         return Model.fields_get(attributes=attributes)
+
+
+def read_group(
+    model: str,
+    domain: list | None = None,
+    fields: list[str] | None = None,
+    groupby: list[str] | None = None,
+    orderby: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: int = 0,
+    lazy: bool = True,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> list[dict[str, Any]]:
+    """Perform read_group aggregation on a model."""
+    with mashora_env(uid=uid, context=context) as env:
+        return env[model].read_group(
+            domain or [],
+            fields or [],
+            groupby or [],
+            offset=offset,
+            limit=limit,
+            orderby=orderby or False,
+            lazy=lazy,
+        )
+
+
+def default_get(
+    model: str,
+    fields_list: Optional[list[str]] = None,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> dict[str, Any]:
+    """Get default values for a new record."""
+    with mashora_env(uid=uid, context=context) as env:
+        Model = env[model]
+        fnames = fields_list or [
+            f for f in Model._fields
+            if not f.startswith('_') and f not in ('id', 'create_uid', 'create_date', 'write_uid', 'write_date')
+        ]
+        return Model.default_get(fnames)
+
+
+def name_search(
+    model: str,
+    name: str = '',
+    domain: list | None = None,
+    operator: str = 'ilike',
+    limit: int = 8,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> list[dict[str, Any]]:
+    """Search records by display name (for Many2one autocomplete)."""
+    with mashora_env(uid=uid, context=context) as env:
+        results = env[model].name_search(
+            name=name, domain=domain or [], operator=operator, limit=limit
+        )
+        return [{"id": r[0], "display_name": r[1]} for r in results]
 
 
 def shutdown() -> None:

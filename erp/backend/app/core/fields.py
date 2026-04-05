@@ -5,7 +5,7 @@ Provides enriched field information for dynamic form/list rendering,
 including field types, relations, selection options, and computed field info.
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -157,7 +157,7 @@ def search_relation(
         # Add search filter
         rec_name = RelModel._rec_name or "name"
         if search:
-            domain.append([(rec_name, "ilike", search)])
+            domain.append((rec_name, "ilike", search))
 
         records = RelModel.search(domain, limit=limit)
         data = records.read(["id", rec_name])

@@ -21,16 +21,7 @@ def _ctx(user: CurrentUser | None) -> dict | None:
     return user.get_context() if user else None
 
 
-@router.get("/{model_name}/{view_type}")
-async def get_view(
-    model_name: str,
-    view_type: str,
-    view_id: int | None = Query(default=None),
-    user: CurrentUser | None = Depends(get_optional_user),
-):
-    """Get a parsed view definition (arch XML -> JSON) for a model."""
-    return await orm_call(get_view_definition, model=model_name, view_type=view_type, view_id=view_id, uid=_uid(user), context=_ctx(user))
-
+# --- Specific routes MUST come before the catch-all /{model_name}/{view_type} ---
 
 @router.get("/{model_name}/search")
 async def get_search(model_name: str, user: CurrentUser | None = Depends(get_optional_user)):
@@ -71,3 +62,16 @@ async def search_related(
 ):
     """Search records in a related model (for Many2one autocomplete)."""
     return await orm_call(search_relation, model=model_name, field=field_name, search=q, limit=limit, uid=_uid(user), context=_ctx(user))
+
+
+# --- Catch-all view type route LAST ---
+
+@router.get("/{model_name}/{view_type}")
+async def get_view(
+    model_name: str,
+    view_type: str,
+    view_id: int | None = Query(default=None),
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Get a parsed view definition (arch XML -> JSON) for a model."""
+    return await orm_call(get_view_definition, model=model_name, view_type=view_type, view_id=view_id, uid=_uid(user), context=_ctx(user))

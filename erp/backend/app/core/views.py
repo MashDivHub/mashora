@@ -5,7 +5,7 @@ Converts Mashora's XML view definitions (arch) into JSON structures
 that the React frontend can use to dynamically render forms, lists, and kanban views.
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 from xml.etree import ElementTree as ET
 
 from app.core.orm_adapter import mashora_env
@@ -96,24 +96,16 @@ def _parse_element(element: ET.Element) -> dict:
         result["attrs"] = attrs
 
         # Extract commonly used attributes to top level for convenience
-        if "name" in attrs:
-            result["name"] = attrs["name"]
-        if "string" in attrs:
-            result["string"] = attrs["string"]
-        if "invisible" in attrs:
-            result["invisible"] = attrs["invisible"]
-        if "readonly" in attrs:
-            result["readonly"] = attrs["readonly"]
-        if "required" in attrs:
-            result["required"] = attrs["required"]
-        if "widget" in attrs:
-            result["widget"] = attrs["widget"]
-        if "colspan" in attrs:
-            result["colspan"] = attrs["colspan"]
-        if "col" in attrs:
-            result["col"] = attrs["col"]
-        if "nolabel" in attrs:
-            result["nolabel"] = attrs["nolabel"]
+        for attr in (
+            "name", "string", "invisible", "readonly", "required",
+            "widget", "colspan", "col", "nolabel", "class", "type",
+            "confirm", "context", "for", "states", "domain",
+            "options", "placeholder", "groups", "data-hotkey",
+        ):
+            if attr in attrs:
+                # 'for' is a Python keyword, use 'for_' on the Python side
+                key = "for_" if attr == "for" else attr
+                result[key] = attrs[attr]
 
     # Parse children
     children = []
@@ -126,6 +118,10 @@ def _parse_element(element: ET.Element) -> dict:
     # Text content
     if element.text and element.text.strip():
         result["text"] = element.text.strip()
+
+    # Tail text (text after closing tag, belongs to parent)
+    if element.tail and element.tail.strip():
+        result["tail"] = element.tail.strip()
 
     return result
 

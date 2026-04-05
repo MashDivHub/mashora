@@ -20,6 +20,7 @@ class WebSocketBus {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempts = 0
   private options: Required<BusOptions>
+  private pendingSubscriptions: string[] = []
 
   constructor(options: BusOptions = {}) {
     this.options = {
@@ -30,16 +31,30 @@ class WebSocketBus {
     }
   }
 
+  private safeSend(data: any): boolean {
+    try {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(data))
+        return true
+      }
+    } catch (e) {
+      console.warn('[Bus] Send failed:', e)
+    }
+    return false
+  }
+
   connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return
+    if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) return
 
     try {
       this.ws = new WebSocket(this.options.url)
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0
-        // Subscribe to channels
-        this.ws?.send(JSON.stringify({ subscribe: this.options.channels }))
+        // Send initial subscriptions
+        const channels = [...this.options.channels, ...this.pendingSubscriptions]
+        this.pendingSubscriptions = []
+        this.safeSend({ subscribe: channels })
       }
 
       this.ws.onmessage = (event) => {
@@ -47,16 +62,18 @@ class WebSocketBus {
           const data = JSON.parse(event.data)
 
           if (data.type === 'ping') {
-            this.ws?.send(JSON.stringify({ type: 'pong' }))
+            this.safeSend({ type: 'pong' })
             return
           }
+
+          if (data.type === 'subscribed') return // Ack, ignore
 
           // Dispatch to channel handlers
           const channel = data.channel || 'default'
           const handlers = this.handlers.get(channel)
           if (handlers) {
             handlers.forEach((handler) => {
-              try { handler(data.payload || data) } catch (e) { console.error('Bus handler error:', e) }
+              try { handler(data.payload || data) } catch (e) { console.error('[Bus] Handler error:', e) }
             })
           }
 
@@ -64,23 +81,23 @@ class WebSocketBus {
           const wildcardHandlers = this.handlers.get('*')
           if (wildcardHandlers) {
             wildcardHandlers.forEach((handler) => {
-              try { handler(data) } catch (e) { console.error('Bus handler error:', e) }
+              try { handler(data) } catch (e) { console.error('[Bus] Handler error:', e) }
             })
           }
-        } catch (e) {
-          console.warn('Failed to parse bus message:', e)
+        } catch {
+          // Ignore unparseable messages
         }
       }
 
       this.ws.onclose = () => {
+        this.ws = null
         this.scheduleReconnect()
       }
 
       this.ws.onerror = () => {
-        this.ws?.close()
+        // onclose will fire after this
       }
-    } catch (e) {
-      console.warn('WebSocket connection failed:', e)
+    } catch {
       this.scheduleReconnect()
     }
   }
@@ -102,9 +119,9 @@ class WebSocketBus {
     }
     this.handlers.get(channel)!.add(handler)
 
-    // Subscribe on server if connected
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ subscribe: [channel] }))
+    // Subscribe on server if connected, otherwise queue
+    if (!this.safeSend({ subscribe: [channel] })) {
+      this.pendingSubscriptions.push(channel)
     }
 
     // Return unsubscribe function

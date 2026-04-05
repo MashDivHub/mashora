@@ -1,53 +1,25 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react'
 import { computeLayout } from 'boneyard-js/layout'
 import Layout from './components/Layout'
 
-// Lazy-loaded pages
+// Engine router
+const ActionRouter = lazy(() => import('./engine/ActionRouter'))
+
+// Lazy-loaded pages — dashboards + auth only
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Partners = lazy(() => import('./pages/Partners'))
-const PartnerDetail = lazy(() => import('./pages/PartnerDetail'))
 const Login = lazy(() => import('./pages/Login'))
 const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'))
-const InvoiceList = lazy(() => import('./pages/accounting/InvoiceList'))
-const InvoiceDetail = lazy(() => import('./pages/accounting/InvoiceDetail'))
-const ChartOfAccounts = lazy(() => import('./pages/accounting/ChartOfAccounts'))
-const Payments = lazy(() => import('./pages/accounting/Payments'))
 const SalesDashboard = lazy(() => import('./pages/sales/SalesDashboard'))
-const SalesOrderList = lazy(() => import('./pages/sales/SalesOrderList'))
-const SalesOrderDetail = lazy(() => import('./pages/sales/SalesOrderDetail'))
 const PurchaseDashboard = lazy(() => import('./pages/purchase/PurchaseDashboard'))
-const PurchaseOrderList = lazy(() => import('./pages/purchase/PurchaseOrderList'))
-const PurchaseOrderDetail = lazy(() => import('./pages/purchase/PurchaseOrderDetail'))
 const InventoryDashboard = lazy(() => import('./pages/inventory/InventoryDashboard'))
-const TransferList = lazy(() => import('./pages/inventory/TransferList'))
-const TransferDetail = lazy(() => import('./pages/inventory/TransferDetail'))
-const StockLevels = lazy(() => import('./pages/inventory/StockLevels'))
 const CrmDashboard = lazy(() => import('./pages/crm/CrmDashboard'))
-const Pipeline = lazy(() => import('./pages/crm/Pipeline'))
-const LeadList = lazy(() => import('./pages/crm/LeadList'))
-const LeadDetail = lazy(() => import('./pages/crm/LeadDetail'))
 const WebsiteDashboard = lazy(() => import('./pages/website/WebsiteDashboard'))
-const ProductCatalog = lazy(() => import('./pages/website/ProductCatalog'))
-const ProductDetailPage = lazy(() => import('./pages/website/ProductDetail'))
-const CmsPages = lazy(() => import('./pages/website/CmsPages'))
 const HrDashboard = lazy(() => import('./pages/hr/HrDashboard'))
-const EmployeeList = lazy(() => import('./pages/hr/EmployeeList'))
-const EmployeeDetail = lazy(() => import('./pages/hr/EmployeeDetail'))
-const LeaveRequests = lazy(() => import('./pages/hr/LeaveRequests'))
 const ProjectDashboard = lazy(() => import('./pages/project/ProjectDashboard'))
-const ProjectList = lazy(() => import('./pages/project/ProjectList'))
-const ProjectDetail = lazy(() => import('./pages/project/ProjectDetail'))
-const TaskDetail = lazy(() => import('./pages/project/TaskDetail'))
-const Fleet = lazy(() => import('./pages/secondary/Fleet'))
-const Repairs = lazy(() => import('./pages/secondary/Repairs'))
-const Manufacturing = lazy(() => import('./pages/secondary/Manufacturing'))
-const Events = lazy(() => import('./pages/secondary/Events'))
-const Surveys = lazy(() => import('./pages/secondary/Surveys'))
-const EmailMarketing = lazy(() => import('./pages/secondary/EmailMarketing'))
-const PointOfSale = lazy(() => import('./pages/secondary/PointOfSale'))
-const CalendarPage = lazy(() => import('./pages/secondary/CalendarPage'))
+const SettingsPage = lazy(() => import('./engine/SettingsPage'))
+const ActivityDashboard = lazy(() => import('./engine/ActivityDashboard'))
 
 // ---------------------------------------------------------------------------
 // Boneyard skeleton descriptors for page-level loading
@@ -185,6 +157,12 @@ function LoadingFallback() {
 // Exported for use in individual pages
 export { BoneSkeleton, dashboardBones, listBones, detailBones }
 
+// Redirect helper for legacy URL patterns that include a dynamic :id segment
+function LegacyRedirect({ model }: { model: string }) {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/model/${model}/${id}`} replace />
+}
+
 export default function App() {
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -192,48 +170,61 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
+
+          {/* Hand-coded dashboards (client actions) */}
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="partners" element={<Partners />} />
-          <Route path="partners/:id" element={<PartnerDetail />} />
-          <Route path="accounting" element={<AccountingDashboard />} />
-          <Route path="accounting/invoices" element={<InvoiceList />} />
-          <Route path="accounting/invoices/:id" element={<InvoiceDetail />} />
-          <Route path="accounting/accounts" element={<ChartOfAccounts />} />
-          <Route path="accounting/payments" element={<Payments />} />
           <Route path="sales" element={<SalesDashboard />} />
-          <Route path="sales/orders" element={<SalesOrderList />} />
-          <Route path="sales/orders/:id" element={<SalesOrderDetail />} />
+          <Route path="accounting" element={<AccountingDashboard />} />
           <Route path="purchase" element={<PurchaseDashboard />} />
-          <Route path="purchase/orders" element={<PurchaseOrderList />} />
-          <Route path="purchase/orders/:id" element={<PurchaseOrderDetail />} />
           <Route path="inventory" element={<InventoryDashboard />} />
-          <Route path="inventory/transfers" element={<TransferList />} />
-          <Route path="inventory/transfers/:id" element={<TransferDetail />} />
-          <Route path="inventory/stock" element={<StockLevels />} />
           <Route path="crm" element={<CrmDashboard />} />
-          <Route path="crm/pipeline" element={<Pipeline />} />
-          <Route path="crm/leads" element={<LeadList />} />
-          <Route path="crm/leads/:id" element={<LeadDetail />} />
-          <Route path="website" element={<WebsiteDashboard />} />
-          <Route path="website/products" element={<ProductCatalog />} />
-          <Route path="website/products/:id" element={<ProductDetailPage />} />
-          <Route path="website/pages" element={<CmsPages />} />
           <Route path="hr" element={<HrDashboard />} />
-          <Route path="hr/employees" element={<EmployeeList />} />
-          <Route path="hr/employees/:id" element={<EmployeeDetail />} />
-          <Route path="hr/leaves" element={<LeaveRequests />} />
           <Route path="projects" element={<ProjectDashboard />} />
-          <Route path="projects/list" element={<ProjectList />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
-          <Route path="projects/tasks/:id" element={<TaskDetail />} />
-          <Route path="fleet" element={<Fleet />} />
-          <Route path="repairs" element={<Repairs />} />
-          <Route path="manufacturing" element={<Manufacturing />} />
-          <Route path="events" element={<Events />} />
-          <Route path="surveys" element={<Surveys />} />
-          <Route path="email-marketing" element={<EmailMarketing />} />
-          <Route path="pos" element={<PointOfSale />} />
-          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="website" element={<WebsiteDashboard />} />
+
+          {/* Settings & Activities */}
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="activities" element={<ActivityDashboard />} />
+
+          {/* Dynamic view engine routes */}
+          <Route path="action/:actionId/*" element={<ActionRouter />} />
+          <Route path="model/:model" element={<ActionRouter />} />
+          <Route path="model/:model/:id" element={<ActionRouter />} />
+
+          {/* Legacy URL redirects — map old paths to new dynamic routes */}
+          <Route path="partners" element={<Navigate to="/model/res.partner" replace />} />
+          <Route path="partners/:id" element={<LegacyRedirect model="res.partner" />} />
+          <Route path="sales/orders" element={<Navigate to="/model/sale.order" replace />} />
+          <Route path="sales/orders/:id" element={<LegacyRedirect model="sale.order" />} />
+          <Route path="purchase/orders" element={<Navigate to="/model/purchase.order" replace />} />
+          <Route path="purchase/orders/:id" element={<LegacyRedirect model="purchase.order" />} />
+          <Route path="accounting/invoices" element={<Navigate to="/model/account.move" replace />} />
+          <Route path="accounting/invoices/:id" element={<LegacyRedirect model="account.move" />} />
+          <Route path="accounting/accounts" element={<Navigate to="/model/account.account" replace />} />
+          <Route path="accounting/payments" element={<Navigate to="/model/account.payment" replace />} />
+          <Route path="inventory/transfers" element={<Navigate to="/model/stock.picking" replace />} />
+          <Route path="inventory/transfers/:id" element={<LegacyRedirect model="stock.picking" />} />
+          <Route path="inventory/stock" element={<Navigate to="/model/stock.quant" replace />} />
+          <Route path="crm/pipeline" element={<Navigate to="/model/crm.lead" replace />} />
+          <Route path="crm/leads" element={<Navigate to="/model/crm.lead" replace />} />
+          <Route path="crm/leads/:id" element={<LegacyRedirect model="crm.lead" />} />
+          <Route path="hr/employees" element={<Navigate to="/model/hr.employee" replace />} />
+          <Route path="hr/employees/:id" element={<LegacyRedirect model="hr.employee" />} />
+          <Route path="hr/leaves" element={<Navigate to="/model/hr.leave" replace />} />
+          <Route path="projects/list" element={<Navigate to="/model/project.project" replace />} />
+          <Route path="projects/:id" element={<LegacyRedirect model="project.project" />} />
+          <Route path="projects/tasks/:id" element={<LegacyRedirect model="project.task" />} />
+          <Route path="website/products" element={<Navigate to="/model/product.template" replace />} />
+          <Route path="website/products/:id" element={<LegacyRedirect model="product.template" />} />
+          <Route path="website/pages" element={<Navigate to="/model/website.page" replace />} />
+          <Route path="fleet" element={<Navigate to="/model/fleet.vehicle" replace />} />
+          <Route path="repairs" element={<Navigate to="/model/repair.order" replace />} />
+          <Route path="manufacturing" element={<Navigate to="/model/mrp.production" replace />} />
+          <Route path="events" element={<Navigate to="/model/event.event" replace />} />
+          <Route path="surveys" element={<Navigate to="/model/survey.survey" replace />} />
+          <Route path="email-marketing" element={<Navigate to="/model/mailing.mailing" replace />} />
+          <Route path="pos" element={<Navigate to="/model/pos.session" replace />} />
+          <Route path="calendar" element={<Navigate to="/model/calendar.event" replace />} />
         </Route>
       </Routes>
     </Suspense>

@@ -114,6 +114,10 @@ from app.routers.chatter import router as chatter_router
 from app.routers.reports import router as reports_router
 from app.routers.import_export import router as import_export_router
 from app.routers.views import router as views_router
+from app.routers.actions import router as actions_router
+from app.routers.menus import router as menus_router
+from app.routers.settings import router as settings_router
+from app.routers.attachments import router as attachments_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(generic_router, prefix="/api/v1")
@@ -136,6 +140,10 @@ app.include_router(chatter_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(import_export_router, prefix="/api/v1")
 app.include_router(views_router, prefix="/api/v1")
+app.include_router(actions_router, prefix="/api/v1")
+app.include_router(menus_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
+app.include_router(attachments_router, prefix="/api/v1")
 
 
 @app.get("/")

@@ -12,7 +12,7 @@ Examples: Register Payment, Send Invoice, Confirm Order
 """
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
@@ -82,6 +82,8 @@ def _execute_wizard(
     uid: int = 1,
 ) -> Any:
     """Execute a wizard action method."""
+    if action.startswith('_'):
+        raise HTTPException(status_code=400, detail=f"Cannot call private method '{action}'")
     with mashora_env(uid=uid) as env:
         record = env[model].browse(wizard_id)
         method = getattr(record, action)

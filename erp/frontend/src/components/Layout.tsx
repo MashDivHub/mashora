@@ -33,6 +33,7 @@ import {
   Languages,
   Bell,
   ChevronDown,
+  CalendarCheck,
 } from 'lucide-react'
 import {
   Button,
@@ -51,7 +52,13 @@ import {
   cn,
 } from '@mashora/design-system'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLanguage } from '@/lib/i18n'
+import DynamicSidebar from '@/engine/DynamicSidebar'
+import { DebugToggle } from '@/engine/DebugMode'
+import { useCompanyStore } from '@/engine/CompanyStore'
+import { useNotificationStore } from '@/engine/NotificationStore'
+import { useBusSubscription } from '@/lib/websocket'
 
 // ---------------------------------------------------------------------------
 // Navigation structure – grouped into labelled sections
@@ -62,6 +69,7 @@ const navSections = [
     label: 'Core',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Activities', href: '/activities', icon: CalendarCheck },
       { name: 'Contacts', href: '/partners', icon: Users },
     ],
   },
@@ -105,6 +113,12 @@ const navSections = [
       { name: 'Email Marketing', href: '/email-marketing', icon: Mail },
       { name: 'POS', href: '/pos', icon: Monitor },
       { name: 'Calendar', href: '/calendar', icon: Calendar },
+    ],
+  },
+  {
+    label: 'Admin',
+    items: [
+      { name: 'Settings', href: '/settings', icon: Settings },
     ],
   },
 ]
@@ -242,6 +256,22 @@ function ThemeToggle() {
 
 function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () => void }) {
   const location = useLocation()
+  const [navMode, setNavMode] = useState<'static' | 'dynamic'>(() => {
+    try {
+      return (localStorage.getItem('sidebar-nav-mode') as 'static' | 'dynamic') || 'static'
+    } catch {
+      return 'static'
+    }
+  })
+
+  function switchMode(mode: 'static' | 'dynamic') {
+    setNavMode(mode)
+    try {
+      localStorage.setItem('sidebar-nav-mode', mode)
+    } catch {
+      // ignore
+    }
+  }
 
   if (collapsed) {
     return (
@@ -295,39 +325,69 @@ function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () 
         </p>
       </div>
 
-      {/* Sectioned navigation */}
-      <nav className="space-y-5" aria-label="Main navigation">
-        {navSections.map((section) => (
-          <div key={section.label}>
-            <p className="mb-1.5 px-4 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              {section.label}
-            </p>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const Icon = item.icon
-                const isActive = location.pathname.startsWith(item.href)
-                return (
-                  <NavLink
-                    key={item.name}
-                    to={item.href}
-                    onClick={onClose}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={cn(
-                      'flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-all',
-                      isActive
-                        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-950/15 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:shadow-none'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" />
-                    <span>{item.name}</span>
-                  </NavLink>
-                )
-              })}
+      {/* Nav mode toggle */}
+      <div className="mb-4 flex items-center gap-1 rounded-2xl border border-border/60 bg-muted/30 p-1">
+        <button
+          onClick={() => switchMode('static')}
+          className={cn(
+            'flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all',
+            navMode === 'static'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Static
+        </button>
+        <button
+          onClick={() => switchMode('dynamic')}
+          className={cn(
+            'flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all',
+            navMode === 'dynamic'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Dynamic
+        </button>
+      </div>
+
+      {navMode === 'dynamic' ? (
+        <DynamicSidebar onNavigate={onClose} />
+      ) : (
+        /* Sectioned navigation */
+        <nav className="space-y-5" aria-label="Main navigation">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <p className="mb-1.5 px-4 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                {section.label}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive = location.pathname.startsWith(item.href)
+                  return (
+                    <NavLink
+                      key={item.name}
+                      to={item.href}
+                      onClick={onClose}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-all',
+                        isActive
+                          ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-950/15 dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:shadow-none'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span>{item.name}</span>
+                    </NavLink>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
+      )}
     </div>
   )
 }
@@ -406,6 +466,31 @@ export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const { lang: locale, setLang: setLocale } = useLanguage()
+  const { companies, currentCompanyId, fetchCompanies, setCurrentCompany } = useCompanyStore()
+  const queryClient = useQueryClient()
+  const { notifications, unreadCount, markRead, markAllRead, fetchNotifications } = useNotificationStore()
+
+  useEffect(() => {
+    fetchCompanies()
+    fetchNotifications()
+  }, [fetchCompanies, fetchNotifications])
+
+  useBusSubscription('notification', (data: any) => {
+    if (data && data.title) {
+      useNotificationStore.getState().addNotification({
+        title: data.title,
+        body: data.body || '',
+        model: data.model,
+        resId: data.res_id,
+      })
+    }
+  })
+
+  const handleCompanyChange = (companyId: number) => {
+    setCurrentCompany(companyId)
+    // Invalidate all queries to reload with new company context
+    queryClient.invalidateQueries()
+  }
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -546,6 +631,9 @@ export default function Layout() {
                   </TooltipContent>
                 </Tooltip>
 
+                {/* Debug toggle */}
+                <DebugToggle />
+
                 {/* Theme toggle */}
                 <ThemeToggle />
 
@@ -591,34 +679,83 @@ export default function Layout() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon-sm" aria-label="Notifications" className="relative rounded-full border border-border/70 bg-background/70 backdrop-blur">
                       <Bell className="h-4 w-4" />
-                      <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-white">
-                        3
-                      </span>
+                      {unreadCount > 0 && (
+                        <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-white">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <div className="max-h-64 overflow-y-auto">
-                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
-                        <span className="text-sm font-medium">System Ready</span>
-                        <span className="text-xs text-muted-foreground">Mashora ERP backend is connected and operational.</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
-                        <span className="text-sm font-medium">104 Modules Loaded</span>
-                        <span className="text-xs text-muted-foreground">All installed modules are active and ready.</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="flex flex-col items-start gap-1 rounded-lg py-3">
-                        <span className="text-sm font-medium">Welcome to Mashora</span>
-                        <span className="text-xs text-muted-foreground">Your enterprise workspace is configured.</span>
-                      </DropdownMenuItem>
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-sm text-muted-foreground">No notifications</div>
+                      ) : (
+                        notifications.slice(0, 10).map(notif => (
+                          <DropdownMenuItem
+                            key={notif.id}
+                            className={cn(
+                              'flex flex-col items-start gap-1 rounded-lg py-3 cursor-pointer',
+                              !notif.read && 'bg-accent/50'
+                            )}
+                            onClick={() => markRead(notif.id)}
+                          >
+                            <span className="text-sm font-medium">{notif.title}</span>
+                            <span className="text-xs text-muted-foreground line-clamp-2">{notif.body}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {notif.timestamp.toLocaleString()}
+                            </span>
+                          </DropdownMenuItem>
+                        ))
+                      )}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="justify-center text-sm text-muted-foreground cursor-pointer rounded-lg">
-                      View all notifications
+                    <DropdownMenuItem
+                      className="justify-center text-sm text-muted-foreground cursor-pointer rounded-lg"
+                      onClick={markAllRead}
+                    >
+                      Mark all as read
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Company switcher */}
+                {companies.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-full border border-border/70 bg-background/70 backdrop-blur gap-1.5 px-3"
+                      >
+                        <Building2 className="h-3.5 w-3.5" />
+                        <span className="hidden text-xs font-medium lg:inline max-w-[100px] truncate">
+                          {companies.find(c => c.id === currentCompanyId)?.name || 'Company'}
+                        </span>
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>Switch Company</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {companies.map(company => (
+                        <DropdownMenuItem
+                          key={company.id}
+                          className={cn(
+                            'cursor-pointer rounded-lg',
+                            company.id === currentCompanyId && 'bg-accent font-medium'
+                          )}
+                          onClick={() => handleCompanyChange(company.id)}
+                        >
+                          <Building2 className="h-4 w-4 mr-2" />
+                          {company.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
                 {/* Profile dropdown */}
                 <DropdownMenu>

@@ -21,7 +21,7 @@ from app.schemas.secondary import VehicleCreate, RepairCreate, ProductionCreate,
 class TestCommonSchemas:
     def test_search_params_defaults(self):
         p = SearchParams()
-        assert p.domain == []
+        assert p.domain is None
         assert p.offset == 0
         assert p.limit == 80
 

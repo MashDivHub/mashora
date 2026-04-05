@@ -12,3 +12,14 @@
 #root {
   min-height: 100vh;
 }
+
+/* Ensure all interactive elements have pointer cursor */
+button,
+[role="button"],
+a[href],
+select,
+input[type="checkbox"],
+input[type="radio"],
+.cursor-pointer {
+  cursor: pointer;
+}

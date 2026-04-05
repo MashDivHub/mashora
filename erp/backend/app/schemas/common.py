@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class SearchParams(BaseModel):
     """Parameters for search/list endpoints."""
-    domain: list[Any] = Field(default_factory=list, description="Mashora domain filter, e.g. [['is_company','=',True]]")
+    domain: Optional[list[Any]] = Field(default=None, description="Mashora domain filter, e.g. [['is_company','=',True]]")
     fields: Optional[list[str]] = Field(default=None, description="Fields to read. None = all fields.")
     offset: int = Field(default=0, ge=0, description="Number of records to skip.")
     limit: Optional[int] = Field(default=80, ge=1, le=1000, description="Max records to return.")
@@ -37,6 +37,30 @@ class MethodCall(BaseModel):
     method: str = Field(description="Method name to call, e.g. 'action_confirm'.")
     args: list[Any] = Field(default_factory=list, description="Positional arguments.")
     kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments.")
+
+
+class ReadGroupParams(BaseModel):
+    """Parameters for read_group aggregation."""
+    domain: Optional[list] = None
+    fields: Optional[list[str]] = None
+    groupby: Optional[list[str]] = None
+    orderby: Optional[str] = None
+    limit: Optional[int] = None
+    offset: int = 0
+    lazy: bool = True
+
+
+class DefaultGetParams(BaseModel):
+    """Parameters for default_get."""
+    fields: Optional[list[str]] = None
+
+
+class NameSearchParams(BaseModel):
+    """Parameters for name_search."""
+    name: str = ""
+    domain: Optional[list] = None
+    operator: str = "ilike"
+    limit: int = 8
 
 
 class ErrorDetail(BaseModel):

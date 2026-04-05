@@ -22,15 +22,21 @@ from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.core.orm_adapter import (
     call_method,
     create_record,
+    default_get,
     delete_record,
     get_fields_metadata,
+    name_search,
     orm_call,
+    read_group,
     read_record,
     search_read,
     write_record,
 )
 from app.schemas.common import (
+    DefaultGetParams,
     MethodCall,
+    NameSearchParams,
+    ReadGroupParams,
     RecordCreate,
     RecordUpdate,
     SearchParams,
@@ -177,3 +183,54 @@ async def call_model_method(model_name: str, body: MethodCall, user: CurrentUser
         context=_ctx(user),
     )
     return {"result": result}
+
+
+@router.post("/{model_name}/read_group")
+async def read_group_endpoint(
+    model_name: str,
+    params: ReadGroupParams,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Perform read_group aggregation (for graphs, pivots, kanban, group-by)."""
+    result = await orm_call(
+        read_group,
+        model=model_name,
+        **params.model_dump(),
+        uid=_uid(user),
+        context=_ctx(user),
+    )
+    return {"groups": result}
+
+
+@router.post("/{model_name}/defaults")
+async def get_defaults(
+    model_name: str,
+    params: DefaultGetParams,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Get default values for a new record."""
+    result = await orm_call(
+        default_get,
+        model=model_name,
+        fields_list=params.fields,
+        uid=_uid(user),
+        context=_ctx(user),
+    )
+    return result
+
+
+@router.post("/{model_name}/name_search")
+async def name_search_endpoint(
+    model_name: str,
+    params: NameSearchParams,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Search by display name for Many2one autocomplete."""
+    result = await orm_call(
+        name_search,
+        model=model_name,
+        **params.model_dump(),
+        uid=_uid(user),
+        context=_ctx(user),
+    )
+    return {"results": result}
