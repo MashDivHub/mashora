@@ -143,14 +143,43 @@ def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[d
 
 PRODUCTION_FIELDS = [
     "id", "name", "state", "product_id", "product_qty",
+    "qty_producing", "product_uom_id",
     "bom_id", "date_start", "date_finished",
-    "company_id", "user_id",
-    "move_raw_ids",
+    "company_id", "user_id", "origin",
+]
+
+PRODUCTION_DETAIL_FIELDS = PRODUCTION_FIELDS + [
+    "move_raw_ids", "move_finished_ids", "workorder_ids",
+    "lot_producing_id", "create_date", "write_date",
 ]
 
 BOM_FIELDS = [
     "id", "code", "product_tmpl_id", "product_qty",
-    "type", "bom_line_ids", "company_id",
+    "product_uom_id", "type", "bom_line_ids", "company_id",
+    "ready_to_produce",
+]
+
+BOM_LINE_FIELDS = [
+    "id", "product_id", "product_qty", "product_uom_id",
+    "bom_id", "sequence",
+]
+
+WORKCENTER_FIELDS = [
+    "id", "name", "code", "active", "company_id",
+    "time_start", "time_stop", "time_efficiency",
+    "capacity", "sequence", "color",
+    "working_state", "oee", "blocked_time", "productive_time",
+]
+
+WORKORDER_FIELDS = [
+    "id", "name", "state", "production_id", "workcenter_id",
+    "product_id", "qty_producing", "qty_produced", "qty_remaining",
+    "date_start", "date_finished", "duration_expected", "duration",
+]
+
+MOVE_RAW_FIELDS = [
+    "id", "product_id", "product_uom_qty", "quantity",
+    "product_uom_id", "state",
 ]
 
 def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -178,7 +207,20 @@ def get_production(production_id: int, uid: int = 1, context: Optional[dict] = N
         p = env["mrp.production"].browse(production_id)
         if not p.exists():
             return None
-        return p.read(PRODUCTION_FIELDS)[0]
+        data = p.read(PRODUCTION_DETAIL_FIELDS)[0]
+        # Read raw materials (components)
+        raw_ids = data.get("move_raw_ids", [])
+        if raw_ids:
+            data["components"] = env["stock.move"].browse(raw_ids).read(MOVE_RAW_FIELDS)
+        else:
+            data["components"] = []
+        # Read work orders
+        wo_ids = data.get("workorder_ids", [])
+        if wo_ids:
+            data["workorders"] = env["mrp.workorder"].browse(wo_ids).read(WORKORDER_FIELDS)
+        else:
+            data["workorders"] = []
+        return data
 
 def update_production(production_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     with mashora_env(uid=uid, context=context) as env:
@@ -223,7 +265,70 @@ def get_bom(bom_id: int, uid: int = 1, context: Optional[dict] = None) -> Option
         b = env["mrp.bom"].browse(bom_id)
         if not b.exists():
             return None
-        return b.read(BOM_FIELDS)[0]
+        data = b.read(BOM_FIELDS)[0]
+        line_ids = data.get("bom_line_ids", [])
+        if line_ids:
+            data["lines"] = env["mrp.bom.line"].browse(line_ids).read(BOM_LINE_FIELDS)
+        else:
+            data["lines"] = []
+        return data
+
+
+def list_workcenters(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List manufacturing work centers."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "mrp.workcenter" not in env.registry:
+            return {"records": [], "total": 0, "warning": "mrp module not installed"}
+        W = env["mrp.workcenter"]
+        records = W.search([], order="sequence asc, name asc")
+        return {"records": records.read(WORKCENTER_FIELDS), "total": len(records)}
+
+
+def list_workorders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List work orders with filters."""
+    domain: list[Any] = []
+    if params.get("state"):
+        domain.append(["state", "in", params["state"]])
+    if params.get("workcenter_id"):
+        domain.append(["workcenter_id", "=", params["workcenter_id"]])
+    if params.get("production_id"):
+        domain.append(["production_id", "=", params["production_id"]])
+    if params.get("search"):
+        domain.append(["name", "ilike", params["search"]])
+    with mashora_env(uid=uid, context=context) as env:
+        if "mrp.workorder" not in env.registry:
+            return {"records": [], "total": 0, "warning": "mrp module not installed"}
+        WO = env["mrp.workorder"]
+        total = WO.search_count(domain)
+        records = WO.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
+                            order=params.get("order", "date_start desc"))
+        return {"records": records.read(WORKORDER_FIELDS), "total": total}
+
+
+def get_mrp_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Get manufacturing dashboard summary."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "mrp.production" not in env.registry:
+            return {"warning": "mrp module not installed"}
+        P = env["mrp.production"]
+        draft = P.search_count([("state", "=", "draft")])
+        confirmed = P.search_count([("state", "=", "confirmed")])
+        in_progress = P.search_count([("state", "=", "progress")])
+        done = P.search_count([("state", "=", "done")])
+        late = P.search_count([
+            ("state", "in", ["confirmed", "progress"]),
+            ("date_start", "<", _today_str()),
+        ])
+        bom_count = 0
+        if "mrp.bom" in env.registry:
+            bom_count = env["mrp.bom"].search_count([])
+        wc_count = 0
+        if "mrp.workcenter" in env.registry:
+            wc_count = env["mrp.workcenter"].search_count([])
+        return {
+            "draft": draft, "confirmed": confirmed, "in_progress": in_progress,
+            "done": done, "late": late, "bom_count": bom_count, "workcenter_count": wc_count,
+        }
 
 
 # ============================================
@@ -444,12 +549,49 @@ POS_SESSION_FIELDS = [
     "id", "name", "state", "config_id", "user_id",
     "start_at", "stop_at",
     "cash_register_balance_start", "cash_register_balance_end_real",
+    "cash_register_balance_end", "cash_register_difference",
+    "order_count", "total_payments_amount",
+]
+
+POS_SESSION_DETAIL_FIELDS = POS_SESSION_FIELDS + [
+    "order_ids", "opening_notes", "closing_notes",
+    "cash_control", "payment_method_ids", "company_id", "currency_id",
 ]
 
 POS_ORDER_FIELDS = [
     "id", "name", "state", "session_id", "partner_id",
     "date_order", "amount_total", "amount_tax",
-    "pos_reference", "lines",
+    "amount_paid", "amount_return",
+    "pos_reference", "employee_id",
+]
+
+POS_ORDER_DETAIL_FIELDS = POS_ORDER_FIELDS + [
+    "lines", "payment_ids", "fiscal_position_id",
+    "to_invoice", "account_move", "config_id",
+]
+
+POS_ORDER_LINE_FIELDS = [
+    "id", "product_id", "full_product_name", "qty",
+    "price_unit", "discount", "price_subtotal",
+    "price_subtotal_incl", "customer_note",
+]
+
+POS_PAYMENT_FIELDS = [
+    "id", "amount", "payment_method_id", "card_type", "transaction_id",
+]
+
+POS_CONFIG_FIELDS = [
+    "id", "name", "company_id", "currency_id",
+    "payment_method_ids", "pricelist_id",
+    "journal_id", "warehouse_id",
+    "module_pos_restaurant", "iface_tax_included",
+    "iface_tipproduct", "tip_product_id",
+    "iface_print_auto", "iface_cashdrawer",
+    "cash_rounding", "limit_categories",
+]
+
+POS_PAYMENT_METHOD_FIELDS = [
+    "id", "name", "type", "is_cash_count", "journal_id",
 ]
 
 def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -475,7 +617,97 @@ def get_pos_session(session_id: int, uid: int = 1, context: Optional[dict] = Non
         s = env["pos.session"].browse(session_id)
         if not s.exists():
             return None
-        return s.read(POS_SESSION_FIELDS + ["order_ids"])[0]
+        data = s.read(POS_SESSION_DETAIL_FIELDS)[0]
+        # Read orders summary
+        order_ids = data.get("order_ids", [])
+        if order_ids:
+            orders = env["pos.order"].browse(order_ids)
+            data["orders"] = orders.read(POS_ORDER_FIELDS)
+        else:
+            data["orders"] = []
+        # Read payment methods
+        pm_ids = data.get("payment_method_ids", [])
+        if pm_ids:
+            data["payment_methods"] = env["pos.payment.method"].browse(pm_ids).read(POS_PAYMENT_METHOD_FIELDS)
+        else:
+            data["payment_methods"] = []
+        return data
+
+
+def get_pos_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Get POS dashboard summary."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "pos.session" not in env.registry:
+            return {"warning": "point_of_sale module not installed"}
+        Session = env["pos.session"]
+        Order = env["pos.order"]
+        open_sessions = Session.search_count([("state", "in", ["opened", "opening_control"])])
+        closed_today = Session.search_count([
+            ("state", "=", "closed"),
+            ("stop_at", ">=", _today_str()),
+        ])
+        total_orders_today = Order.search_count([
+            ("date_order", ">=", _today_str()),
+            ("state", "in", ["paid", "done"]),
+        ])
+        today_orders = Order.search([
+            ("date_order", ">=", _today_str()),
+            ("state", "in", ["paid", "done"]),
+        ], limit=5000)
+        today_revenue = sum(r["amount_total"] for r in today_orders.read(["amount_total"]))
+        return {
+            "open_sessions": open_sessions,
+            "closed_today": closed_today,
+            "orders_today": total_orders_today,
+            "revenue_today": today_revenue,
+        }
+
+
+def _today_str() -> str:
+    import datetime
+    return datetime.date.today().isoformat()
+
+
+def list_pos_configs(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List POS configurations."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "pos.config" not in env.registry:
+            return {"records": [], "total": 0}
+        Config = env["pos.config"]
+        configs = Config.search([])
+        data = configs.read(POS_CONFIG_FIELDS)
+        # Enrich with session counts
+        for cfg in data:
+            cfg["session_count"] = env["pos.session"].search_count([("config_id", "=", cfg["id"])])
+            cfg["open_session"] = env["pos.session"].search_count([
+                ("config_id", "=", cfg["id"]),
+                ("state", "in", ["opened", "opening_control"]),
+            ])
+        return {"records": data, "total": len(data)}
+
+
+def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    with mashora_env(uid=uid, context=context) as env:
+        if "pos.order" not in env.registry:
+            return None
+        o = env["pos.order"].browse(order_id)
+        if not o.exists():
+            return None
+        data = o.read(POS_ORDER_DETAIL_FIELDS)[0]
+        # Read order lines
+        line_ids = data.get("lines", [])
+        if line_ids:
+            data["order_lines"] = env["pos.order.line"].browse(line_ids).read(POS_ORDER_LINE_FIELDS)
+        else:
+            data["order_lines"] = []
+        # Read payments
+        payment_ids = data.get("payment_ids", [])
+        if payment_ids:
+            data["payments"] = env["pos.payment"].browse(payment_ids).read(POS_PAYMENT_FIELDS)
+        else:
+            data["payments"] = []
+        return data
+
 
 def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []

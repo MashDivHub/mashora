@@ -337,3 +337,127 @@ def get_sales_dashboard(
             "to_invoice": to_invoice,
             "month_revenue": month_revenue,
         }
+
+
+# ============================================
+# SALES EXTENSIONS — Loyalty, Margins, Teams
+# ============================================
+
+LOYALTY_PROGRAM_FIELDS = [
+    "id", "name", "program_type", "trigger", "applies_on",
+    "date_from", "date_to", "limit_usage", "max_usage",
+    "portal_visible", "portal_point_name", "currency_id",
+    "company_id", "rule_ids", "reward_ids", "coupon_count",
+    "total_order_count", "active",
+]
+
+LOYALTY_REWARD_FIELDS = [
+    "id", "program_id", "reward_type", "description",
+    "required_points", "discount", "discount_mode",
+    "discount_applicability", "discount_max_amount",
+    "reward_product_id", "reward_product_qty",
+]
+
+LOYALTY_RULE_FIELDS = [
+    "id", "program_id", "mode", "code",
+    "minimum_qty", "minimum_amount",
+    "reward_point_amount", "reward_point_mode",
+    "product_ids", "product_category_id",
+]
+
+LOYALTY_CARD_FIELDS = [
+    "id", "program_id", "partner_id", "code",
+    "points", "expiration_date", "use_count",
+]
+
+
+def list_loyalty_programs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List loyalty/promotion programs."""
+    domain: list[Any] = []
+    if params.get("program_type"):
+        domain.append(["program_type", "=", params["program_type"]])
+    if params.get("search"):
+        domain.append(["name", "ilike", params["search"]])
+    if params.get("active") is not None:
+        domain.append(["active", "=", params["active"]])
+    with mashora_env(uid=uid, context=context) as env:
+        if "loyalty.program" not in env.registry:
+            return {"records": [], "total": 0, "warning": "loyalty module not installed"}
+        P = env["loyalty.program"]
+        total = P.search_count(domain)
+        records = P.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
+                           order=params.get("order", "name asc"))
+        return {"records": records.read(LOYALTY_PROGRAM_FIELDS), "total": total}
+
+
+def get_loyalty_program(program_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Get full loyalty program detail with rules and rewards."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "loyalty.program" not in env.registry:
+            return None
+        p = env["loyalty.program"].browse(program_id)
+        if not p.exists():
+            return None
+        data = p.read(LOYALTY_PROGRAM_FIELDS)[0]
+        # Read rules
+        rule_ids = data.get("rule_ids", [])
+        if rule_ids:
+            data["rules"] = env["loyalty.rule"].browse(rule_ids).read(LOYALTY_RULE_FIELDS)
+        else:
+            data["rules"] = []
+        # Read rewards
+        reward_ids = data.get("reward_ids", [])
+        if reward_ids:
+            data["rewards"] = env["loyalty.reward"].browse(reward_ids).read(LOYALTY_REWARD_FIELDS)
+        else:
+            data["rewards"] = []
+        return data
+
+
+def list_loyalty_cards(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List loyalty cards/coupons."""
+    domain: list[Any] = []
+    if params.get("program_id"):
+        domain.append(["program_id", "=", params["program_id"]])
+    if params.get("partner_id"):
+        domain.append(["partner_id", "=", params["partner_id"]])
+    if params.get("search"):
+        domain.append(["code", "ilike", params["search"]])
+    with mashora_env(uid=uid, context=context) as env:
+        if "loyalty.card" not in env.registry:
+            return {"records": [], "total": 0}
+        C = env["loyalty.card"]
+        total = C.search_count(domain)
+        records = C.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
+                           order=params.get("order", "create_date desc"))
+        return {"records": records.read(LOYALTY_CARD_FIELDS), "total": total}
+
+
+def get_order_margins(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Get margin analysis for a sales order."""
+    with mashora_env(uid=uid, context=context) as env:
+        order = env["sale.order"].browse(order_id)
+        if not order.exists():
+            return None
+        order_data = order.read(["name", "amount_untaxed", "amount_total", "margin", "margin_percent"])[0]
+        # Read lines with margin fields
+        line_ids = order.order_line.ids
+        lines = env["sale.order.line"].browse(line_ids).read([
+            "id", "name", "product_id", "product_uom_qty", "price_unit",
+            "price_subtotal", "purchase_price", "margin", "margin_percent",
+        ])
+        order_data["lines"] = lines
+        return order_data
+
+
+def get_sales_teams(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List sales teams with member counts and revenue."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "crm.team" not in env.registry:
+            return {"records": [], "total": 0}
+        Team = env["crm.team"]
+        teams = Team.search([], order="sequence asc")
+        data = teams.read(["id", "name", "user_id", "member_ids", "company_id", "color"])
+        for t in data:
+            t["member_count"] = len(t.get("member_ids", []))
+        return {"records": data, "total": len(data)}

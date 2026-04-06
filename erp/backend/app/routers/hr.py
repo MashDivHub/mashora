@@ -40,6 +40,7 @@ from app.services.hr_service import (
     list_jobs,
     list_attendance,
     list_leaves,
+    get_leave,
     create_leave,
     approve_leave,
     refuse_leave,
@@ -147,6 +148,15 @@ async def get_leaves(params: LeaveListParams | None = None, user: CurrentUser | 
     """List leave/time-off requests."""
     p = params or LeaveListParams()
     return await orm_call(list_leaves, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+
+
+@router.get("/leaves/{leave_id}")
+async def get_leave_detail(leave_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Get a single leave request by ID."""
+    result = await orm_call(get_leave, leave_id=leave_id, uid=_uid(user), context=_ctx(user))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    return result
 
 
 @router.post("/leaves/create", status_code=201)

@@ -24,7 +24,9 @@ from app.services.secondary_service import (
     list_events, get_event, update_event, event_action, list_registrations, create_registration,
     list_surveys, get_survey, update_survey, survey_action, list_survey_answers,
     list_mailings, get_mailing, update_mailing, mailing_action, get_mailing_stats,
+    list_workcenters, list_workorders, get_mrp_dashboard,
     list_pos_sessions, get_pos_session, list_pos_orders, get_pos_order, pos_session_action,
+    get_pos_dashboard, list_pos_configs,
     list_calendar_events, get_calendar_event, update_calendar_event, delete_calendar_event, calendar_event_action,
 )
 
@@ -172,6 +174,18 @@ async def get_bom_detail(bom_id: int, user: CurrentUser | None = Depends(get_opt
     if result is None:
         raise HTTPException(status_code=404, detail="BOM not found")
     return result
+
+@router.get("/manufacturing/workcenters")
+async def get_workcenters(user: CurrentUser | None = Depends(get_optional_user)):
+    return await orm_call(list_workcenters, uid=_uid(user), context=_ctx(user))
+
+@router.post("/manufacturing/workorders")
+async def get_workorders(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    return await orm_call(list_workorders, params=params or {}, uid=_uid(user), context=_ctx(user))
+
+@router.get("/manufacturing/dashboard")
+async def mrp_dashboard(user: CurrentUser | None = Depends(get_optional_user)):
+    return await orm_call(get_mrp_dashboard, uid=_uid(user), context=_ctx(user))
 
 
 # ============================================
@@ -352,6 +366,14 @@ async def get_pos_order_detail(order_id: int, user: CurrentUser | None = Depends
     if result is None:
         raise HTTPException(status_code=404, detail="POS order not found")
     return result
+
+@router.get("/pos/dashboard")
+async def pos_dashboard(user: CurrentUser | None = Depends(get_optional_user)):
+    return await orm_call(get_pos_dashboard, uid=_uid(user), context=_ctx(user))
+
+@router.get("/pos/configs")
+async def pos_configs(user: CurrentUser | None = Depends(get_optional_user)):
+    return await orm_call(list_pos_configs, uid=_uid(user), context=_ctx(user))
 
 
 # ============================================

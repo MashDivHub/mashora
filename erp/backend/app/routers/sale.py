@@ -33,6 +33,11 @@ from app.services.sale_service import (
     update_order_line,
     delete_order_line,
     get_sales_dashboard,
+    list_loyalty_programs,
+    get_loyalty_program,
+    list_loyalty_cards,
+    get_order_margins,
+    get_sales_teams,
 )
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -166,3 +171,44 @@ async def remove_line(order_id: int, line_id: int, user: CurrentUser | None = De
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get sales dashboard summary metrics."""
     return await orm_call(get_sales_dashboard, uid=_uid(user), context=_ctx(user))
+
+
+# ============================================
+# Loyalty & Promotions
+# ============================================
+
+@router.post("/loyalty/programs")
+async def loyalty_programs(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """List loyalty/promotion programs."""
+    return await orm_call(list_loyalty_programs, params=params or {}, uid=_uid(user), context=_ctx(user))
+
+@router.get("/loyalty/programs/{program_id}")
+async def loyalty_program_detail(program_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Get loyalty program with rules and rewards."""
+    result = await orm_call(get_loyalty_program, program_id=program_id, uid=_uid(user), context=_ctx(user))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Loyalty program not found")
+    return result
+
+@router.post("/loyalty/cards")
+async def loyalty_cards(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """List loyalty cards/coupons."""
+    return await orm_call(list_loyalty_cards, params=params or {}, uid=_uid(user), context=_ctx(user))
+
+
+# ============================================
+# Margins & Teams
+# ============================================
+
+@router.get("/orders/{order_id}/margins")
+async def order_margins(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Get margin analysis for a sales order."""
+    result = await orm_call(get_order_margins, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return result
+
+@router.get("/teams")
+async def sales_teams(user: CurrentUser | None = Depends(get_optional_user)):
+    """List sales teams."""
+    return await orm_call(get_sales_teams, uid=_uid(user), context=_ctx(user))
