@@ -9,9 +9,10 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.core.orm_adapter import mashora_env
+from app.middleware.auth import get_current_user, CurrentUser
 
 router = APIRouter(tags=["bus"])
 
@@ -119,7 +120,7 @@ async def websocket_bus(websocket: WebSocket):
 
 
 @router.post("/bus/notify")
-async def send_notification(channel: str, message: dict[str, Any]):
+async def send_notification(channel: str, message: dict[str, Any], user: CurrentUser = Depends(get_current_user)):
     """
     Send a notification to all WebSocket clients on a channel.
     Used internally by backend services.

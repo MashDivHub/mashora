@@ -1,425 +1,284 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Button, Badge, Skeleton, StatusBar,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  Input, Label, CardTitle,
-  cn,
+  Input, Button, Badge, Skeleton,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn,
 } from '@mashora/design-system'
-import {
-  ArrowLeft, Check, PackageCheck, ClipboardCheck, Undo2, Ban, ArrowRight,
-  MapPin, Calendar, FileText, User, Truck, AlertCircle,
-} from 'lucide-react'
+import { CheckCircle, Printer, RotateCcw, XCircle, Truck, ArrowRight } from 'lucide-react'
+import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type FormTab } from '@/components/shared'
+import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
-import { useState } from 'react'
 
-const pickingStates = [
-  { value: 'draft',     label: 'Draft' },
-  { value: 'confirmed', label: 'Waiting' },
-  { value: 'assigned',  label: 'Ready' },
-  { value: 'done',      label: 'Done' },
+const FORM_FIELDS = [
+  'id', 'name', 'partner_id', 'state', 'picking_type_id', 'picking_type_code',
+  'origin', 'scheduled_date', 'date_done', 'location_id', 'location_dest_id',
+  'move_ids', 'note', 'backorder_id', 'user_id', 'company_id',
 ]
 
-const stateVariants: Record<string, 'secondary' | 'warning' | 'success' | 'default' | 'destructive'> = {
-  draft:     'secondary',
-  waiting:   'warning',
-  confirmed: 'warning',
-  assigned:  'success',
-  done:      'default',
-  cancel:    'destructive',
-}
+const MOVE_FIELDS = [
+  'id', 'product_id', 'product_uom_qty', 'quantity', 'state',
+  'location_id', 'location_dest_id',
+]
 
-const moveStateLabels: Record<string, string> = {
-  draft:     'Draft',
-  waiting:   'Waiting',
-  confirmed: 'Confirmed',
-  assigned:  'Ready',
-  done:      'Done',
-  cancel:    'Cancelled',
-}
-
-function formatQty(qty: number): string {
-  return qty % 1 === 0 ? String(qty) : qty.toFixed(2)
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-3 text-sm border-b border-border/50 last:border-0">
-      <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{children}</span>
-    </div>
-  )
-}
+const STATES = [
+  { key: 'draft', label: 'Draft' },
+  { key: 'confirmed', label: 'Waiting' },
+  { key: 'assigned', label: 'Ready', color: 'success' as const },
+  { key: 'done', label: 'Done', color: 'success' as const },
+  { key: 'cancel', label: 'Cancelled' },
+]
 
 export default function TransferDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isNew = id === 'new'
+  const recordId = isNew ? null : parseInt(id || '0')
+  const [editing, setEditing] = useState(isNew)
+  const [form, setForm] = useState<Record<string, any>>({})
+  const [moves, setMoves] = useState<any[]>([])
 
-  const [formType, setFormType] = useState('')
-  const [formSrcLoc, setFormSrcLoc] = useState('')
-  const [formDestLoc, setFormDestLoc] = useState('')
-
-  const createMut = useMutation({
-    mutationFn: (vals: Record<string, any>) =>
-      erpClient.raw.post('/inventory/transfers/create', vals).then((r) => r.data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['transfer'] })
-      navigate(`/inventory/transfers/${result.id}`, { replace: true })
+  const { data: record, isLoading } = useQuery({
+    queryKey: ['transfer', recordId],
+    queryFn: async () => {
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/stock.picking/defaults', { fields: FORM_FIELDS })
+        return { ...data, id: null, state: 'draft' }
+      }
+      const { data } = await erpClient.raw.get(`/model/stock.picking/${recordId}`)
+      return data
     },
   })
 
-  const { data: picking, isLoading } = useQuery({
-    queryKey: ['transfer', id],
-    queryFn: () => erpClient.raw.get(`/inventory/transfers/${id}`).then((r) => r.data),
-    enabled: !isNew,
+  const { data: moveData } = useQuery({
+    queryKey: ['transfer-moves', recordId],
+    queryFn: async () => {
+      if (!recordId) return []
+      const { data } = await erpClient.raw.post('/model/stock.move', {
+        domain: [['picking_id', '=', recordId]], fields: MOVE_FIELDS, order: 'id asc', limit: 200,
+      })
+      return data.records || []
+    },
+    enabled: !!recordId,
   })
 
-  const confirmMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/confirm`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
-  })
-  const assignMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/assign`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
-  })
-  const validateMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/validate`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
-  })
-  const unreserveMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/unreserve`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
-  })
-  const cancelMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/inventory/transfers/${id}/cancel`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transfer', id] }),
+  useEffect(() => { if (record) { setForm({ ...record }); setMoves(moveData || []) } }, [record, moveData])
+  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    const pickingTypeId = Array.isArray(form.picking_type_id) ? form.picking_type_id[0] : form.picking_type_id
+    if (!pickingTypeId) errs.picking_type_id = 'Operation Type is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
+      const vals: Record<string, any> = {}
+      for (const f of ['origin', 'scheduled_date', 'note']) {
+        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+      }
+      for (const f of ['partner_id', 'picking_type_id', 'location_id', 'location_dest_id', 'user_id']) {
+        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
+        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        if (nv !== ov) vals[f] = nv || false
+      }
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/stock.picking/create', { vals })
+        return data
+      }
+      const { data } = await erpClient.raw.put(`/model/stock.picking/${recordId}`, { vals })
+      return data
+    },
+    onSuccess: (data) => {
+      setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Transfer saved successfully')
+      queryClient.invalidateQueries({ queryKey: ['transfer'] })
+      queryClient.invalidateQueries({ queryKey: ['transfers'] })
+      if (isNew && data?.id) navigate(`/inventory/transfers/${data.id}`, { replace: true })
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+      }
+    },
   })
 
-  // ── Create mode ──
-  if (isNew) {
+  const callMethod = useCallback(async (method: string) => {
+    if (!validate()) return
+    if (!recordId) return
+    try {
+      await erpClient.raw.post('/model/stock.picking/call', { record_ids: [recordId], method })
+      toast.success('Action Complete', `${method.replace('action_', '').replace('button_', '').replace(/_/g, ' ')} executed`)
+      queryClient.invalidateQueries({ queryKey: ['transfer', recordId] })
+      queryClient.invalidateQueries({ queryKey: ['transfer-moves', recordId] })
+    } catch (e: any) {
+      toast.error('Action Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    }
+  }, [recordId, queryClient, validate])
+
+  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const searchM2o = useCallback(async (model: string, q: string, field: string) => {
+    if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
+    try {
+      const { data } = await erpClient.raw.post(`/model/${model}/name_search`, { name: q, limit: 8 })
+      setM2oResults(p => ({ ...p, [field]: data.results || [] }))
+    } catch { setM2oResults(p => ({ ...p, [field]: [] })) }
+  }, [])
+
+  if (isLoading || !record) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
+  }
+
+  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const state = form.state || 'draft'
+  const isDraft = state === 'draft'
+  const isReady = state === 'assigned'
+  const isDone = state === 'done'
+  const isWaiting = state === 'confirmed' || state === 'waiting'
+
+  const M2O = ({ field, model, label, required, errorMsg, onSelect }: { field: string; model: string; label: string; required?: boolean; errorMsg?: string; onSelect?: () => void }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    if (!editing) return <ReadonlyField label={label} value={m2oVal(form[field])} />
     return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Inventory</p>
-          <h1 className="text-2xl font-bold tracking-tight">New Transfer</h1>
+      <FormField label={label} required={required}>
+        <div className="relative">
+          <Input value={open ? q : m2oVal(form[field])} className={`rounded-xl h-9${errorMsg ? ' ring-2 ring-red-500/50' : ''}`} autoComplete="off"
+            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+            onFocus={() => { setQ(m2oVal(form[field])); setOpen(true) }}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
+          {open && (m2oResults[field] || []).length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+              {(m2oResults[field] || []).map((r: any) => (
+                <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
+                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false); onSelect?.() }}>{r.display_name}</button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <CardTitle>Transfer Details</CardTitle>
+        {errorMsg && <p className="text-xs text-destructive mt-1">{errorMsg}</p>}
+      </FormField>
+    )
+  }
+
+  const TF = ({ field, label, type = 'text' }: { field: string; label: string; type?: string }) => {
+    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    return <FormField label={label}><Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" /></FormField>
+  }
+
+  const MovesTable = () => (
+    <div className="rounded-xl border border-border/50 overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-border/40">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider w-[35%]">Product</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[15%]">Demand</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[15%]">Done</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider w-[15%]">From</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider w-[15%]">To</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {moves.length === 0 ? (
+            <TableRow><TableCell colSpan={5} className="h-20 text-center text-muted-foreground">No stock moves</TableCell></TableRow>
+          ) : moves.map(move => (
+            <TableRow key={move.id} className="border-border/30 hover:bg-muted/10">
+              <TableCell className="py-2 text-sm font-medium">{Array.isArray(move.product_id) ? move.product_id[1] : 'Product'}</TableCell>
+              <TableCell className="text-right font-mono text-sm">{Number(move.product_uom_qty || 0).toFixed(2)}</TableCell>
+              <TableCell className={cn('text-right font-mono text-sm', move.quantity > 0 && 'text-emerald-400')}>{Number(move.quantity || 0).toFixed(2)}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{Array.isArray(move.location_id) ? move.location_id[1] : ''}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{Array.isArray(move.location_dest_id) ? move.location_dest_id[1] : ''}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+
+  const tabs: FormTab[] = [
+    { key: 'moves', label: 'Operations', content: <MovesTable /> },
+    {
+      key: 'info', label: 'Additional Info',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="space-y-2">
+            <M2O field="user_id" model="res.users" label="Responsible" />
+            <TF field="origin" label="Source Document" />
+            {form.backorder_id && <ReadonlyField label="Back Order of" value={m2oVal(form.backorder_id)} />}
           </div>
-          <div className="p-6 space-y-4 max-w-lg">
-            <div className="space-y-1.5">
-              <Label htmlFor="tr-type">Transfer Type</Label>
-              <Input
-                id="tr-type"
-                placeholder="e.g. Receipts, Delivery Orders"
-                value={formType}
-                onChange={(e) => setFormType(e.target.value)}
-                className="rounded-2xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tr-src">Source Location</Label>
-              <Input
-                id="tr-src"
-                placeholder="e.g. WH/Stock"
-                value={formSrcLoc}
-                onChange={(e) => setFormSrcLoc(e.target.value)}
-                className="rounded-2xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tr-dest">Destination Location</Label>
-              <Input
-                id="tr-dest"
-                placeholder="e.g. Customers"
-                value={formDestLoc}
-                onChange={(e) => setFormDestLoc(e.target.value)}
-                className="rounded-2xl"
-              />
-            </div>
-          </div>
-          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
-            <Button
-              onClick={() => createMut.mutate({ picking_type_name: formType, location_src: formSrcLoc, location_dest: formDestLoc })}
-              disabled={createMut.isPending || !formType}
-              className="rounded-2xl"
-            >
-              {createMut.isPending ? 'Creating…' : 'Create Transfer'}
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/inventory/transfers')}>
-              Cancel
-            </Button>
+          <div className="space-y-2">
+            <M2O field="location_id" model="stock.location" label="Source Location" />
+            <M2O field="location_dest_id" model="stock.location" label="Destination Location" />
           </div>
         </div>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-96 w-full rounded-3xl" />
-      </div>
-    )
-  }
-
-  if (!picking) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-lg font-semibold">Transfer not found.</p>
-        <Button variant="outline" className="mt-4 rounded-2xl" onClick={() => navigate('/inventory/transfers')}>
-          <ArrowLeft className="h-4 w-4" /> Back to Transfers
-        </Button>
-      </div>
-    )
-  }
-
-  const isDraft     = picking.state === 'draft'
-  const isWaiting   = picking.state === 'confirmed' || picking.state === 'waiting'
-  const isReady     = picking.state === 'assigned'
-  const isDone      = picking.state === 'done'
-  const isCancelled = picking.state === 'cancel'
-  const moves       = picking.moves || []
+      ),
+    },
+    {
+      key: 'note', label: 'Note',
+      content: editing
+        ? <FormField label="Note"><Input value={form.note || ''} onChange={e => setField('note', e.target.value)} className="rounded-xl h-9" /></FormField>
+        : <ReadonlyField label="Note" value={form.note ? <span dangerouslySetInnerHTML={{ __html: form.note }} /> : undefined} />,
+    },
+  ]
 
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            {picking.picking_type_id ? picking.picking_type_id[1] : 'Transfer'}
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">{picking.name || 'New Transfer'}</h1>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Badge variant={stateVariants[picking.state] ?? 'secondary'}>
-              {picking.state === 'assigned' ? 'Ready' : picking.state === 'confirmed' || picking.state === 'waiting' ? 'Waiting' : picking.state.charAt(0).toUpperCase() + picking.state.slice(1)}
-            </Badge>
-            {picking.priority === '1' && (
-              <Badge variant="warning">
-                <AlertCircle className="mr-1 h-3 w-3" />
-                Urgent
-              </Badge>
-            )}
-            {picking.backorder_id && (
-              <Badge variant="secondary">
-                Backorder of {picking.backorder_id[1]}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {isDraft && (
-            <Button className="rounded-2xl" onClick={() => confirmMut.mutate()} disabled={confirmMut.isPending}>
-              <Check className="h-4 w-4" />
-              {confirmMut.isPending ? 'Confirming…' : 'Confirm'}
-            </Button>
+    <RecordForm
+      editing={editing} onEdit={() => !isDone && setEditing(true)} onSave={() => saveMut.mutate()}
+      onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setMoves(moveData || []); setEditing(false) } }}
+      backTo="/inventory/transfers"
+      statusBar={<StatusBar steps={STATES.filter(s => s.key !== 'cancel' || state === 'cancel')} current={state} />}
+      headerActions={
+        <>
+          {isWaiting && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('action_assign')}><CheckCircle className="h-3.5 w-3.5" /> Check Availability</Button>}
+          {isReady && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('button_validate')}><CheckCircle className="h-3.5 w-3.5" /> Validate</Button>}
+          {!isDone && !isNew && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Printer className="h-3.5 w-3.5" /> Print</Button>}
+          {isDone && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground" onClick={() => callMethod('action_return')}><RotateCcw className="h-3.5 w-3.5" /> Return</Button>}
+          {isDraft && recordId && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-destructive" onClick={async () => {
+            if (!confirm('Cancel this transfer?')) return
+            try { await erpClient.raw.post('/model/stock.picking/call', { record_ids: [recordId], method: 'action_cancel' }); toast.success('Cancelled'); queryClient.invalidateQueries({ queryKey: ['transfer', recordId] }) }
+            catch (e: any) { toast.error('Cancel Failed', e?.response?.data?.detail || e.message) }
+          }}><XCircle className="h-3.5 w-3.5" /> Cancel</Button>}
+        </>
+      }
+      topContent={
+        <div className="flex items-center gap-3 mb-2">
+          <ReadonlyField label="Reference" value={<span className="text-lg font-bold">{!form.name || form.name === '/' ? 'New' : form.name}</span>} />
+          {form.picking_type_id && (
+            <Badge variant="secondary" className="rounded-full text-xs mt-4">{m2oVal(form.picking_type_id)}</Badge>
           )}
-          {(isWaiting || isReady) && (
-            <Button variant="outline" className="rounded-2xl" onClick={() => assignMut.mutate()} disabled={assignMut.isPending}>
-              <ClipboardCheck className="h-4 w-4" />
-              Check Availability
-            </Button>
-          )}
-          {isReady && (
-            <Button variant="success" className="rounded-2xl" onClick={() => validateMut.mutate()} disabled={validateMut.isPending}>
-              <PackageCheck className="h-4 w-4" />
-              {validateMut.isPending ? 'Validating…' : 'Validate'}
-            </Button>
-          )}
-          {isReady && (
-            <Button variant="outline" className="rounded-2xl" onClick={() => unreserveMut.mutate()} disabled={unreserveMut.isPending}>
-              <Undo2 className="h-4 w-4" />
-              Unreserve
-            </Button>
-          )}
-          {!isDone && !isCancelled && (
-            <Button variant="outline" className="rounded-2xl" onClick={() => cancelMut.mutate()} disabled={cancelMut.isPending}>
-              <Ban className="h-4 w-4" />
-              Cancel
-            </Button>
-          )}
-          <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/inventory/transfers')}>
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
         </div>
-      </div>
-
-      {/* Status progression bar */}
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card px-6 py-5 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-        <StatusBar
-          states={pickingStates}
-          currentState={picking.state === 'waiting' ? 'confirmed' : picking.state}
-        />
-      </div>
-
-      {/* Detail cards — two column */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Details card */}
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <p className="text-sm font-semibold">Transfer Details</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Routing, contacts, and schedule</p>
-          </div>
-          <div className="px-6 py-2">
-            {picking.partner_id && (
-              <InfoRow label="Contact">
-                <span className="flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  {picking.partner_id[1]}
-                </span>
-              </InfoRow>
-            )}
-
-            {/* Route visualization */}
-            <div className="py-4 border-b border-border/50">
-              <p className="text-xs text-muted-foreground mb-3">Route</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">From</p>
-                  <div className="flex items-center gap-1.5 text-sm font-medium">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{picking.location_id ? picking.location_id[1] : '—'}</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="flex-1 rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">To</p>
-                  <div className="flex items-center gap-1.5 text-sm font-medium">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{picking.location_dest_id ? picking.location_dest_id[1] : '—'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <InfoRow label="Scheduled">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                {picking.scheduled_date ? picking.scheduled_date.split(' ')[0] : '—'}
-              </span>
-            </InfoRow>
-            {picking.date_done && (
-              <InfoRow label="Completed">
-                {picking.date_done.split(' ')[0]}
-              </InfoRow>
-            )}
-            {picking.origin && (
-              <InfoRow label="Source Document">
-                <span className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  {picking.origin}
-                </span>
-              </InfoRow>
-            )}
-          </div>
-        </div>
-
-        {/* Operation card */}
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <p className="text-sm font-semibold">Operation</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Type, policy, and assignment</p>
-          </div>
-          <div className="px-6 py-2">
-            <InfoRow label="Operation Type">
-              <span className="flex items-center gap-1.5">
-                <Truck className="h-3.5 w-3.5 text-muted-foreground" />
-                {picking.picking_type_id ? picking.picking_type_id[1] : '—'}
-              </span>
-            </InfoRow>
-            <InfoRow label="Shipping Policy">
-              {picking.move_type === 'one' ? 'When all products ready' : 'As soon as possible'}
-            </InfoRow>
-            <InfoRow label="Responsible">
-              <span className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                {picking.user_id ? picking.user_id[1] : '—'}
-              </span>
-            </InfoRow>
-          </div>
-        </div>
-      </div>
-
-      {/* Products / stock moves table */}
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-        <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-          <p className="text-sm font-semibold">Products</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {moves.length === 0 ? 'No products in this transfer' : `${moves.length} product line${moves.length === 1 ? '' : 's'}`}
-          </p>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Demand</TableHead>
-              <TableHead className="text-right">Done</TableHead>
-              <TableHead>UoM</TableHead>
-              <TableHead>From</TableHead>
-              <TableHead>To</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {moves.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No products in this transfer.
-                </TableCell>
-              </TableRow>
-            ) : (
-              moves.map((move: any) => (
-                <TableRow key={move.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">
-                    {move.product_id ? move.product_id[1] : '—'}
-                  </TableCell>
-                  <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
-                    {move.name || '—'}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatQty(move.product_uom_qty)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    <span className={cn(
-                      'font-semibold',
-                      move.quantity >= move.product_uom_qty && move.quantity > 0
-                        ? 'text-success'
-                        : move.quantity > 0
-                          ? 'text-warning'
-                          : '',
-                    )}>
-                      {formatQty(move.quantity)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {move.product_uom_id ? move.product_uom_id[1] : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {move.location_id ? move.location_id[1] : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {move.location_dest_id ? move.location_dest_id[1] : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={stateVariants[move.state] ?? 'secondary'} className="text-xs">
-                      {moveStateLabels[move.state] ?? move.state}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+      }
+      leftFields={
+        <>
+          <M2O field="partner_id" model="res.partner" label="Contact" />
+          <M2O field="picking_type_id" model="stock.picking.type" label="Operation Type" required
+            errorMsg={errors.picking_type_id}
+            onSelect={() => setErrors(er => { const n = { ...er }; delete n.picking_type_id; return n })} />
+          <TF field="origin" label="Source Document" />
+        </>
+      }
+      rightFields={
+        <>
+          <TF field="scheduled_date" label="Scheduled Date" type="datetime-local" />
+          {isDone && <ReadonlyField label="Done" value={form.date_done ? new Date(form.date_done).toLocaleString() : ''} />}
+          <M2O field="location_id" model="stock.location" label="Source Location" />
+          <M2O field="location_dest_id" model="stock.location" label="Destination" />
+        </>
+      }
+      tabs={tabs}
+      chatter={recordId ? <Chatter model="stock.picking" resId={recordId} /> : undefined}
+    />
   )
 }

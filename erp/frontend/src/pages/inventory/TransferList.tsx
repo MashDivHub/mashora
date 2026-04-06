@@ -1,218 +1,104 @@
 import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import {
-  Button, DataTable, Input, Badge, Tabs, TabsList, TabsTrigger,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  cn, type Column,
-} from '@mashora/design-system'
-import { Plus, Search, PackageCheck, Truck, ArrowLeftRight, AlertCircle } from 'lucide-react'
+import { Badge, cn } from '@mashora/design-system'
+import { Truck } from 'lucide-react'
+import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-interface Transfer {
-  id: number
-  name: string
-  state: string
-  picking_type_id: [number, string] | false
-  picking_type_code: string
-  partner_id: [number, string] | false
-  location_id: [number, string] | false
-  location_dest_id: [number, string] | false
-  scheduled_date: string | false
-  date_done: string | false
-  origin: string | false
-  priority: string
-  backorder_id: [number, string] | false
-}
-
-const stateLabels: Record<string, string> = {
-  draft: 'Draft',
-  waiting: 'Waiting',
-  confirmed: 'Waiting',
-  assigned: 'Ready',
-  done: 'Done',
-  cancel: 'Cancelled',
-}
-
-const stateVariants: Record<string, 'secondary' | 'warning' | 'success' | 'default' | 'destructive'> = {
-  draft: 'secondary',
-  waiting: 'warning',
-  confirmed: 'warning',
-  assigned: 'success',
-  done: 'default',
-  cancel: 'destructive',
-}
-
-const typeConfig: Record<string, { label: string; icon: typeof Truck; className: string }> = {
-  incoming: { label: 'Receipt',   icon: PackageCheck,   className: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-800/50' },
-  outgoing: { label: 'Delivery',  icon: Truck,          className: 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/40 dark:border-blue-800/50' },
-  internal: { label: 'Internal',  icon: ArrowLeftRight, className: 'text-violet-600 bg-violet-50 border-violet-200 dark:text-violet-400 dark:bg-violet-950/40 dark:border-violet-800/50' },
-}
-
-const columns: Column<Transfer>[] = [
-  {
-    key: 'name',
-    header: 'Reference',
-    cell: (row) => (
-      <div className="flex items-center gap-2">
-        {row.priority === '1' && (
-          <span title="Urgent">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-warning" />
-          </span>
-        )}
-        <span className="font-mono font-semibold tracking-tight">{row.name}</span>
-        {row.backorder_id && (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Backorder</Badge>
-        )}
-      </div>
-    ),
-  },
-  {
-    key: 'picking_type_code',
-    header: 'Type',
-    cell: (row) => {
-      const cfg = typeConfig[row.picking_type_code]
-      if (!cfg) return <Badge variant="outline">{row.picking_type_code}</Badge>
-      const Icon = cfg.icon
-      return (
-        <span className={cn('inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-xs font-medium', cfg.className)}>
-          <Icon className="h-3 w-3" />
-          {cfg.label}
-        </span>
-      )
-    },
-  },
-  {
-    key: 'partner_id',
-    header: 'Contact',
-    cell: (row) => (
-      <span className="text-sm">{row.partner_id ? row.partner_id[1] : <span className="text-muted-foreground">—</span>}</span>
-    ),
-  },
-  {
-    key: 'location_id',
-    header: 'From',
-    cell: (row) => (
-      <span className="text-xs text-muted-foreground">{row.location_id ? row.location_id[1] : '—'}</span>
-    ),
-  },
-  {
-    key: 'location_dest_id',
-    header: 'To',
-    cell: (row) => (
-      <span className="text-xs text-muted-foreground">{row.location_dest_id ? row.location_dest_id[1] : '—'}</span>
-    ),
-  },
-  {
-    key: 'scheduled_date',
-    header: 'Scheduled',
-    cell: (row) => (
-      <span className="font-mono text-xs tabular-nums">
-        {row.scheduled_date ? row.scheduled_date.split(' ')[0] : <span className="text-muted-foreground">—</span>}
-      </span>
-    ),
-  },
-  {
-    key: 'state',
-    header: 'Status',
-    cell: (row) => (
-      <Badge variant={stateVariants[row.state] ?? 'secondary'}>
-        {stateLabels[row.state] ?? row.state}
-      </Badge>
-    ),
-  },
+const LIST_FIELDS = [
+  'id', 'name', 'partner_id', 'state', 'picking_type_id', 'picking_type_code',
+  'origin', 'scheduled_date', 'date_done', 'location_id', 'location_dest_id',
+  'backorder_id', 'user_id',
 ]
 
-type TabFilter = 'all' | 'ready' | 'waiting' | 'done' | 'cancelled'
+const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+  draft: { label: 'Draft', variant: 'secondary' },
+  waiting: { label: 'Waiting', variant: 'warning' },
+  confirmed: { label: 'Waiting', variant: 'warning' },
+  assigned: { label: 'Ready', variant: 'info' },
+  done: { label: 'Done', variant: 'success' },
+  cancel: { label: 'Cancelled', variant: 'destructive' },
+}
+
+const FILTERS: FilterOption[] = [
+  { key: 'receipts', label: 'Receipts', domain: [['picking_type_code', '=', 'incoming']] },
+  { key: 'deliveries', label: 'Deliveries', domain: [['picking_type_code', '=', 'outgoing']] },
+  { key: 'internal', label: 'Internal', domain: [['picking_type_code', '=', 'internal']] },
+  { key: 'ready', label: 'Ready', domain: [['state', '=', 'assigned']] },
+  { key: 'waiting', label: 'Waiting', domain: [['state', 'in', ['waiting', 'confirmed']]] },
+  { key: 'late', label: 'Late', domain: [['scheduled_date', '<', new Date().toISOString()], ['state', 'not in', ['done', 'cancel']]] },
+]
 
 export default function TransferList() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<TabFilter>('all')
+  const [searchParams] = useSearchParams()
+  const initialFilter = searchParams.get('filter')
   const [search, setSearch] = useState('')
-  const [typeCode, setTypeCode] = useState<string>('all')
+  const [activeFilters, setActiveFilters] = useState<string[]>(initialFilter ? [initialFilter] : [])
+  const [page, setPage] = useState(0)
+  const [sortField, setSortField] = useState<string | null>('scheduled_date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const pageSize = 40
 
-  const params: Record<string, any> = { search: search || undefined, limit: 50 }
-  if (typeCode !== 'all') params.picking_type_code = typeCode
+  const domain: any[] = []
+  if (search) domain.push('|', ['name', 'ilike', search], ['origin', 'ilike', search])
+  for (const key of activeFilters) {
+    const f = FILTERS.find(fl => fl.key === key)
+    if (f) domain.push(...f.domain)
+  }
 
-  if (tab === 'ready') params.state = ['assigned']
-  else if (tab === 'waiting') params.state = ['draft', 'waiting', 'confirmed']
-  else if (tab === 'done') params.state = ['done']
-  else if (tab === 'cancelled') params.state = ['cancel']
+  const order = sortField ? `${sortField} ${sortDir}` : 'scheduled_date desc'
 
   const { data, isLoading } = useQuery({
-    queryKey: ['transfers', tab, search, typeCode],
-    queryFn: () => erpClient.raw.post('/inventory/transfers', params).then((r) => r.data),
+    queryKey: ['transfers', domain, page, order],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/stock.picking', {
+        domain: domain.length ? domain : undefined,
+        fields: LIST_FIELDS, offset: page * pageSize, limit: pageSize, order,
+      })
+      return data
+    },
   })
 
-  const total = data?.total ?? '—'
+  const title = activeFilters.includes('receipts') ? 'Receipts' :
+    activeFilters.includes('deliveries') ? 'Deliveries' :
+    activeFilters.includes('internal') ? 'Internal Transfers' : 'Transfers'
+
+  const TYPE_ICON: Record<string, string> = { incoming: 'text-emerald-400', outgoing: 'text-blue-400', internal: 'text-violet-400' }
+
+  const columns: Column[] = [
+    { key: 'name', label: 'Reference', render: (_, row) => <span className="font-mono text-sm">{row.name}</span> },
+    { key: 'partner_id', label: 'Contact', format: v => Array.isArray(v) ? v[1] : '' },
+    { key: 'picking_type_id', label: 'Operation', render: (v, row) => (
+      <span className={cn('text-sm font-medium', TYPE_ICON[row.picking_type_code] || '')}>
+        {Array.isArray(v) ? v[1] : ''}
+      </span>
+    )},
+    { key: 'origin', label: 'Source' },
+    { key: 'scheduled_date', label: 'Scheduled', render: (v, row) => {
+      if (!v) return ''
+      const late = row.state !== 'done' && row.state !== 'cancel' && new Date(v) < new Date()
+      return <span className={cn('text-sm', late && 'text-red-400 font-medium')}>{new Date(v).toLocaleDateString()}</span>
+    }},
+    { key: 'date_done', label: 'Done', format: v => v ? new Date(v).toLocaleDateString() : '' },
+    { key: 'state', label: 'Status', render: v => {
+      const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
+      return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+    }},
+    { key: 'backorder_id', label: 'Back Order', format: v => Array.isArray(v) ? v[1] : '' },
+  ]
 
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Inventory
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">Transfers</h1>
-          <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading transfers…' : `${total} transfer${total === 1 ? '' : 's'}`}
-          </p>
-        </div>
-        <Button className="rounded-2xl" onClick={() => navigate('/inventory/transfers/new')}>
-          <Plus className="h-4 w-4" />
-          New Transfer
-        </Button>
-      </div>
-
-      {/* Filters + table card */}
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 bg-muted/20 px-6 py-4">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TabFilter)}>
-            <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-              <TabsTrigger value="ready" className="text-xs">Ready</TabsTrigger>
-              <TabsTrigger value="waiting" className="text-xs">Waiting</TabsTrigger>
-              <TabsTrigger value="done" className="text-xs">Done</TabsTrigger>
-              <TabsTrigger value="cancelled" className="text-xs">Cancelled</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="flex items-center gap-3">
-            <Select value={typeCode} onValueChange={setTypeCode}>
-              <SelectTrigger className="h-8 w-36 rounded-xl text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="incoming">Receipts</SelectItem>
-                <SelectItem value="outgoing">Deliveries</SelectItem>
-                <SelectItem value="internal">Internal</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search transfers…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-56 rounded-xl pl-8 text-xs"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <DataTable
-          columns={columns}
-          data={data?.records ?? []}
-          loading={isLoading}
-          emptyMessage="No transfers found."
-          onRowClick={(row) => navigate(`/inventory/transfers/${row.id}`)}
-        />
-      </div>
+    <div className="space-y-4">
+      <PageHeader title={title} subtitle="inventory" onNew={() => navigate('/inventory/transfers/new')} />
+      <SearchBar placeholder="Search transfers..." onSearch={v => { setSearch(v); setPage(0) }}
+        filters={FILTERS} activeFilters={activeFilters}
+        onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
+      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
+        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+        rowLink={row => `/inventory/transfers/${row.id}`} emptyMessage="No transfers found" emptyIcon={<Truck className="h-10 w-10" />} />
     </div>
   )
 }

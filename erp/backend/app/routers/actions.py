@@ -38,21 +38,21 @@ async def get_action_by_xmlid(xmlid: str, user: CurrentUser | None = Depends(get
     return result
 
 
-@router.get("/{action_id}")
-async def get_action_endpoint(action_id: int, action_model: str | None = None, user: CurrentUser | None = Depends(get_optional_user)):
-    """Fetch an action definition by ID. Optionally specify action_model to search only that type."""
-    result = await orm_call(get_action, action_id=action_id, action_model=action_model, uid=_uid(user), context=_ctx(user))
-    if result is None:
-        raise HTTPException(status_code=404, detail=f"Action {action_id} not found")
-    return result
-
-
 @router.get("/for-model/{model_name}")
 async def get_model_action(model_name: str, user: CurrentUser | None = Depends(get_optional_user)):
     """Get the default action for a model."""
     result = await orm_call(get_action_for_model, model_name=model_name, uid=_uid(user), context=_ctx(user))
     if result is None:
         raise HTTPException(status_code=404, detail=f"No action found for model {model_name}")
+    return result
+
+
+@router.get("/{action_id}")
+async def get_action_endpoint(action_id: int, action_model: str | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """Fetch an action definition by ID. Optionally specify action_model to search only that type."""
+    result = await orm_call(get_action, action_id=action_id, action_model=action_model, uid=_uid(user), context=_ctx(user))
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Action {action_id} not found")
     return result
 
 

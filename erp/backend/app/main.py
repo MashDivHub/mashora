@@ -31,6 +31,9 @@ async def lifespan(app: FastAPI):
     init_mashora()
     _logger.info("Mashora ORM initialized successfully.")
 
+    _register_exception_handlers()
+    _logger.info("Exception handlers registered.")
+
     yield
 
     # Cleanup
@@ -49,7 +52,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -57,14 +60,8 @@ app.add_middleware(
 from app.middleware.security import SecurityAuditMiddleware
 app.add_middleware(SecurityAuditMiddleware)
 
-# Register Mashora exception handlers
-# We do this lazily after Mashora is importable
-@app.on_event("startup")
-async def _register_exception_handlers():
+def _register_exception_handlers():
     """Register exception handlers for Mashora exception types."""
-    settings = get_settings()
-    settings.setup_mashora_path()
-
     from mashora.exceptions import (
         AccessDenied,
         AccessError,

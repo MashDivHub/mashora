@@ -83,7 +83,7 @@ def build_invoice_domain(
         domain.append(["state", "in", state])
     if payment_state:
         domain.append(["payment_state", "in", payment_state])
-    if partner_id:
+    if partner_id is not None:
         domain.append(["partner_id", "=", partner_id])
     if date_from:
         domain.append(["date", ">=", str(date_from)])
@@ -785,7 +785,7 @@ JOURNAL_ENTRY_FIELDS = [
 
 def list_journal_entries(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
     with mashora_env(uid=uid, context=context) as env:
-        d = domain or []
+        d = list(domain) if domain else []
         d.append(('move_type', '=', 'entry'))
         total = env['account.move'].search_count(d)
         records = env['account.move'].search(d, offset=offset, limit=limit, order=order)
@@ -795,6 +795,6 @@ def list_journal_entries(uid=1, context=None, domain=None, offset=0, limit=50, o
 
 def create_journal_entry(vals, uid=1, context=None):
     with mashora_env(uid=uid, context=context) as env:
-        vals['move_type'] = 'entry'
-        record = env['account.move'].create(vals)
+        entry_vals = {**vals, 'move_type': 'entry'}
+        record = env['account.move'].create(entry_vals)
         return record.read(JOURNAL_ENTRY_FIELDS)[0]

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Button, Skeleton, cn } from '@mashora/design-system'
 import { Building2, User, Star, BarChart3, FileText, Calendar, CheckSquare, ShoppingCart, Truck, CreditCard, Users } from 'lucide-react'
-import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, type SmartButton, type FormTab } from '@/components/shared'
+import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 
@@ -55,9 +55,24 @@ export default function ContactForm() {
     setDirty(true)
   }, [])
 
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    if (!form.name?.trim()) errs.name = 'Name is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
       const vals: Record<string, any> = {}
       const editableFields = [
         'name', 'email', 'phone', 'mobile', 'website', 'street', 'street2',
@@ -93,10 +108,17 @@ export default function ContactForm() {
     onSuccess: (data) => {
       setDirty(false)
       setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Contact saved successfully')
       queryClient.invalidateQueries({ queryKey: ['contact'] })
       queryClient.invalidateQueries({ queryKey: ['contacts'] })
       if (isNew && data?.id) {
         navigate(`/contacts/${data.id}`, { replace: true })
+      }
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
       }
     },
   })
@@ -335,12 +357,15 @@ export default function ContactForm() {
 
             {/* Name */}
             {editing ? (
-              <Input
-                value={form.name || ''}
-                onChange={e => setField('name', e.target.value)}
-                placeholder={isCompany ? 'Company Name' : 'Contact Name'}
-                className="text-xl font-bold border-0 border-b border-border/40 rounded-none px-0 h-auto py-1 focus-visible:ring-0 focus-visible:border-primary"
-              />
+              <div>
+                <Input
+                  value={form.name || ''}
+                  onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }}
+                  placeholder={isCompany ? 'Company Name' : 'Contact Name'}
+                  className={`text-xl font-bold border-0 border-b rounded-none px-0 h-auto py-1 focus-visible:ring-0 ${errors.name ? 'border-red-500 focus-visible:border-red-500' : 'border-border/40 focus-visible:border-primary'}`}
+                />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+              </div>
             ) : (
               <h2 className="text-2xl font-bold tracking-tight">{displayName}</h2>
             )}
@@ -371,7 +396,6 @@ export default function ContactForm() {
       rightFields={
         <>
           <TextField field="vat" label="Tax ID" />
-          {!isCompany && <TextField field="function" label="Job Position" />}
           <TextField field="phone" label="Phone" type="tel" />
           <TextField field="mobile" label="Mobile" type="tel" />
           <TextField field="email" label="Email" type="email" />

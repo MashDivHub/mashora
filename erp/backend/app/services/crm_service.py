@@ -75,7 +75,7 @@ def build_lead_domain(
         domain.append(["user_id", "=", user_id])
     if team_id:
         domain.append(["team_id", "=", team_id])
-    if partner_id:
+    if partner_id is not None:
         domain.append(["partner_id", "=", partner_id])
     if won_status:
         domain.append(["won_status", "=", won_status])

@@ -80,7 +80,7 @@ def build_picking_domain(
         domain.append(["picking_type_code", "=", picking_type_code])
     if state:
         domain.append(["state", "in", state])
-    if partner_id:
+    if partner_id is not None:
         domain.append(["partner_id", "=", partner_id])
     if date_from:
         domain.append(["scheduled_date", ">=", str(date_from)])

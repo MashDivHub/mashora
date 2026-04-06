@@ -8,7 +8,7 @@ Provides high-level operations for the purchase module:
 - Dashboard metrics
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from app.core.orm_adapter import mashora_env
 
@@ -56,7 +56,7 @@ def build_purchase_domain(
         domain.append(["state", "in", state])
     if invoice_status:
         domain.append(["invoice_status", "in", invoice_status])
-    if partner_id:
+    if partner_id is not None:
         domain.append(["partner_id", "=", partner_id])
     if user_id:
         domain.append(["user_id", "=", user_id])

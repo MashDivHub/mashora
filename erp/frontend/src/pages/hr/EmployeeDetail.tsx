@@ -1,416 +1,276 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Badge, Separator, Button, Input, Label, CardTitle, cn } from '@mashora/design-system'
-import {
-  ArrowLeft, Mail, Phone, MapPin, Building2, Briefcase,
-  Calendar, Shield, Circle, User, ChevronRight,
-} from 'lucide-react'
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Skeleton, cn } from '@mashora/design-system'
+import { User } from 'lucide-react'
+import { RecordForm, FormField, FormSection, ReadonlyField, toast, type FormTab } from '@/components/shared'
+import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
-import { useState } from 'react'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const FORM_FIELDS = [
+  'id', 'name', 'job_id', 'job_title', 'department_id', 'parent_id', 'coach_id',
+  'work_email', 'work_phone', 'mobile_phone', 'work_location_id',
+  'image_128', 'image_1920', 'employee_type', 'company_id', 'active',
+  'marital', 'birthday', 'country_id', 'identification_id', 'passport_id',
+  'certificate', 'study_field', 'study_school', 'address_id',
+  'category_ids', 'barcode', 'departure_reason_id', 'departure_date',
+  'km_home_work', 'private_car_plate',
+]
 
-const presenceConfig: Record<string, { label: string; dot: string; badge: string }> = {
-  present: {
-    label: 'Present',
-    dot: 'bg-emerald-500 shadow-emerald-500/40',
-    badge: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400',
-  },
-  absent: {
-    label: 'Absent',
-    dot: 'bg-red-500 shadow-red-500/40',
-    badge: 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400',
-  },
-  to_define: {
-    label: 'Unknown',
-    dot: 'bg-zinc-400',
-    badge: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
-  },
-  out_of_working_hour: {
-    label: 'Off Hours',
-    dot: 'bg-zinc-400',
-    badge: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
-  },
-}
+const EMP_TYPES = [
+  { key: 'employee', label: 'Employee' }, { key: 'worker', label: 'Worker' },
+  { key: 'student', label: 'Student' }, { key: 'trainee', label: 'Trainee' },
+  { key: 'contractor', label: 'Contractor' },
+]
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const MARITAL = [
+  { key: 'single', label: 'Single' }, { key: 'married', label: 'Married' },
+  { key: 'cohabitant', label: 'Cohabitant' }, { key: 'widower', label: 'Widower' },
+  { key: 'divorced', label: 'Divorced' },
+]
 
-function SectionCard({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.ElementType
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-      <div className="flex items-center gap-2 border-b border-border/70 bg-muted/20 px-6 py-4">
-        <Icon className="size-4 text-muted-foreground" />
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-          {title}
-        </p>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  )
-}
-
-function InfoRow({
-  label,
-  value,
-  mono = false,
-  last = false,
-}: {
-  label: string
-  value: React.ReactNode
-  mono?: boolean
-  last?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'flex items-center justify-between py-3 text-sm',
-        !last && 'border-b border-border/50',
-      )}
-    >
-      <span className="text-muted-foreground">{label}</span>
-      <span className={cn('font-medium text-right', mono && 'font-mono')}>{value}</span>
-    </div>
-  )
-}
-
-function ContactRow({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: React.ElementType
-  value: string
-  label?: string
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3 text-sm border-b border-border/50 last:border-0">
-      <div className="rounded-xl border border-border/70 bg-muted/60 p-2 text-muted-foreground shrink-0">
-        <Icon className="size-3.5" />
-      </div>
-      <span className="min-w-0 truncate">{value}</span>
-      {label && (
-        <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          {label}
-        </span>
-      )}
-    </div>
-  )
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function DetailSkeleton() {
-  return (
-    <div className="space-y-8 animate-pulse">
-      <div className="space-y-2">
-        <div className="h-3 w-24 rounded-full bg-muted" />
-        <div className="h-8 w-64 rounded-xl bg-muted" />
-        <div className="h-4 w-40 rounded-full bg-muted" />
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-64 rounded-3xl bg-muted" />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const CERT = [
+  { key: 'graduate', label: 'Graduate' }, { key: 'bachelor', label: 'Bachelor' },
+  { key: 'master', label: 'Master' }, { key: 'doctor', label: 'Doctor' },
+  { key: 'other', label: 'Other' },
+]
 
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isNew = id === 'new'
+  const recordId = isNew ? null : parseInt(id || '0')
+  const [editing, setEditing] = useState(isNew)
+  const [form, setForm] = useState<Record<string, any>>({})
 
-  const [formName, setFormName] = useState('')
-  const [formJobTitle, setFormJobTitle] = useState('')
-  const [formDepartment, setFormDepartment] = useState('')
-  const [formEmail, setFormEmail] = useState('')
-
-  const createMut = useMutation({
-    mutationFn: (vals: Record<string, any>) =>
-      erpClient.raw.post('/hr/employees/create', vals).then((r) => r.data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['employee'] })
-      navigate(`/hr/employees/${result.id}`, { replace: true })
+  const { data: record, isLoading } = useQuery({
+    queryKey: ['employee', recordId],
+    queryFn: async () => {
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/hr.employee/defaults', { fields: FORM_FIELDS })
+        return { ...data, id: null, employee_type: 'employee' }
+      }
+      const { data } = await erpClient.raw.get(`/model/hr.employee/${recordId}`)
+      return data
     },
   })
 
-  const { data: emp, isLoading } = useQuery({
-    queryKey: ['employee', id],
-    queryFn: () => erpClient.raw.get(`/hr/employees/${id}`).then((r) => r.data),
-    enabled: !isNew,
+  useEffect(() => { if (record) setForm({ ...record }) }, [record])
+  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    if (!form.name?.trim()) errs.name = 'Name is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
+      const vals: Record<string, any> = {}
+      for (const f of ['name', 'job_title', 'work_email', 'work_phone', 'mobile_phone', 'employee_type',
+        'marital', 'birthday', 'identification_id', 'passport_id', 'certificate', 'study_field',
+        'study_school', 'barcode', 'private_car_plate', 'km_home_work', 'departure_date']) {
+        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+      }
+      for (const f of ['job_id', 'department_id', 'parent_id', 'coach_id', 'work_location_id',
+        'country_id', 'address_id', 'departure_reason_id', 'company_id']) {
+        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
+        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        if (nv !== ov) vals[f] = nv || false
+      }
+      if (JSON.stringify(form.category_ids) !== JSON.stringify(record?.category_ids)) {
+        const ids = (form.category_ids || []).map((t: any) => Array.isArray(t) ? t[0] : typeof t === 'object' ? t.id : t)
+        vals.category_ids = [[6, 0, ids]]
+      }
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/hr.employee/create', { vals: { name: form.name, ...vals } })
+        return data
+      }
+      const { data } = await erpClient.raw.put(`/model/hr.employee/${recordId}`, { vals })
+      return data
+    },
+    onSuccess: (data) => {
+      setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Employee saved successfully')
+      queryClient.invalidateQueries({ queryKey: ['employee'] })
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+      if (isNew && data?.id) navigate(`/hr/employees/${data.id}`, { replace: true })
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+      }
+    },
   })
 
-  // ── Create mode ──
-  if (isNew) {
+  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const searchM2o = useCallback(async (model: string, q: string, field: string) => {
+    if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
+    try {
+      const { data } = await erpClient.raw.post(`/model/${model}/name_search`, { name: q, limit: 8 })
+      setM2oResults(p => ({ ...p, [field]: data.results || [] }))
+    } catch { setM2oResults(p => ({ ...p, [field]: [] })) }
+  }, [])
+
+  if (isLoading || !record) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
+  }
+
+  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+
+  const M2O = ({ field, model, label }: { field: string; model: string; label: string }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    if (!editing) return <ReadonlyField label={label} value={m2oVal(form[field])} />
     return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Human Resources</p>
-          <h1 className="text-2xl font-bold tracking-tight">New Employee</h1>
+      <FormField label={label}>
+        <div className="relative">
+          <Input value={open ? q : m2oVal(form[field])} className="rounded-xl h-9" autoComplete="off"
+            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+            onFocus={() => { setQ(m2oVal(form[field])); setOpen(true) }}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
+          {open && (m2oResults[field] || []).length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+              {(m2oResults[field] || []).map((r: any) => (
+                <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
+                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}>{r.display_name}</button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <CardTitle>Employee Details</CardTitle>
-          </div>
-          <div className="p-6 space-y-4 max-w-lg">
-            <div className="space-y-1.5">
-              <Label htmlFor="emp-name">Name</Label>
-              <Input id="emp-name" placeholder="Full name" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emp-job">Job Title</Label>
-              <Input id="emp-job" placeholder="Job title" value={formJobTitle} onChange={(e) => setFormJobTitle(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emp-dept">Department</Label>
-              <Input id="emp-dept" placeholder="Department name" value={formDepartment} onChange={(e) => setFormDepartment(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="emp-email">Work Email</Label>
-              <Input id="emp-email" type="email" placeholder="work@company.com" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="rounded-2xl" />
-            </div>
-          </div>
-          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
-            <Button
-              onClick={() => createMut.mutate({ name: formName, job_title: formJobTitle || undefined, department_name: formDepartment || undefined, work_email: formEmail || undefined })}
-              disabled={createMut.isPending || !formName}
-              className="rounded-2xl"
-            >
-              {createMut.isPending ? 'Creating…' : 'Create Employee'}
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/hr/employees')}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
+      </FormField>
     )
   }
 
-  if (isLoading) return <DetailSkeleton />
+  const TF = ({ field, label, type = 'text' }: { field: string; label: string; type?: string }) => {
+    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    return <FormField label={label}><Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" /></FormField>
+  }
 
-  if (!emp) {
+  const SF = ({ field, label, options }: { field: string; label: string; options: { key: string; label: string }[] }) => {
+    if (!editing) return <ReadonlyField label={label} value={options.find(o => o.key === form[field])?.label || form[field]} />
     return (
-      <div className="flex flex-col items-center gap-3 py-24 text-center">
-        <div className="rounded-2xl border border-border/70 bg-muted/60 p-4 text-muted-foreground">
-          <User className="size-6" />
-        </div>
-        <p className="text-sm font-medium">Employee not found</p>
-        <button
-          onClick={() => navigate('/hr/employees')}
-          className="text-xs text-muted-foreground underline underline-offset-4"
-        >
-          Back to directory
-        </button>
-      </div>
+      <FormField label={label}>
+        <Select value={form[field] || ''} onValueChange={v => setField(field, v)}>
+          <SelectTrigger className="rounded-xl h-9"><SelectValue placeholder="Select..." /></SelectTrigger>
+          <SelectContent>{options.map(o => <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </FormField>
     )
   }
 
-  const presence = presenceConfig[emp.hr_presence_state] ?? presenceConfig.to_define
-  const jobLabel = emp.job_title || (emp.job_id ? emp.job_id[1] : 'Employee')
-  const initials = (emp.name as string)
-    .split(' ')
-    .map((n: string) => n[0])
-    .slice(0, 2)
-    .join('')
+  const tabs: FormTab[] = [
+    {
+      key: 'work', label: 'Work Info',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="space-y-2">
+            <FormSection title="Location">
+              <M2O field="work_location_id" model="hr.work.location" label="Work Location" />
+              <M2O field="address_id" model="res.partner" label="Work Address" />
+            </FormSection>
+          </div>
+          <div className="space-y-2">
+            <FormSection title="Schedule">
+              <TF field="barcode" label="Badge ID" />
+              <TF field="km_home_work" label="Home-Work Distance (km)" type="number" />
+              <TF field="private_car_plate" label="Car Plate" />
+            </FormSection>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'private', label: 'Private Info',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="space-y-2">
+            <FormSection title="Personal">
+              <SF field="marital" label="Marital Status" options={MARITAL} />
+              <TF field="birthday" label="Birthday" type="date" />
+              <M2O field="country_id" model="res.country" label="Nationality" />
+              <TF field="identification_id" label="ID Number" />
+              <TF field="passport_id" label="Passport Number" />
+            </FormSection>
+          </div>
+          <div className="space-y-2">
+            <FormSection title="Education">
+              <SF field="certificate" label="Certificate Level" options={CERT} />
+              <TF field="study_field" label="Field of Study" />
+              <TF field="study_school" label="School" />
+            </FormSection>
+          </div>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <div className="space-y-8">
-
-      {/* Back breadcrumb */}
-      <button
-        onClick={() => navigate('/hr/employees')}
-        className="group flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-        Employee Directory
-      </button>
-
-      {/* Profile header */}
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-        <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Employee Profile
-          </p>
-        </div>
-        <div className="flex flex-col items-start gap-5 p-6 sm:flex-row sm:items-center">
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-zinc-900 text-xl font-semibold text-white dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50">
-              {initials}
+    <RecordForm
+      editing={editing} onEdit={() => setEditing(true)} onSave={() => saveMut.mutate()}
+      onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setEditing(false) } }}
+      backTo="/hr/employees"
+      topContent={
+        <div className="flex gap-4 items-start mb-4">
+          {form.image_128 ? (
+            <img src={`data:image/png;base64,${form.image_128}`} alt="" className="h-24 w-24 rounded-2xl object-cover shrink-0" />
+          ) : (
+            <div className="h-24 w-24 rounded-2xl bg-violet-500/15 flex items-center justify-center text-2xl font-bold text-violet-400 shrink-0">
+              {(form.name?.[0] || '?').toUpperCase()}
             </div>
-            <span
-              className={cn(
-                'absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-background shadow-sm',
-                presence.dot,
-              )}
-            />
-          </div>
-
-          {/* Name + role */}
-          <div className="flex-1 space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">{emp.name}</h1>
-            <p className="text-sm text-muted-foreground">{jobLabel}</p>
-            {emp.department_id && (
-              <p className="text-xs text-muted-foreground">
-                {emp.department_id[1]}
-              </p>
+          )}
+          <div className="flex-1 space-y-2 min-w-0">
+            {editing ? (
+              <div>
+                <Input value={form.name || ''} onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }} placeholder="Employee Name"
+                  className={`text-xl font-bold border-0 border-b rounded-none px-0 h-auto py-1 focus-visible:ring-0 ${errors.name ? 'border-red-500 focus-visible:border-red-500' : 'border-border/40 focus-visible:border-primary'}`} />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+              </div>
+            ) : (
+              <h2 className="text-2xl font-bold tracking-tight">{form.name || 'New Employee'}</h2>
             )}
-          </div>
-
-          {/* Presence badge */}
-          <div
-            className={cn(
-              'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5',
-              presence.badge,
-            )}
-          >
-            <Circle className="size-2 fill-current" />
-            {presence.label}
+            <TF field="job_title" label="Job Title" />
           </div>
         </div>
-      </div>
-
-      {/* Two-column grid */}
-      <div className="grid gap-6 md:grid-cols-2">
-
-        {/* Work Information */}
-        <SectionCard icon={Briefcase} title="Work Information">
-          <div className="-my-0">
-            <InfoRow
-              label="Department"
-              value={emp.department_id ? emp.department_id[1] : '—'}
-            />
-            <InfoRow
-              label="Job Position"
-              value={emp.job_id ? emp.job_id[1] : '—'}
-            />
-            <InfoRow
-              label="Manager"
-              value={emp.parent_id ? emp.parent_id[1] : '—'}
-            />
-            <InfoRow
-              label="Coach"
-              value={emp.coach_id ? emp.coach_id[1] : '—'}
-            />
-            <InfoRow
-              label="Work Location"
-              value={
-                emp.work_location_type ? (
-                  <span className="capitalize">{emp.work_location_type}</span>
-                ) : '—'
-              }
-            />
-            <InfoRow
-              label="Company"
-              value={emp.company_id ? emp.company_id[1] : '—'}
-              last
-            />
-          </div>
-        </SectionCard>
-
-        {/* Contact */}
-        <SectionCard icon={User} title="Contact">
-          {[
-            emp.work_email && { icon: Mail, value: emp.work_email, label: 'work' },
-            emp.work_phone && { icon: Phone, value: emp.work_phone, label: 'work' },
-            emp.mobile_phone && { icon: Phone, value: emp.mobile_phone, label: 'mobile' },
-            emp.private_email && { icon: Mail, value: emp.private_email, label: 'personal' },
-          ]
-            .filter(Boolean)
-            .map((item: any, i) => (
-              <ContactRow key={i} icon={item.icon} value={item.value} label={item.label} />
-            ))}
-          {!emp.work_email && !emp.work_phone && !emp.mobile_phone && !emp.private_email && (
-            <p className="text-sm text-muted-foreground">No contact details recorded.</p>
-          )}
-        </SectionCard>
-
-        {/* Contract */}
-        <SectionCard icon={Calendar} title="Contract">
-          {emp.contract_type_id || emp.contract_date_start || emp.contract_date_end ? (
-            <>
-              {emp.contract_type_id && (
-                <InfoRow label="Contract Type" value={emp.contract_type_id[1]} />
-              )}
-              {emp.contract_date_start && (
-                <InfoRow label="Start Date" value={emp.contract_date_start} mono />
-              )}
-              {emp.contract_date_end ? (
-                <InfoRow label="End Date" value={emp.contract_date_end} mono last />
-              ) : (
-                <InfoRow
-                  label="End Date"
-                  value={
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-400">
-                      Open-ended
-                    </span>
-                  }
-                  last
-                />
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No contract information available.</p>
-          )}
-        </SectionCard>
-
-        {/* Personal */}
-        <SectionCard icon={Shield} title="Personal">
-          {emp.birthday || emp.sex || emp.identification_id ? (
-            <>
-              {emp.birthday && (
-                <InfoRow label="Birthday" value={emp.birthday} mono />
-              )}
-              {emp.sex && (
-                <InfoRow
-                  label="Gender"
-                  value={<span className="capitalize">{emp.sex}</span>}
-                />
-              )}
-              {emp.identification_id && (
-                <InfoRow label="ID Number" value={emp.identification_id} mono last />
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">No personal details recorded.</p>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* Tags */}
-      {emp.category_ids?.length > 0 && (
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Tags
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 p-6">
-            {emp.category_ids.map((cat: any) => (
-              <Badge
-                key={typeof cat === 'number' ? cat : cat[0]}
-                variant="secondary"
-                className="rounded-full"
-              >
-                {typeof cat === 'number' ? `Tag ${cat}` : cat[1]}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+      }
+      leftFields={
+        <>
+          <M2O field="department_id" model="hr.department" label="Department" />
+          <M2O field="job_id" model="hr.job" label="Job Position" />
+          <M2O field="parent_id" model="hr.employee" label="Manager" />
+          <M2O field="coach_id" model="hr.employee" label="Coach" />
+        </>
+      }
+      rightFields={
+        <>
+          <TF field="work_email" label="Work Email" type="email" />
+          <TF field="work_phone" label="Work Phone" type="tel" />
+          <TF field="mobile_phone" label="Mobile" type="tel" />
+          <SF field="employee_type" label="Employee Type" options={EMP_TYPES} />
+          {!editing ? (
+            <ReadonlyField label="Tags" value={
+              Array.isArray(form.category_ids) && form.category_ids.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {form.category_ids.map((t: any, i: number) => <Badge key={i} variant="secondary" className="rounded-full text-xs">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>)}
+                </div>
+              ) : undefined
+            } />
+          ) : null}
+        </>
+      }
+      tabs={tabs}
+      chatter={recordId ? <Chatter model="hr.employee" resId={recordId} /> : undefined}
+    />
   )
 }

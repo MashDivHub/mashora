@@ -153,12 +153,16 @@ export const bus = new WebSocketBus()
  * Usage:
  *   useBusSubscription('record_update', (msg) => { queryClient.invalidateQueries() })
  */
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export function useBusSubscription(channel: string, handler: MessageHandler) {
+  const handlerRef = useRef(handler)
+  handlerRef.current = handler
+
   useEffect(() => {
     bus.connect()
-    const unsubscribe = bus.subscribe(channel, handler)
+    const stableHandler: MessageHandler = (msg) => handlerRef.current(msg)
+    const unsubscribe = bus.subscribe(channel, stableHandler)
     return unsubscribe
-  }, [channel, handler])
+  }, [channel])
 }

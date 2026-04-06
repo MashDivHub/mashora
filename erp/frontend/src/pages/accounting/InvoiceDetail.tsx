@@ -1,431 +1,336 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  PageHeader, Button, Badge, Separator, Skeleton, StatusBar,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  CardTitle, Input, Label, cn,
+  Input, Button, Badge, Skeleton,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn,
 } from '@mashora/design-system'
-import { ArrowLeft, Send, Ban, CreditCard, FileText, Hash, Calendar, Building2 } from 'lucide-react'
+import { Send, CheckCircle, Printer, CreditCard, RotateCcw, FileText, XCircle } from 'lucide-react'
+import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type SmartButton, type FormTab } from '@/components/shared'
+import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
-import { useState } from 'react'
 
-const invoiceStates = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'posted', label: 'Posted' },
-  { value: 'cancel', label: 'Cancelled' },
+const FORM_FIELDS = [
+  'id', 'name', 'partner_id', 'move_type', 'state', 'date', 'invoice_date',
+  'invoice_date_due', 'amount_untaxed', 'amount_tax', 'amount_total', 'amount_residual',
+  'currency_id', 'journal_id', 'invoice_user_id', 'payment_state',
+  'ref', 'narration', 'invoice_origin', 'fiscal_position_id', 'company_id',
+  'invoice_line_ids',
 ]
 
-const paymentStateVariants: Record<string, 'warning' | 'info' | 'success' | 'destructive'> = {
-  not_paid: 'warning',
-  partial: 'info',
-  paid: 'success',
-  in_payment: 'info',
-  reversed: 'destructive',
-}
+const LINE_FIELDS = [
+  'id', 'sequence', 'product_id', 'name', 'account_id', 'quantity',
+  'price_unit', 'discount', 'price_subtotal', 'price_total', 'tax_ids', 'display_type',
+]
 
-const paymentStateLabels: Record<string, string> = {
-  not_paid: 'Unpaid',
-  partial: 'Partial',
-  paid: 'Paid',
-  in_payment: 'In Payment',
-  reversed: 'Reversed',
-}
+const STATES = [
+  { key: 'draft', label: 'Draft' },
+  { key: 'posted', label: 'Posted', color: 'success' as const },
+  { key: 'cancel', label: 'Cancelled' },
+]
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)
-}
-
-function InfoRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
-  return (
-    <div className="flex items-center justify-between py-2.5 border-b border-border/40 last:border-0">
-      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-        {label}
-      </span>
-      <span className={cn('text-sm font-medium', mono && 'font-mono')}>
-        {value || '—'}
-      </span>
-    </div>
-  )
+const PAYMENT_COLORS: Record<string, string> = {
+  not_paid: 'text-amber-400', partial: 'text-blue-400', in_payment: 'text-blue-400',
+  paid: 'text-emerald-400', reversed: 'text-red-400',
 }
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
   const isNew = id === 'new'
+  const recordId = isNew ? null : parseInt(id || '0')
+  const [editing, setEditing] = useState(isNew)
+  const [form, setForm] = useState<Record<string, any>>({})
+  const [lines, setLines] = useState<any[]>([])
 
-  const [formPartner, setFormPartner] = useState('')
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0])
-  const [formMoveType, setFormMoveType] = useState(searchParams.get('type') ?? 'out_invoice')
-
-  const createMut = useMutation({
-    mutationFn: (vals: Record<string, any>) =>
-      erpClient.raw.post('/accounting/invoices/create', vals).then((r) => r.data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['invoice'] })
-      navigate(`/accounting/invoices/${result.id}`, { replace: true })
+  const { data: record, isLoading } = useQuery({
+    queryKey: ['invoice', recordId],
+    queryFn: async () => {
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/account.move/defaults', { fields: FORM_FIELDS })
+        return { ...data, id: null, state: 'draft', move_type: 'out_invoice' }
+      }
+      const { data } = await erpClient.raw.get(`/model/account.move/${recordId}`)
+      return data
     },
   })
 
-  const { data: invoice, isLoading } = useQuery({
-    queryKey: ['invoice', id],
-    queryFn: () => erpClient.raw.get(`/accounting/invoices/${id}`).then((r) => r.data),
-    enabled: !isNew,
+  const { data: lineData } = useQuery({
+    queryKey: ['invoice-lines', recordId],
+    queryFn: async () => {
+      if (!recordId) return []
+      const { data } = await erpClient.raw.post('/model/account.move.line', {
+        domain: [['move_id', '=', recordId], ['display_type', 'in', ['product', 'line_section', 'line_note', false]]],
+        fields: LINE_FIELDS, order: 'sequence asc, id asc', limit: 200,
+      })
+      return data.records || []
+    },
+    enabled: !!recordId,
   })
 
-  const postMutation = useMutation({
-    mutationFn: () => erpClient.raw.post(`/accounting/invoices/${id}/post`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoice', id] }),
+  useEffect(() => { if (record) { setForm({ ...record }); setLines(lineData || []) } }, [record, lineData])
+  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    const partnerId = Array.isArray(form.partner_id) ? form.partner_id[0] : form.partner_id
+    if (!partnerId) errs.partner_id = 'Customer/Vendor is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
+      const vals: Record<string, any> = {}
+      for (const f of ['ref', 'narration', 'invoice_date', 'invoice_date_due', 'move_type']) {
+        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+      }
+      for (const f of ['partner_id', 'journal_id', 'invoice_user_id', 'fiscal_position_id']) {
+        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
+        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        if (nv !== ov) vals[f] = nv || false
+      }
+      if (isNew) {
+        if (!vals.partner_id && form.partner_id) vals.partner_id = Array.isArray(form.partner_id) ? form.partner_id[0] : form.partner_id
+        vals.move_type = form.move_type || 'out_invoice'
+        const { data } = await erpClient.raw.post('/model/account.move/create', { vals })
+        return data
+      }
+      const { data } = await erpClient.raw.put(`/model/account.move/${recordId}`, { vals })
+      return data
+    },
+    onSuccess: (data) => {
+      setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Invoice saved successfully')
+      queryClient.invalidateQueries({ queryKey: ['invoice'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      if (isNew && data?.id) navigate(`/invoicing/invoices/${data.id}`, { replace: true })
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+      }
+    },
   })
 
-  const cancelMutation = useMutation({
-    mutationFn: () => erpClient.raw.post(`/accounting/invoices/${id}/cancel`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoice', id] }),
-  })
+  const callMethod = useCallback(async (method: string) => {
+    if (!validate()) return
+    if (!recordId) return
+    try {
+      await erpClient.raw.post('/model/account.move/call', { record_ids: [recordId], method })
+      toast.success('Action Complete', `${method.replace('action_', '').replace('button_', '').replace(/_/g, ' ')} executed`)
+      queryClient.invalidateQueries({ queryKey: ['invoice', recordId] })
+    } catch (e: any) {
+      toast.error('Action Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    }
+  }, [recordId, queryClient, validate])
 
-  // ── Create mode ──
-  if (isNew) {
-    const moveTypeOptions = [
-      { value: 'out_invoice', label: 'Customer Invoice' },
-      { value: 'in_invoice', label: 'Vendor Bill' },
-      { value: 'out_refund', label: 'Credit Note' },
-      { value: 'in_refund', label: 'Vendor Refund' },
-    ]
+  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const searchM2o = useCallback(async (model: string, q: string, field: string) => {
+    if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
+    try {
+      const { data } = await erpClient.raw.post(`/model/${model}/name_search`, { name: q, limit: 8 })
+      setM2oResults(p => ({ ...p, [field]: data.results || [] }))
+    } catch { setM2oResults(p => ({ ...p, [field]: [] })) }
+  }, [])
+
+  if (isLoading || !record) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
+  }
+
+  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const state = form.state || 'draft'
+  const isDraft = state === 'draft'
+  const isPosted = state === 'posted'
+  const moveType = form.move_type || 'out_invoice'
+  const isInvoice = moveType === 'out_invoice'
+  const isBill = moveType === 'in_invoice'
+  const TYPE_LABELS: Record<string, string> = { out_invoice: 'Invoice', out_refund: 'Credit Note', in_invoice: 'Bill', in_refund: 'Refund' }
+  const typeLabel = TYPE_LABELS[moveType] || 'Entry'
+  const paymentState = form.payment_state || 'not_paid'
+
+  const M2O = ({ field, model, label, required, errorMsg, onSelect }: { field: string; model: string; label: string; required?: boolean; errorMsg?: string; onSelect?: () => void }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    if (!editing) return <ReadonlyField label={label} value={m2oVal(form[field])} />
     return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Accounting</p>
-          <h1 className="text-2xl font-bold tracking-tight">New Invoice</h1>
+      <FormField label={label} required={required}>
+        <div className="relative">
+          <Input value={open ? q : m2oVal(form[field])} className={`rounded-xl h-9${errorMsg ? ' ring-2 ring-red-500/50' : ''}`} autoComplete="off"
+            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+            onFocus={() => { setQ(m2oVal(form[field])); setOpen(true) }}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
+          {open && (m2oResults[field] || []).length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+              {(m2oResults[field] || []).map((r: any) => (
+                <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
+                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false); onSelect?.() }}>{r.display_name}</button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <CardTitle>Invoice Details</CardTitle>
-          </div>
-          <div className="p-6 space-y-4 max-w-lg">
-            <div className="space-y-1.5">
-              <Label htmlFor="inv-partner">Partner</Label>
-              <Input
-                id="inv-partner"
-                placeholder="Partner name"
-                value={formPartner}
-                onChange={(e) => setFormPartner(e.target.value)}
-                className="rounded-2xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="inv-date">Invoice Date</Label>
-              <Input
-                id="inv-date"
-                type="date"
-                value={formDate}
-                onChange={(e) => setFormDate(e.target.value)}
-                className="rounded-2xl"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="inv-type">Type</Label>
-              <select
-                id="inv-type"
-                value={formMoveType}
-                onChange={(e) => setFormMoveType(e.target.value)}
-                className="w-full rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {moveTypeOptions.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
-            <Button
-              onClick={() => createMut.mutate({ partner_name: formPartner, invoice_date: formDate, move_type: formMoveType })}
-              disabled={createMut.isPending || !formPartner}
-              className="rounded-2xl"
-            >
-              {createMut.isPending ? 'Creating…' : 'Create Invoice'}
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/accounting/invoices')}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
+        {errorMsg && <p className="text-xs text-destructive mt-1">{errorMsg}</p>}
+      </FormField>
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-start justify-between">
+  const TF = ({ field, label, type = 'text' }: { field: string; label: string; type?: string }) => {
+    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    return <FormField label={label}><Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" /></FormField>
+  }
+
+  const LinesTable = () => (
+    <div className="rounded-xl border border-border/50 overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-border/40">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider w-[30%]">Product</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider w-[20%]">Account</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[8%]">Qty</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[12%]">Price</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[8%]">Disc.%</TableHead>
+            <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right w-[12%]">Subtotal</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lines.length === 0 ? (
+            <TableRow><TableCell colSpan={6} className="h-20 text-center text-muted-foreground">No invoice lines</TableCell></TableRow>
+          ) : lines.map(line => {
+            if (line.display_type === 'line_section') return (
+              <TableRow key={line.id} className="bg-muted/20"><TableCell colSpan={6} className="font-semibold text-sm py-2">{line.name}</TableCell></TableRow>
+            )
+            if (line.display_type === 'line_note') return (
+              <TableRow key={line.id}><TableCell colSpan={6} className="text-sm text-muted-foreground italic py-1.5">{line.name}</TableCell></TableRow>
+            )
+            return (
+              <TableRow key={line.id} className="border-border/30 hover:bg-muted/10">
+                <TableCell className="py-2">
+                  <p className="text-sm font-medium">{Array.isArray(line.product_id) ? line.product_id[1] : line.name || '—'}</p>
+                  {line.name && Array.isArray(line.product_id) && line.name !== line.product_id[1] && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{line.name}</p>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{Array.isArray(line.account_id) ? line.account_id[1] : ''}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{Number(line.quantity || 0).toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">${Number(line.price_unit || 0).toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-sm text-muted-foreground">{line.discount ? `${line.discount}%` : ''}</TableCell>
+                <TableCell className="text-right font-mono text-sm font-medium">${Number(line.price_subtotal || 0).toFixed(2)}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+
+  const tabs: FormTab[] = [
+    {
+      key: 'lines', label: `${typeLabel} Lines`,
+      content: (
+        <div className="space-y-3">
+          <LinesTable />
+          <div className="flex justify-end">
+            <div className="w-72 space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Untaxed</span><span className="font-mono">${Number(form.amount_untaxed || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Taxes</span><span className="font-mono">${Number(form.amount_tax || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between border-t border-border/40 pt-1.5 font-semibold text-base"><span>Total</span><span className="font-mono">${Number(form.amount_total || 0).toFixed(2)}</span></div>
+              {isPosted && paymentState !== 'paid' && (
+                <div className="flex justify-between pt-1"><span className="text-muted-foreground">Amount Due</span>
+                  <span className="font-mono font-semibold text-amber-400">${Number(form.amount_residual || 0).toFixed(2)}</span></div>
+              )}
+              {isPosted && paymentState === 'paid' && (
+                <div className="flex justify-between pt-1"><span className="text-emerald-400 font-medium">Fully Paid</span></div>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'other', label: 'Other Info',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
           <div className="space-y-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-8 w-64" />
+            <M2O field="invoice_user_id" model="res.users" label="Salesperson" />
+            <TF field="invoice_origin" label="Source Document" />
+            <TF field="ref" label="Reference" />
           </div>
-          <Skeleton className="h-9 w-40" />
+          <div className="space-y-2">
+            <M2O field="journal_id" model="account.journal" label="Journal" />
+            <M2O field="fiscal_position_id" model="account.fiscal.position" label="Fiscal Position" />
+          </div>
         </div>
-        <Skeleton className="h-12 w-full max-w-sm" />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Skeleton className="h-56 w-full rounded-3xl" />
-          <Skeleton className="h-56 w-full rounded-3xl" />
-        </div>
-        <Skeleton className="h-72 w-full rounded-3xl" />
-      </div>
-    )
-  }
-
-  if (!invoice) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="rounded-2xl border border-border/70 bg-muted/40 p-5">
-          <FileText className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <p className="text-muted-foreground">Invoice not found.</p>
-        <Button variant="outline" onClick={() => navigate('/accounting/invoices')}>
-          <ArrowLeft className="h-4 w-4" />
-          Back to Invoices
-        </Button>
-      </div>
-    )
-  }
-
-  const isDraft = invoice.state === 'draft'
-  const isPosted = invoice.state === 'posted'
-  const lines = invoice.invoice_lines || []
-
-  const eyebrowMap: Record<string, string> = {
-    out_invoice: 'Customer Invoice',
-    in_invoice: 'Vendor Bill',
-    out_refund: 'Credit Note',
-    in_refund: 'Vendor Refund',
-    entry: 'Journal Entry',
-  }
+      ),
+    },
+    {
+      key: 'terms', label: 'Terms',
+      content: editing
+        ? <FormField label="Terms and Conditions"><Input value={form.narration || ''} onChange={e => setField('narration', e.target.value)} className="rounded-xl h-9" /></FormField>
+        : <ReadonlyField label="Terms and Conditions" value={form.narration ? <span dangerouslySetInnerHTML={{ __html: form.narration }} /> : undefined} />,
+    },
+  ]
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={invoice.name || 'Draft Invoice'}
-        eyebrow={eyebrowMap[invoice.move_type] ?? invoice.move_type}
-        actions={
-          <div className="flex items-center gap-2">
-            {isDraft && (
-              <Button onClick={() => postMutation.mutate()} disabled={postMutation.isPending}>
-                <Send className="h-4 w-4" />
-                {postMutation.isPending ? 'Posting...' : 'Post'}
-              </Button>
-            )}
-            {isPosted && invoice.payment_state !== 'paid' && (
-              <Button variant="success" onClick={() => navigate(`/accounting/invoices/${id}/pay`)}>
-                <CreditCard className="h-4 w-4" />
-                Register Payment
-              </Button>
-            )}
-            {isPosted && (
-              <Button
-                variant="outline"
-                onClick={() => cancelMutation.mutate()}
-                disabled={cancelMutation.isPending}
-              >
-                <Ban className="h-4 w-4" />
-                Cancel
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate('/accounting/invoices')}>
-              <ArrowLeft className="h-4 w-4" />
-              Back
+    <RecordForm
+      editing={editing} onEdit={() => isDraft && setEditing(true)} onSave={() => saveMut.mutate()}
+      onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setLines(lineData || []); setEditing(false) } }}
+      backTo="/invoicing/invoices"
+      statusBar={<StatusBar steps={STATES} current={state} />}
+      headerActions={
+        <>
+          {isDraft && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('action_post')}><CheckCircle className="h-3.5 w-3.5" /> Confirm</Button>}
+          {isDraft && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('action_send_and_print')}><Send className="h-3.5 w-3.5" /> Send & Print</Button>}
+          {isPosted && paymentState !== 'paid' && (
+            <Button variant="default" size="sm" className="rounded-xl gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => callMethod('action_register_payment')}>
+              <CreditCard className="h-3.5 w-3.5" /> Register Payment
             </Button>
-          </div>
-        }
-      />
-
-      {/* Status progression */}
-      <div className="flex flex-wrap items-center gap-3">
-        <StatusBar states={invoiceStates} currentState={invoice.state} />
-        {isPosted && invoice.payment_state && (
-          <Badge variant={paymentStateVariants[invoice.payment_state] ?? 'secondary'}>
-            {paymentStateLabels[invoice.payment_state] ?? invoice.payment_state.replace('_', ' ')}
-          </Badge>
-        )}
-      </div>
-
-      {/* Info grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Details card */}
-        <div className="rounded-3xl border border-border/60 bg-card/90 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="flex items-center gap-2.5 border-b border-border/70 bg-muted/20 px-6 py-4">
-            <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-sm font-semibold">Details</CardTitle>
-          </div>
-          <div className="px-6 py-4">
-            <InfoRow label="Partner" value={invoice.partner_id ? invoice.partner_id[1] : '—'} />
-            <InfoRow label="Invoice Date" value={invoice.invoice_date || '—'} mono />
-            <InfoRow label="Due Date" value={invoice.invoice_date_due || '—'} mono />
-            <InfoRow label="Journal" value={invoice.journal_id ? invoice.journal_id[1] : '—'} />
-            {invoice.ref && (
-              <InfoRow label="Reference" value={invoice.ref} />
-            )}
-          </div>
+          )}
+          {isPosted && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground" onClick={() => callMethod('action_reverse')}><RotateCcw className="h-3.5 w-3.5" /> Reverse</Button>}
+          {isDraft && recordId && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-destructive" onClick={async () => {
+            if (!confirm('Cancel this invoice?')) return
+            try { await erpClient.raw.post('/model/account.move/call', { record_ids: [recordId], method: 'button_cancel' }); toast.success('Cancelled'); queryClient.invalidateQueries({ queryKey: ['invoice', recordId] }) }
+            catch (e: any) { toast.error('Cancel Failed', e?.response?.data?.detail || e.message) }
+          }}><XCircle className="h-3.5 w-3.5" /> Cancel</Button>}
+          {!isNew && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Printer className="h-3.5 w-3.5" /> Print</Button>}
+          {/* Payment status badge */}
+          {isPosted && (
+            <Badge className={cn('rounded-full text-xs ml-2', PAYMENT_COLORS[paymentState])}>
+              {paymentState === 'paid' ? 'Paid' : paymentState === 'partial' ? 'Partial' : paymentState === 'not_paid' ? 'Not Paid' : paymentState}
+            </Badge>
+          )}
+        </>
+      }
+      topContent={
+        <div className="mb-2">
+          <ReadonlyField label={typeLabel} value={<span className="text-lg font-bold">{!form.name || form.name === '/' ? 'Draft' : form.name}</span>} />
         </div>
-
-        {/* Amounts card */}
-        <div className="rounded-3xl border border-border/60 bg-card/90 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="flex items-center gap-2.5 border-b border-border/70 bg-muted/20 px-6 py-4">
-            <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
-              <Hash className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <CardTitle className="text-sm font-semibold">Amounts</CardTitle>
-          </div>
-          <div className="px-6 py-4">
-            <InfoRow
-              label="Untaxed Amount"
-              value={formatCurrency(invoice.amount_untaxed)}
-              mono
-            />
-            <InfoRow
-              label="Tax"
-              value={formatCurrency(invoice.amount_tax)}
-              mono
-            />
-            <div className="flex items-center justify-between py-3 border-b border-border/40">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Total
-              </span>
-              <span className="font-mono text-lg font-semibold">
-                {formatCurrency(invoice.amount_total)}
-              </span>
-            </div>
-            {isPosted && (
-              <div className="flex items-center justify-between pt-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Amount Due
-                </span>
-                <span className={cn(
-                  'font-mono text-base font-semibold',
-                  invoice.amount_residual > 0 ? 'text-warning' : 'text-success'
-                )}>
-                  {formatCurrency(invoice.amount_residual)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Invoice Lines */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-border/70 bg-muted/20 px-6 py-4">
-          <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <CardTitle className="text-sm font-semibold">
-            Invoice Lines
-            {lines.length > 0 && (
-              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {lines.length}
-              </span>
-            )}
-          </CardTitle>
-        </div>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/40 bg-muted/10 hover:bg-muted/10">
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Product</TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Description</TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Qty</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Price</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Disc %</TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Taxes</TableHead>
-                <TableHead className="text-right text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Subtotal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={8} className="h-32 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="rounded-2xl border border-border/70 bg-muted/40 p-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">No invoice lines.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                lines.map((line: any) => (
-                  <TableRow key={line.id} className="border-border/40 hover:bg-muted/50 transition-colors">
-                    <TableCell className="text-sm">
-                      {line.product_id ? line.product_id[1] : '—'}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {line.name || '—'}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {line.account_id ? line.account_id[1] : '—'}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {line.quantity}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {formatCurrency(line.price_unit)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                      {line.discount > 0 ? `${line.discount}%` : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {line.tax_ids?.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {line.tax_ids.map((tax: any) => (
-                            <Badge
-                              key={typeof tax === 'number' ? tax : tax[0]}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {typeof tax === 'number' ? `Tax ${tax}` : tax[1]}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-medium">
-                      {formatCurrency(line.price_subtotal)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Totals footer */}
-        {lines.length > 0 && (
-          <div className="flex justify-end border-t border-border/70 bg-muted/20 px-6 py-4">
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-mono">{formatCurrency(invoice.amount_untaxed)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span className="font-mono">{formatCurrency(invoice.amount_tax)}</span>
-              </div>
-              <Separator className="opacity-60" />
-              <div className="flex justify-between text-base font-semibold">
-                <span>Total</span>
-                <span className="font-mono">{formatCurrency(invoice.amount_total)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      }
+      leftFields={
+        <>
+          <M2O field="partner_id" model="res.partner" label={isInvoice ? 'Customer' : 'Vendor'} required
+            errorMsg={errors.partner_id}
+            onSelect={() => setErrors(er => { const n = { ...er }; delete n.partner_id; return n })} />
+          <TF field="invoice_date" label={`${typeLabel} Date`} type="date" />
+        </>
+      }
+      rightFields={
+        <>
+          <TF field="invoice_date_due" label="Due Date" type="date" />
+          <M2O field="journal_id" model="account.journal" label="Journal" />
+        </>
+      }
+      tabs={tabs}
+      chatter={recordId ? <Chatter model="account.move" resId={recordId} /> : undefined}
+    />
   )
 }

@@ -137,10 +137,8 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Cur
 
 
 async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme)) -> CurrentUser | None:
-    """Optional auth — returns None if no token provided."""
+    """Optional auth — returns None if no token provided. Invalid tokens raise 401."""
     if not token:
         return None
-    try:
-        return await get_current_user(token)
-    except HTTPException:
-        return None
+    # If a token is provided but invalid/expired, propagate the error (don't silently ignore)
+    return await get_current_user(token)

@@ -58,7 +58,7 @@ def build_sale_domain(
         domain.append(["state", "in", state])
     if invoice_status:
         domain.append(["invoice_status", "in", invoice_status])
-    if partner_id:
+    if partner_id is not None:
         domain.append(["partner_id", "=", partner_id])
     if user_id:
         domain.append(["user_id", "=", user_id])

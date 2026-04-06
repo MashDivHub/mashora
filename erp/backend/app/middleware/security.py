@@ -6,7 +6,7 @@ While the ORM adapter naturally respects Mashora's security model
 checking and logging for audit trails.
 """
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware

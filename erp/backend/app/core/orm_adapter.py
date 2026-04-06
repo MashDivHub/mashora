@@ -176,7 +176,7 @@ async def orm_call(func, *args, **kwargs) -> Any:
     Usage:
         result = await orm_call(my_orm_function, arg1, arg2)
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     executor = _get_executor()
     return await loop.run_in_executor(executor, lambda: func(*args, **kwargs))
 
@@ -239,7 +239,7 @@ def read_record(
         record = env[model].browse(record_id)
         if not record.exists():
             return None
-        data = record.read(fields or [])[0]
+        data = record.read(fields)[0] if fields else record.read()[0]
         return data
 
 
@@ -291,10 +291,12 @@ def delete_record(
 # Blocked methods - these have dedicated endpoints or are dangerous
 BLOCKED_METHODS = frozenset({
     'unlink', 'write', 'create', 'search', 'browse', 'sudo',
-    'with_user', 'with_env', 'with_context', 'mapped', 'filtered',
-    'sorted', 'read', 'read_group', 'search_read', 'search_count',
-    'fields_get', 'default_get', 'name_search', 'name_get',
-    'copy', 'export_data', 'load', 'onchange',
+    'with_user', 'with_env', 'with_context', 'with_company',
+    'mapped', 'filtered', 'sorted', 'read', 'read_group',
+    'search_read', 'search_count', 'fields_get', 'default_get',
+    'name_search', 'name_get', 'copy', 'export_data', 'load',
+    'onchange', 'flush', 'invalidate_cache', 'invalidate_recordset',
+    'invalidate_model', 'modified', 'env',
 })
 
 
@@ -321,7 +323,9 @@ def call_method(
 
     with mashora_env(uid=uid, context=context) as env:
         records = env[model].browse(record_ids)
-        method_func = getattr(records, method)
+        method_func = getattr(records, method, None)
+        if method_func is None or not callable(method_func):
+            raise ValueError(f"Method '{method}' does not exist or is not callable on {model}")
         result = method_func(*(args or []), **(kwargs or {}))
 
         # Try to serialize the result

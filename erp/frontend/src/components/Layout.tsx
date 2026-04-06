@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { ToastContainer } from '@/components/shared'
 import { useTheme } from 'next-themes'
 import {
   LayoutDashboard,
@@ -54,7 +55,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLanguage } from '@/lib/i18n'
-import DynamicSidebar from '@/engine/DynamicSidebar'
+// DynamicSidebar removed — all modules have purpose-built pages
 import { DebugToggle } from '@/engine/DebugMode'
 import { useCompanyStore } from '@/engine/CompanyStore'
 import { useNotificationStore } from '@/engine/NotificationStore'
@@ -132,8 +133,6 @@ const HEADER_HEIGHT = 'h-16'
 const LOCALES = [
   { code: 'en_US', label: 'English' },
   { code: 'ar_001', label: 'العربية' },
-  { code: 'fr_FR', label: 'Français' },
-  { code: 'es_ES', label: 'Español' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -256,22 +255,6 @@ function ThemeToggle() {
 
 function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () => void }) {
   const location = useLocation()
-  const [navMode, setNavMode] = useState<'static' | 'dynamic'>(() => {
-    try {
-      return (localStorage.getItem('sidebar-nav-mode') as 'static' | 'dynamic') || 'static'
-    } catch {
-      return 'static'
-    }
-  })
-
-  function switchMode(mode: 'static' | 'dynamic') {
-    setNavMode(mode)
-    try {
-      localStorage.setItem('sidebar-nav-mode', mode)
-    } catch {
-      // ignore
-    }
-  }
 
   if (collapsed) {
     return (
@@ -279,7 +262,7 @@ function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () 
         <nav className="flex flex-col items-center gap-1 px-2" aria-label="Main navigation">
           {allNavItems.map((item) => {
             const Icon = item.icon
-            const isActive = location.pathname.startsWith(item.href)
+            const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
             return (
               <Tooltip key={item.name}>
                 <TooltipTrigger asChild>
@@ -325,37 +308,8 @@ function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () 
         </p>
       </div>
 
-      {/* Nav mode toggle */}
-      <div className="mb-4 flex items-center gap-1 rounded-2xl border border-border/60 bg-muted/30 p-1">
-        <button
-          onClick={() => switchMode('static')}
-          className={cn(
-            'flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all',
-            navMode === 'static'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Static
-        </button>
-        <button
-          onClick={() => switchMode('dynamic')}
-          className={cn(
-            'flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all',
-            navMode === 'dynamic'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Dynamic
-        </button>
-      </div>
-
-      {navMode === 'dynamic' ? (
-        <DynamicSidebar onNavigate={onClose} />
-      ) : (
-        /* Sectioned navigation */
-        <nav className="space-y-5" aria-label="Main navigation">
+      {/* Navigation */}
+      <nav className="space-y-5" aria-label="Main navigation">
           {navSections.map((section) => (
             <div key={section.label}>
               <p className="mb-1.5 px-4 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -364,7 +318,7 @@ function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () 
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
-                  const isActive = location.pathname.startsWith(item.href)
+                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
                   return (
                     <NavLink
                       key={item.name}
@@ -387,7 +341,6 @@ function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () 
             </div>
           ))}
         </nav>
-      )}
     </div>
   )
 }
@@ -644,11 +597,12 @@ export default function Layout() {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
-                          size="icon-sm"
+                          size="sm"
                           aria-label="Change language"
-                          className="rounded-full border border-border/70 bg-background/70 backdrop-blur"
+                          className="rounded-full border border-border/70 bg-background/70 backdrop-blur gap-1 px-2.5"
                         >
                           <Languages className="h-4 w-4" />
+                          <span className="text-xs font-medium">{locale === 'ar_001' ? 'ع' : 'EN'}</span>
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
@@ -811,6 +765,8 @@ export default function Layout() {
 
         {/* Command palette */}
         <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
+        {/* Toast notifications */}
+        <ToastContainer />
       </div>
     </TooltipProvider>
   )

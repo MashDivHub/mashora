@@ -18,7 +18,7 @@ const CrmDashboard = lazy(() => import('./pages/crm/CrmDashboard'))
 const WebsiteDashboard = lazy(() => import('./pages/website/WebsiteDashboard'))
 const HrDashboard = lazy(() => import('./pages/hr/HrDashboard'))
 const ProjectDashboard = lazy(() => import('./pages/project/ProjectDashboard'))
-const SettingsPage = lazy(() => import('./engine/SettingsPage'))
+const SettingsPage = lazy(() => import('./pages/settings/GeneralSettings'))
 const ActivityDashboard = lazy(() => import('./engine/ActivityDashboard'))
 
 // Module pages — Contacts
@@ -30,6 +30,55 @@ const ContactTags = lazy(() => import('./pages/contacts/ContactTags'))
 const CrmPipeline = lazy(() => import('./pages/crm/Pipeline'))
 const CrmLeadList = lazy(() => import('./pages/crm/LeadList'))
 const CrmLeadDetail = lazy(() => import('./pages/crm/LeadDetail'))
+
+// Module pages — Sales
+const SalesOrderList = lazy(() => import('./pages/sales/SalesOrderList'))
+const SalesOrderDetail = lazy(() => import('./pages/sales/SalesOrderDetail'))
+
+// Module pages — Purchase
+const PurchaseOrderList = lazy(() => import('./pages/purchase/PurchaseOrderList'))
+const PurchaseOrderDetail = lazy(() => import('./pages/purchase/PurchaseOrderDetail'))
+
+// Module pages — Invoicing
+const InvoiceList = lazy(() => import('./pages/accounting/InvoiceList'))
+const InvoiceDetail = lazy(() => import('./pages/accounting/InvoiceDetail'))
+const PaymentsList = lazy(() => import('./pages/accounting/Payments'))
+
+// Module pages — Inventory
+const TransferList = lazy(() => import('./pages/inventory/TransferList'))
+const TransferDetail = lazy(() => import('./pages/inventory/TransferDetail'))
+const StockLevels = lazy(() => import('./pages/inventory/StockLevels'))
+
+// Module pages — Project
+const ProjectList = lazy(() => import('./pages/project/ProjectList'))
+const ProjectDetailPage = lazy(() => import('./pages/project/ProjectDetail'))
+const TaskList = lazy(() => import('./pages/project/TaskList'))
+const TaskDetailPage = lazy(() => import('./pages/project/TaskDetail'))
+
+// Module pages — HR
+const EmployeeList = lazy(() => import('./pages/hr/EmployeeList'))
+const EmployeeDetailPage = lazy(() => import('./pages/hr/EmployeeDetail'))
+const DepartmentList = lazy(() => import('./pages/hr/DepartmentList'))
+
+// Module pages — Calendar, Website, Discuss
+const CalendarPage = lazy(() => import('./pages/secondary/CalendarPage'))
+const CmsPages = lazy(() => import('./pages/website/CmsPages'))
+const DiscussPage = lazy(() => import('./pages/discuss/DiscussPage'))
+
+// Module pages — Secondary (lazy-loaded)
+const Fleet = lazy(() => import('./pages/secondary/Fleet'))
+const Repairs = lazy(() => import('./pages/secondary/Repairs'))
+const Manufacturing = lazy(() => import('./pages/secondary/Manufacturing'))
+const Events = lazy(() => import('./pages/secondary/Events'))
+const Surveys = lazy(() => import('./pages/secondary/Surveys'))
+const EmailMarketing = lazy(() => import('./pages/secondary/EmailMarketing'))
+const PointOfSale = lazy(() => import('./pages/secondary/PointOfSale'))
+
+// Module pages — Settings
+const SettingsDashboard = lazy(() => import('./pages/settings/SettingsDashboard'))
+const UserList = lazy(() => import('./pages/settings/UserList'))
+const UserForm = lazy(() => import('./pages/settings/UserForm'))
+const CompanyList = lazy(() => import('./pages/settings/CompanyList'))
 
 // ---------------------------------------------------------------------------
 // Boneyard skeleton descriptors for page-level loading
@@ -192,8 +241,14 @@ export default function App() {
           <Route path="projects" element={<ProjectDashboard />} />
           <Route path="website" element={<WebsiteDashboard />} />
 
-          {/* Settings & Activities */}
-          <Route path="settings" element={<SettingsPage />} />
+          {/* Settings */}
+          <Route path="settings" element={<SettingsDashboard />} />
+          <Route path="settings/general" element={<SettingsPage />} />
+          <Route path="settings/users" element={<UserList />} />
+          <Route path="settings/users/:id" element={<UserForm />} />
+          <Route path="settings/companies" element={<CompanyList />} />
+
+          {/* Activities */}
           <Route path="activities" element={<ActivityDashboard />} />
 
           {/* Contacts module */}
@@ -206,45 +261,76 @@ export default function App() {
           <Route path="crm/leads" element={<CrmLeadList />} />
           <Route path="crm/leads/:id" element={<CrmLeadDetail />} />
 
+          {/* Sales module */}
+          <Route path="sales/orders" element={<SalesOrderList />} />
+          <Route path="sales/orders/:id" element={<SalesOrderDetail />} />
+
+          {/* Purchase module */}
+          <Route path="purchase/orders" element={<PurchaseOrderList />} />
+          <Route path="purchase/orders/:id" element={<PurchaseOrderDetail />} />
+
+          {/* Invoicing module */}
+          <Route path="invoicing/invoices" element={<InvoiceList />} />
+          <Route path="invoicing/invoices/:id" element={<InvoiceDetail />} />
+          <Route path="invoicing/payments" element={<PaymentsList />} />
+
+          {/* Inventory module */}
+          <Route path="inventory/transfers" element={<TransferList />} />
+          <Route path="inventory/transfers/:id" element={<TransferDetail />} />
+          <Route path="inventory/stock" element={<StockLevels />} />
+          <Route path="inventory/receipts" element={<Navigate to="/inventory/transfers?filter=receipts" replace />} />
+          <Route path="inventory/deliveries" element={<Navigate to="/inventory/transfers?filter=deliveries" replace />} />
+          <Route path="inventory/internal" element={<Navigate to="/inventory/transfers?filter=internal" replace />} />
+
+          {/* Project module */}
+          <Route path="projects/list" element={<ProjectList />} />
+          <Route path="projects/tasks" element={<TaskList />} />
+          <Route path="projects/tasks/:id" element={<TaskDetailPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
+
+          {/* HR module */}
+          <Route path="hr/employees" element={<EmployeeList />} />
+          <Route path="hr/employees/:id" element={<EmployeeDetailPage />} />
+          <Route path="hr/departments" element={<DepartmentList />} />
+
+          {/* Calendar, Website, Discuss */}
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="website/pages" element={<CmsPages />} />
+          <Route path="discuss" element={<DiscussPage />} />
+
+          {/* Secondary modules — purpose-built pages */}
+          <Route path="fleet" element={<Fleet />} />
+          <Route path="repairs" element={<Repairs />} />
+          <Route path="manufacturing" element={<Manufacturing />} />
+          <Route path="events" element={<Events />} />
+          <Route path="surveys" element={<Surveys />} />
+          <Route path="email-marketing" element={<EmailMarketing />} />
+          <Route path="pos" element={<PointOfSale />} />
+
           {/* Dynamic view engine routes */}
           <Route path="action/:actionId/*" element={<ActionRouter />} />
           <Route path="model/:model" element={<ActionRouter />} />
           <Route path="model/:model/:id" element={<ActionRouter />} />
 
-          {/* Legacy URL redirects — map old paths to new dynamic routes */}
-          <Route path="partners" element={<Navigate to="/model/res.partner" replace />} />
+          {/* Legacy URL redirects — only paths with no hand-coded equivalent */}
+          <Route path="partners" element={<Navigate to="/contacts" replace />} />
           <Route path="partners/:id" element={<LegacyRedirect model="res.partner" />} />
-          <Route path="sales/orders" element={<Navigate to="/model/sale.order" replace />} />
-          <Route path="sales/orders/:id" element={<LegacyRedirect model="sale.order" />} />
-          <Route path="purchase/orders" element={<Navigate to="/model/purchase.order" replace />} />
-          <Route path="purchase/orders/:id" element={<LegacyRedirect model="purchase.order" />} />
-          <Route path="accounting/invoices" element={<Navigate to="/model/account.move" replace />} />
+          <Route path="accounting/invoices" element={<Navigate to="/invoicing/invoices" replace />} />
           <Route path="accounting/invoices/:id" element={<LegacyRedirect model="account.move" />} />
           <Route path="accounting/accounts" element={<Navigate to="/model/account.account" replace />} />
-          <Route path="accounting/payments" element={<Navigate to="/model/account.payment" replace />} />
-          <Route path="inventory/transfers" element={<Navigate to="/model/stock.picking" replace />} />
-          <Route path="inventory/transfers/:id" element={<LegacyRedirect model="stock.picking" />} />
-          <Route path="inventory/stock" element={<Navigate to="/model/stock.quant" replace />} />
-          <Route path="crm/pipeline" element={<Navigate to="/model/crm.lead" replace />} />
-          <Route path="crm/leads" element={<Navigate to="/model/crm.lead" replace />} />
-          <Route path="crm/leads/:id" element={<LegacyRedirect model="crm.lead" />} />
-          <Route path="hr/employees" element={<Navigate to="/model/hr.employee" replace />} />
-          <Route path="hr/employees/:id" element={<LegacyRedirect model="hr.employee" />} />
+          <Route path="accounting/payments" element={<Navigate to="/invoicing/payments" replace />} />
           <Route path="hr/leaves" element={<Navigate to="/model/hr.leave" replace />} />
-          <Route path="projects/list" element={<Navigate to="/model/project.project" replace />} />
-          <Route path="projects/:id" element={<LegacyRedirect model="project.project" />} />
-          <Route path="projects/tasks/:id" element={<LegacyRedirect model="project.task" />} />
           <Route path="website/products" element={<Navigate to="/model/product.template" replace />} />
           <Route path="website/products/:id" element={<LegacyRedirect model="product.template" />} />
-          <Route path="website/pages" element={<Navigate to="/model/website.page" replace />} />
-          <Route path="fleet" element={<Navigate to="/model/fleet.vehicle" replace />} />
-          <Route path="repairs" element={<Navigate to="/model/repair.order" replace />} />
-          <Route path="manufacturing" element={<Navigate to="/model/mrp.production" replace />} />
-          <Route path="events" element={<Navigate to="/model/event.event" replace />} />
-          <Route path="surveys" element={<Navigate to="/model/survey.survey" replace />} />
-          <Route path="email-marketing" element={<Navigate to="/model/mailing.mailing" replace />} />
-          <Route path="pos" element={<Navigate to="/model/pos.session" replace />} />
-          <Route path="calendar" element={<Navigate to="/model/calendar.event" replace />} />
+
+          {/* 404 catch-all */}
+          <Route path="*" element={
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <h1 className="text-4xl font-bold text-foreground mb-2">404</h1>
+              <p className="text-muted-foreground mb-4">Page not found</p>
+              <a href="/dashboard" className="text-primary hover:underline text-sm">Go to Dashboard</a>
+            </div>
+          } />
         </Route>
       </Routes>
     </Suspense>

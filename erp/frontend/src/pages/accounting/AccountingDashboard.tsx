@@ -1,273 +1,73 @@
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import {
-  PageHeader, Card, CardContent, CardHeader, CardTitle, Button, Separator, Skeleton,
-} from '@mashora/design-system'
-import {
-  FileText, CreditCard, AlertTriangle, DollarSign, TrendingDown, ArrowRight,
-  Receipt, Landmark, BarChart3, ArrowUpRight,
-} from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Skeleton } from '@mashora/design-system'
+import { FileText, CreditCard, DollarSign, Clock, AlertTriangle, Receipt } from 'lucide-react'
+import { PageHeader, StatCards, type StatCardData } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
-}
-
-interface StatBlockProps {
-  title: string
-  value: string | number
-  description?: string
-  icon: React.ReactNode
-  accent?: 'default' | 'warning' | 'destructive' | 'success'
-}
-
-function StatBlock({ title, value, description, icon, accent = 'default' }: StatBlockProps) {
-  const accentMap = {
-    default: 'group-hover:bg-zinc-900 group-hover:text-white',
-    warning: 'group-hover:bg-amber-500 group-hover:text-white',
-    destructive: 'group-hover:bg-destructive group-hover:text-destructive-foreground',
-    success: 'group-hover:bg-emerald-600 group-hover:text-white',
-  }
-
-  return (
-    <div className="group rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl">
-      <div className="flex items-start justify-between">
-        <div
-          className={[
-            'rounded-2xl border border-border/70 bg-muted/60 p-3 transition-all duration-300',
-            accentMap[accent],
-          ].join(' ')}
-        >
-          {icon}
-        </div>
-      </div>
-      <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-          {title}
-        </p>
-        <p className="mt-1.5 text-3xl font-semibold tracking-tight">{value}</p>
-        {description && (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function SummaryRowSkeleton() {
-  return (
-    <div className="flex items-center justify-between py-1.5">
-      <Skeleton className="h-3.5 w-20" />
-      <Skeleton className="h-3.5 w-12" />
-    </div>
-  )
-}
 
 export default function AccountingDashboard() {
   const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({
     queryKey: ['accounting-dashboard'],
-    queryFn: () => erpClient.raw.get('/accounting/dashboard').then((r) => r.data),
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0]
+      const [draftInv, overdue, bills, payments] = await Promise.all([
+        erpClient.raw.post('/model/account.move', { domain: [['move_type', '=', 'out_invoice'], ['state', '=', 'draft']], fields: ['id'], limit: 1 }).then(r => r.data),
+        erpClient.raw.post('/model/account.move', { domain: [['move_type', '=', 'out_invoice'], ['state', '=', 'posted'], ['payment_state', '!=', 'paid'], ['invoice_date_due', '<', today]], fields: ['id', 'amount_residual'], limit: 1 }).then(r => r.data),
+        erpClient.raw.post('/model/account.move', { domain: [['move_type', '=', 'in_invoice'], ['state', '=', 'draft']], fields: ['id'], limit: 1 }).then(r => r.data),
+        erpClient.raw.post('/model/account.payment', { domain: [['state', '=', 'draft']], fields: ['id'], limit: 1 }).then(r => r.data),
+      ])
+
+      let totalReceivable = 0
+      try {
+        const { data: rg } = await erpClient.raw.post('/model/account.move/read_group', {
+          domain: [['move_type', '=', 'out_invoice'], ['state', '=', 'posted'], ['payment_state', '!=', 'paid']],
+          fields: ['amount_residual'], groupby: [],
+        })
+        totalReceivable = rg.groups?.[0]?.amount_residual || 0
+      } catch {}
+
+      return {
+        draftInvoices: draftInv.total || 0,
+        overdueCount: overdue.total || 0,
+        draftBills: bills.total || 0,
+        draftPayments: payments.total || 0,
+        totalReceivable,
+      }
+    },
+    staleTime: 60_000,
   })
 
-  const invoices = data?.invoices ?? {}
-  const bills = data?.bills ?? {}
+  if (isLoading) {
+    return <div className="space-y-6"><Skeleton className="h-10 w-48 rounded-xl" /><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}</div></div>
+  }
+
+  const fmtCur = (v: number) => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v.toFixed(0)}`
+
+  const stats: StatCardData[] = [
+    { label: 'Draft Invoices', value: data?.draftInvoices || 0, icon: <FileText className="h-5 w-5" />, color: 'info', onClick: () => navigate('/invoicing/invoices?filter=draft') },
+    { label: 'Overdue', value: data?.overdueCount || 0, sub: 'past due date', icon: <AlertTriangle className="h-5 w-5" />, color: 'danger', onClick: () => navigate('/invoicing/invoices?filter=overdue') },
+    { label: 'Receivable', value: fmtCur(data?.totalReceivable || 0), sub: 'outstanding', icon: <DollarSign className="h-5 w-5" />, color: 'warning' },
+    { label: 'Vendor Bills', value: data?.draftBills || 0, sub: 'to process', icon: <Receipt className="h-5 w-5" />, color: 'default', onClick: () => navigate('/invoicing/invoices?filter=bills') },
+  ]
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Accounting"
-        description="Financial overview and quick actions"
-        actions={
-          <Button onClick={() => navigate('/accounting/invoices')}>
-            <Receipt className="h-4 w-4" />
-            New Invoice
-          </Button>
-        }
-      />
-
-      {/* KPI stat grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatBlock
-          title="Draft Invoices"
-          value={isLoading ? '—' : invoices.draft ?? 0}
-          icon={<FileText className="h-5 w-5" />}
-          description="Awaiting validation"
-        />
-        <StatBlock
-          title="Unpaid Invoices"
-          value={isLoading ? '—' : invoices.unpaid ?? 0}
-          icon={<DollarSign className="h-5 w-5" />}
-          description={isLoading ? '' : `${formatCurrency(invoices.total_receivable ?? 0)} receivable`}
-          accent="warning"
-        />
-        <StatBlock
-          title="Overdue Invoices"
-          value={isLoading ? '—' : invoices.overdue ?? 0}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          description="Past due date"
-          accent="destructive"
-        />
-        <StatBlock
-          title="Unpaid Bills"
-          value={isLoading ? '—' : bills.unpaid ?? 0}
-          icon={<TrendingDown className="h-5 w-5" />}
-          description={isLoading ? '' : `${formatCurrency(bills.total_payable ?? 0)} payable`}
-          accent="warning"
-        />
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Customer Invoices */}
-        <div className="rounded-3xl border border-border/60 bg-card/90 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border/70 bg-muted/20 px-6 py-4">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <CardTitle className="text-sm font-semibold">Customer Invoices</CardTitle>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/accounting/invoices')}
-            >
-              View all
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </div>
-          <div className="p-6 space-y-1">
-            {isLoading ? (
-              <>
-                <SummaryRowSkeleton />
-                <SummaryRowSkeleton />
-                <SummaryRowSkeleton />
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground">Draft</span>
-                  <span className="font-mono font-medium">{invoices.draft ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground">Unpaid</span>
-                  <span className="font-mono font-medium">{invoices.unpaid ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground">Overdue</span>
-                  <span className="font-mono font-medium text-destructive">{invoices.overdue ?? 0}</span>
-                </div>
-              </>
-            )}
-            <div className="pt-3">
-              <Separator className="mb-3 opacity-60" />
-              <div className="flex items-center justify-between px-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Total Receivable
-                </span>
-                {isLoading ? (
-                  <Skeleton className="h-5 w-24" />
-                ) : (
-                  <span className="font-mono text-base font-semibold">
-                    {formatCurrency(invoices.total_receivable ?? 0)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Vendor Bills */}
-        <div className="rounded-3xl border border-border/60 bg-card/90 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border/70 bg-muted/20 px-6 py-4">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
-                <Landmark className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <CardTitle className="text-sm font-semibold">Vendor Bills</CardTitle>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/accounting/invoices?type=in_invoice')}
-            >
-              View all
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </div>
-          <div className="p-6 space-y-1">
-            {isLoading ? (
-              <>
-                <SummaryRowSkeleton />
-                <SummaryRowSkeleton />
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground">Draft</span>
-                  <span className="font-mono font-medium">{bills.draft ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted/40 transition-colors">
-                  <span className="text-muted-foreground">Unpaid</span>
-                  <span className="font-mono font-medium">{bills.unpaid ?? 0}</span>
-                </div>
-              </>
-            )}
-            <div className="pt-3">
-              <Separator className="mb-3 opacity-60" />
-              <div className="flex items-center justify-between px-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Total Payable
-                </span>
-                {isLoading ? (
-                  <Skeleton className="h-5 w-24" />
-                ) : (
-                  <span className="font-mono text-base font-semibold">
-                    {formatCurrency(bills.total_payable ?? 0)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick action cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-6">
+      <PageHeader title="Invoicing" subtitle="overview" />
+      <StatCards stats={stats} columns={4} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[
-          {
-            icon: <Receipt className="h-5 w-5" />,
-            title: 'New Invoice',
-            description: 'Create a customer invoice',
-            onClick: () => navigate('/accounting/invoices/new?type=out_invoice'),
-          },
-          {
-            icon: <CreditCard className="h-5 w-5" />,
-            title: 'Register Payment',
-            description: 'Record an incoming payment',
-            onClick: () => navigate('/accounting/payments'),
-          },
-          {
-            icon: <BarChart3 className="h-5 w-5" />,
-            title: 'Chart of Accounts',
-            description: 'Browse the account ledger',
-            onClick: () => navigate('/accounting/chart-of-accounts'),
-          },
-        ].map((action) => (
-          <button
-            key={action.title}
-            onClick={action.onClick}
-            className="group rounded-3xl border border-border/70 bg-card/85 p-6 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <div className="mb-3 inline-flex rounded-xl border border-border/70 bg-muted/60 p-2.5 transition-all duration-300 group-hover:bg-zinc-900 group-hover:text-white group-hover:border-transparent">
-              {action.icon}
+          { label: 'Invoices', desc: 'Customer invoices', icon: <FileText className="h-5 w-5" />, path: '/invoicing/invoices?filter=invoices' },
+          { label: 'Vendor Bills', desc: 'Bills from vendors', icon: <Receipt className="h-5 w-5" />, path: '/invoicing/invoices?filter=bills' },
+          { label: 'Payments', desc: 'Register & view payments', icon: <CreditCard className="h-5 w-5" />, path: '/invoicing/payments' },
+        ].map(item => (
+          <button key={item.path} onClick={() => navigate(item.path)}
+            className="rounded-2xl border border-border/50 bg-card p-5 text-left transition-all hover:bg-muted/20 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-primary/10 p-2.5 text-primary">{item.icon}</div>
+              <div><p className="text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.desc}</p></div>
             </div>
-            <p className="font-semibold">{action.title}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{action.description}</p>
           </button>
         ))}
       </div>

@@ -1,127 +1,192 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import {
-  PageHeader, Input, Badge,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  Skeleton,
-} from '@mashora/design-system'
-import { Search, Calendar } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Input, Button, Badge, Skeleton, cn } from '@mashora/design-system'
+import { Calendar, Plus, Clock, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-interface CalEvent {
-  id: number
-  name: string
-  start: string
-  stop: string
-  location: string | false
-  user_id: [number, string] | false
-  allday: boolean
-  partner_ids: any[]
+const EVENT_FIELDS = [
+  'id', 'name', 'start', 'stop', 'allday', 'duration',
+  'location', 'partner_ids', 'user_id', 'privacy', 'show_as',
+  'categ_ids', 'description',
+]
+
+const COLORS = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-pink-500', 'bg-cyan-500', 'bg-red-500']
+
+function getMonthDays(year: number, month: number) {
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  const startDay = first.getDay()
+  const days: { date: Date; inMonth: boolean }[] = []
+  // Pad start
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = new Date(year, month, -i)
+    days.push({ date: d, inMonth: false })
+  }
+  // Month days
+  for (let i = 1; i <= last.getDate(); i++) {
+    days.push({ date: new Date(year, month, i), inMonth: true })
+  }
+  // Pad end
+  while (days.length % 7 !== 0) {
+    const d = new Date(year, month + 1, days.length - startDay - last.getDate() + 1)
+    days.push({ date: d, inMonth: false })
+  }
+  return days
 }
 
-function TableSkeleton({ cols }: { cols: number }) {
-  return (
-    <>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <TableRow key={i} className="hover:bg-transparent">
-          {Array.from({ length: cols }).map((__, j) => (
-            <TableCell key={j}>
-              <Skeleton className="h-4 w-full max-w-[140px]" />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
-  )
+function fmt(d: Date) { return d.toISOString().split('T')[0] }
+function fmtTime(s: string) {
+  try { return new Date(s).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
 export default function CalendarPage() {
-  const [search, setSearch] = useState('')
+  const queryClient = useQueryClient()
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [month, setMonth] = useState(new Date().getMonth())
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newName, setNewName] = useState('')
+
+  const days = getMonthDays(year, month)
+  const monthStart = new Date(year, month, 1).toISOString()
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
+  const monthLabel = new Date(year, month).toLocaleString(undefined, { month: 'long', year: 'numeric' })
+  const today = fmt(new Date())
 
   const { data, isLoading } = useQuery({
-    queryKey: ['calendar', search],
-    queryFn: () => erpClient.raw.post('/calendar/events', { search: search || undefined, limit: 50 }).then(r => r.data),
+    queryKey: ['calendar-events', year, month],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/calendar.event', {
+        domain: [['start', '>=', monthStart], ['start', '<=', monthEnd]],
+        fields: EVENT_FIELDS, order: 'start asc', limit: 200,
+      })
+      return data.records || []
+    },
   })
 
-  const records: CalEvent[] = data?.records ?? []
+  const events = data || []
+  const eventsByDate: Record<string, any[]> = {}
+  for (const ev of events) {
+    const d = ev.start?.split('T')[0] || ev.start?.split(' ')[0]
+    if (d) { if (!eventsByDate[d]) eventsByDate[d] = []; eventsByDate[d].push(ev) }
+  }
+
+  const createMut = useMutation({
+    mutationFn: async ({ name, date }: { name: string; date: string }) => {
+      const start = `${date} 09:00:00`
+      const stop = `${date} 10:00:00`
+      await erpClient.raw.post('/model/calendar.event/create', { vals: { name, start, stop } })
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['calendar-events'] }); setShowCreate(false); setNewName('') },
+  })
+
+  const prev = () => { if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1) }
+  const next = () => { if (month === 11) { setMonth(0); setYear(y => y + 1) } else setMonth(m => m + 1) }
+
+  const selectedEvents = selectedDate ? (eventsByDate[selectedDate] || []) : []
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Calendar" description={`${data?.total ?? '—'} events`} />
+    <div className="space-y-4">
+      <PageHeader title="Calendar" subtitle="calendar" onNew={() => { setShowCreate(true); setSelectedDate(selectedDate || today) }} />
 
-      {/* Filter bar */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-4">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search calendar events..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="rounded-2xl pl-9 border-border/60 bg-muted/30 focus:bg-background"
-          />
+      <div className="grid lg:grid-cols-[1fr_320px] gap-4">
+        {/* Calendar grid */}
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+          {/* Month nav */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg" onClick={prev}><ChevronLeft className="h-4 w-4" /></Button>
+            <h2 className="text-sm font-semibold">{monthLabel}</h2>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg" onClick={next}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+
+          {isLoading ? (
+            <div className="p-4"><Skeleton className="h-[400px] w-full rounded-xl" /></div>
+          ) : (
+            <div className="grid grid-cols-7">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                <div key={d} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-center py-2 border-b border-border/30">{d}</div>
+              ))}
+              {days.map(({ date, inMonth }, i) => {
+                const key = fmt(date)
+                const dayEvents = eventsByDate[key] || []
+                const isToday = key === today
+                const isSelected = key === selectedDate
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedDate(key)}
+                    className={cn(
+                      'relative h-20 p-1 border-b border-r border-border/20 text-left transition-colors hover:bg-muted/20',
+                      !inMonth && 'opacity-30',
+                      isSelected && 'bg-primary/5 ring-1 ring-primary/30',
+                    )}
+                  >
+                    <span className={cn(
+                      'text-xs font-medium inline-flex items-center justify-center h-5 w-5 rounded-full',
+                      isToday && 'bg-primary text-primary-foreground',
+                    )}>
+                      {date.getDate()}
+                    </span>
+                    <div className="mt-0.5 space-y-0.5 overflow-hidden">
+                      {dayEvents.slice(0, 3).map((ev, j) => (
+                        <div key={ev.id} className={cn('text-[9px] font-medium truncate rounded px-1 py-0.5 text-white', COLORS[j % COLORS.length])}>
+                          {ev.name}
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && <div className="text-[9px] text-muted-foreground px-1">+{dayEvents.length - 3} more</div>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Table card */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/70 bg-muted/20 hover:bg-muted/20">
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Subject</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Start</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">End</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Location</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Organizer</TableHead>
-              <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Attendees</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableSkeleton cols={6} />
-            ) : records.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-40 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-                      <Calendar className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">No calendar events found.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              records.map(row => (
-                <TableRow key={row.id} className="border-border/40 hover:bg-muted/50 transition-colors">
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{row.name}</span>
-                      {row.allday && (
-                        <Badge variant="outline" className="text-[10px]">All Day</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {row.allday ? row.start.split(' ')[0] : row.start}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {row.allday ? row.stop.split(' ')[0] : row.stop}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {row.location || '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {row.user_id ? row.user_id[1] : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {row.partner_ids?.length ?? 0}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        {/* Sidebar: selected day events */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold">
+            {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a day'}
+          </h3>
+
+          {showCreate && selectedDate && (
+            <div className="rounded-xl border border-primary/50 bg-card p-3 space-y-2">
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Event name..." className="h-8 rounded-lg text-sm" autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) createMut.mutate({ name: newName.trim(), date: selectedDate }); if (e.key === 'Escape') setShowCreate(false) }} />
+              <div className="flex gap-1">
+                <Button size="sm" className="h-7 rounded-lg text-xs flex-1" onClick={() => newName.trim() && createMut.mutate({ name: newName.trim(), date: selectedDate })}>Create</Button>
+                <Button variant="ghost" size="sm" className="h-7 rounded-lg text-xs" onClick={() => setShowCreate(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {selectedEvents.length === 0 && !showCreate && (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              No events
+            </div>
+          )}
+
+          {selectedEvents.map(ev => (
+            <div key={ev.id} className="rounded-xl border border-border/50 bg-card p-3 space-y-1.5">
+              <p className="text-sm font-medium">{ev.name}</p>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.allday ? 'All day' : `${fmtTime(ev.start)} – ${fmtTime(ev.stop)}`}</span>
+                {ev.duration > 0 && !ev.allday && <span>{ev.duration}h</span>}
+              </div>
+              {ev.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />{ev.location}</p>}
+              {Array.isArray(ev.partner_ids) && ev.partner_ids.length > 0 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Users className="h-3 w-3" />{ev.partner_ids.length} attendee(s)</div>
+              )}
+            </div>
+          ))}
+
+          {selectedDate && !showCreate && (
+            <Button variant="outline" size="sm" className="w-full rounded-xl gap-1.5 text-xs" onClick={() => setShowCreate(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add Event
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

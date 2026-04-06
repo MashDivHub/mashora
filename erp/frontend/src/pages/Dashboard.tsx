@@ -94,7 +94,7 @@ const quickActions: QuickAction[] = [
     icon: FolderKanban,
   },
   {
-    to: '/partners',
+    to: '/contacts',
     label: 'Contacts',
     description: 'Customers, vendors, and all partner relationships in one registry.',
     icon: Users,

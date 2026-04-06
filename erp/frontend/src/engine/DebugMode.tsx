@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { cn } from '@mashora/design-system'
 import { Bug } from 'lucide-react'
@@ -73,7 +73,7 @@ export function DebugPanel({ info, className }: DebugPanelProps) {
         {info.viewId && <><span className="font-medium">View ID:</span><span className="font-mono">{info.viewId}</span></>}
         {info.recordId && <><span className="font-medium">Record ID:</span><span className="font-mono">{info.recordId}</span></>}
         {Object.entries(metadata).map(([k, v]) => (
-          <><span key={`k_${k}`} className="font-medium">{k}:</span><span key={`v_${k}`} className="font-mono truncate">{String(v)}</span></>
+          <React.Fragment key={k}><span className="font-medium">{k}:</span><span className="font-mono truncate">{String(v)}</span></React.Fragment>
         ))}
       </div>
     </div>

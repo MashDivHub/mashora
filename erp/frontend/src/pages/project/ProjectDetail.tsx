@@ -1,435 +1,222 @@
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  Button, Badge, Skeleton, Input, Label, CardTitle, cn,
-} from '@mashora/design-system'
-import {
-  ArrowLeft, ListTodo, Target, Calendar, TrendingUp, Star,
-  FolderKanban, User, CheckCircle2, Clock, ChevronRight,
-} from 'lucide-react'
+import { Input, Textarea, Badge, Skeleton, cn } from '@mashora/design-system'
+import { CheckSquare, FolderKanban } from 'lucide-react'
+import { RecordForm, FormField, ReadonlyField, toast, type SmartButton, type FormTab } from '@/components/shared'
+import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
-import { useState } from 'react'
 
-// ─── Status config ────────────────────────────────────────────────────────────
+const FORM_FIELDS = [
+  'id', 'name', 'partner_id', 'user_id', 'date_start', 'date',
+  'tag_ids', 'task_count', 'open_task_count', 'description',
+  'label_tasks', 'allow_milestones', 'last_update_status',
+  'stage_id', 'color', 'active', 'company_id',
+]
 
-const statusConfig: Record<string, { badge: 'success' | 'warning' | 'destructive' | 'info' | 'secondary'; label: string }> = {
-  on_track: { badge: 'success', label: 'On Track' },
-  at_risk: { badge: 'warning', label: 'At Risk' },
-  off_track: { badge: 'destructive', label: 'Off Track' },
-  on_hold: { badge: 'info', label: 'On Hold' },
-  done: { badge: 'secondary', label: 'Done' },
-  to_define: { badge: 'secondary', label: 'Not Set' },
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  on_track: { label: 'On Track', color: 'bg-emerald-500' },
+  at_risk: { label: 'At Risk', color: 'bg-amber-500' },
+  off_track: { label: 'Off Track', color: 'bg-red-500' },
+  on_hold: { label: 'On Hold', color: 'bg-blue-500' },
+  done: { label: 'Done', color: 'bg-emerald-500' },
+  to_define: { label: 'To Define', color: 'bg-muted-foreground' },
 }
-
-const stateConfig: Record<string, { badge: 'secondary' | 'warning' | 'success' | 'info' | 'destructive'; label: string }> = {
-  '01_in_progress': { badge: 'secondary', label: 'In Progress' },
-  '02_changes_requested': { badge: 'warning', label: 'Changes Requested' },
-  '03_approved': { badge: 'success', label: 'Approved' },
-  '04_waiting_normal': { badge: 'info', label: 'Waiting' },
-  '1_done': { badge: 'secondary', label: 'Done' },
-  '1_canceled': { badge: 'destructive', label: 'Cancelled' },
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({ value, size = 'md' }: { value: number; size?: 'sm' | 'md' }) {
-  const pct = Math.min(100, Math.max(0, Math.round(value)))
-  const color =
-    pct >= 80 ? 'bg-emerald-500' :
-    pct >= 40 ? 'bg-amber-500' :
-    'bg-zinc-400 dark:bg-zinc-600'
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className={cn('flex-1 rounded-full bg-border/60 overflow-hidden', size === 'sm' ? 'h-1.5' : 'h-2')}>
-        <div
-          className={cn('h-full rounded-full transition-all', color)}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-sm font-medium tabular-nums w-12 text-right">{pct}%</span>
-    </div>
-  )
-}
-
-// ─── Kanban task card ─────────────────────────────────────────────────────────
-
-function TaskCard({ task, onClick }: { task: any; onClick: () => void }) {
-  const cfg = stateConfig[task.state] ?? stateConfig['01_in_progress']
-  const hasPriority = Number(task.priority) > 0
-  const isHighPriority = Number(task.priority) >= 2
-
-  return (
-    <button
-      onClick={onClick}
-      className="group w-full rounded-2xl border border-border/60 bg-card/90 p-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-[0_8px_30px_-12px_rgba(15,23,42,0.35)] dark:hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.5)]"
-    >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-sm font-medium leading-snug line-clamp-2 flex-1">{task.name}</p>
-        {hasPriority && (
-          <Star
-            className={cn(
-              'mt-0.5 h-3.5 w-3.5 shrink-0',
-              isHighPriority ? 'fill-amber-400 text-amber-400' : 'fill-zinc-400 text-zinc-400',
-            )}
-          />
-        )}
-      </div>
-
-      {task.user_ids?.length > 0 && (
-        <p className="text-[11px] text-muted-foreground truncate mb-2">
-          {task.user_ids.map((u: any) => (typeof u === 'number' ? `User ${u}` : u[1])).join(', ')}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between gap-2">
-        {task.date_deadline ? (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Calendar className="h-2.5 w-2.5" />
-            {task.date_deadline.split(' ')[0]}
-          </span>
-        ) : (
-          <span />
-        )}
-        <div className="flex items-center gap-1.5">
-          {task.subtask_count > 0 && (
-            <span className="text-[10px] text-muted-foreground tabular-nums">
-              {task.closed_subtask_count ?? 0}/{task.subtask_count}
-            </span>
-          )}
-          <Badge variant={cfg.badge} className="text-[10px] px-1.5 py-0">
-            {cfg.label}
-          </Badge>
-        </div>
-      </div>
-    </button>
-  )
-}
-
-// ─── Detail row ───────────────────────────────────────────────────────────────
-
-function DetailRow({ label, children, last = false }: { label: string; children: React.ReactNode; last?: boolean }) {
-  return (
-    <div className={cn('flex items-center justify-between py-3 text-sm', !last && 'border-b border-border/50')}>
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-right">{children}</span>
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isNew = id === 'new'
+  const recordId = isNew ? null : parseInt(id || '0')
+  const [editing, setEditing] = useState(isNew)
+  const [form, setForm] = useState<Record<string, any>>({})
 
-  const [formName, setFormName] = useState('')
-  const [formManager, setFormManager] = useState('')
-  const [formCustomer, setFormCustomer] = useState('')
-
-  const createMut = useMutation({
-    mutationFn: (vals: Record<string, any>) =>
-      erpClient.raw.post('/projects/create', vals).then((r) => r.data),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['project'] })
-      navigate(`/projects/${result.id}`, { replace: true })
+  const { data: record, isLoading } = useQuery({
+    queryKey: ['project', recordId],
+    queryFn: async () => {
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/project.project/defaults', { fields: FORM_FIELDS })
+        return { ...data, id: null }
+      }
+      const { data } = await erpClient.raw.get(`/model/project.project/${recordId}`)
+      return data
     },
   })
 
-  const { data: project, isLoading } = useQuery({
-    queryKey: ['project', id],
-    queryFn: () => erpClient.raw.get(`/projects/${id}`).then((r) => r.data),
-    enabled: !isNew,
+  useEffect(() => { if (record) setForm({ ...record }) }, [record])
+  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    if (!form.name?.trim()) errs.name = 'Name is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
+      const vals: Record<string, any> = {}
+      for (const f of ['name', 'description', 'date_start', 'date', 'label_tasks', 'allow_milestones', 'last_update_status']) {
+        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+      }
+      for (const f of ['partner_id', 'user_id', 'stage_id']) {
+        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
+        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        if (nv !== ov) vals[f] = nv || false
+      }
+      if (isNew) {
+        const { data } = await erpClient.raw.post('/model/project.project/create', { vals: { name: form.name, ...vals } })
+        return data
+      }
+      const { data } = await erpClient.raw.put(`/model/project.project/${recordId}`, { vals })
+      return data
+    },
+    onSuccess: (data) => {
+      setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Project saved successfully')
+      queryClient.invalidateQueries({ queryKey: ['project'] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      if (isNew && data?.id) navigate(`/projects/${data.id}`, { replace: true })
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+      }
+    },
   })
 
-  const { data: pipeline } = useQuery({
-    queryKey: ['project-pipeline', id],
-    queryFn: () => erpClient.raw.get(`/projects/${id}/pipeline`).then((r) => r.data),
-    enabled: !isNew,
-  })
+  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const searchM2o = useCallback(async (model: string, q: string, field: string) => {
+    if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
+    try {
+      const { data } = await erpClient.raw.post(`/model/${model}/name_search`, { name: q, limit: 8 })
+      setM2oResults(p => ({ ...p, [field]: data.results || [] }))
+    } catch { setM2oResults(p => ({ ...p, [field]: [] })) }
+  }, [])
 
-  const { data: milestones } = useQuery({
-    queryKey: ['project-milestones', id],
-    queryFn: () => erpClient.raw.get(`/projects/${id}/milestones`).then((r) => r.data),
-    enabled: !isNew,
-  })
-
-  // ── Create mode ──
-  if (isNew) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Projects</p>
-          <h1 className="text-2xl font-bold tracking-tight">New Project</h1>
-        </div>
-        <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-            <CardTitle>Project Details</CardTitle>
-          </div>
-          <div className="p-6 space-y-4 max-w-lg">
-            <div className="space-y-1.5">
-              <Label htmlFor="proj-name">Name</Label>
-              <Input id="proj-name" placeholder="Project name" value={formName} onChange={(e) => setFormName(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="proj-manager">Manager</Label>
-              <Input id="proj-manager" placeholder="Project manager" value={formManager} onChange={(e) => setFormManager(e.target.value)} className="rounded-2xl" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="proj-customer">Customer</Label>
-              <Input id="proj-customer" placeholder="Customer (optional)" value={formCustomer} onChange={(e) => setFormCustomer(e.target.value)} className="rounded-2xl" />
-            </div>
-          </div>
-          <div className="border-t border-border/60 bg-muted/20 px-6 py-4 flex gap-2">
-            <Button
-              onClick={() => createMut.mutate({ name: formName, manager_name: formManager, partner_name: formCustomer || undefined })}
-              disabled={createMut.isPending || !formName}
-              className="rounded-2xl"
-            >
-              {createMut.isPending ? 'Creating…' : 'Create Project'}
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => navigate('/projects/list')}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
+  if (isLoading || !record) {
+    return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
   }
 
-  if (isLoading) {
+  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const status = STATUS_MAP[form.last_update_status] || STATUS_MAP.to_define
+
+  const smartButtons: SmartButton[] = [
+    { label: 'Tasks', value: `${form.open_task_count || 0} / ${form.task_count || 0}`, icon: <CheckSquare className="h-5 w-5" />, onClick: () => navigate(`/projects/tasks?project=${recordId}`) },
+  ]
+
+  const M2O = ({ field, model, label }: { field: string; model: string; label: string }) => {
+    const [open, setOpen] = useState(false)
+    const [q, setQ] = useState('')
+    if (!editing) return <ReadonlyField label={label} value={m2oVal(form[field])} />
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-48" />
-        <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-48" />
-          <Skeleton className="h-48" />
-          <Skeleton className="h-48" />
-        </div>
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
-
-  if (!project) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-        <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
-          <FolderKanban className="size-6 text-muted-foreground" />
-        </div>
-        <p className="text-sm font-medium">Project not found</p>
-      </div>
-    )
-  }
-
-  const status = project.last_update_status || 'to_define'
-  const cfg = statusConfig[status] ?? statusConfig.to_define
-  const pipelineData = pipeline?.pipeline ?? []
-  const milestoneData = milestones?.records ?? []
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Project
-          </p>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight truncate">{project.name}</h1>
-            {project.is_favorite && (
-              <Star className="h-5 w-5 shrink-0 fill-amber-400 text-amber-400" />
-            )}
-          </div>
-          <div className="flex items-center gap-2 pt-0.5">
-            <Badge variant={cfg.badge}>{cfg.label}</Badge>
-            {project.partner_id && (
-              <span className="text-sm text-muted-foreground">{project.partner_id[1]}</span>
-            )}
-          </div>
-        </div>
-        <Button variant="outline" className="rounded-2xl shrink-0" onClick={() => navigate('/projects/list')}>
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
-      {/* Progress bar */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Overall Progress
-          </p>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {project.closed_task_count} / {project.task_count} tasks complete
-          </span>
-        </div>
-        <ProgressBar value={project.task_completion_percentage} />
-      </div>
-
-      {/* Info grid */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Details */}
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/70 bg-muted/20 px-5 py-4 flex items-center gap-2">
-            <ListTodo className="size-4 text-muted-foreground" />
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Details
-            </p>
-          </div>
-          <div className="px-5 py-1">
-            <DetailRow label="Manager">
-              {project.user_id ? project.user_id[1] : '—'}
-            </DetailRow>
-            {project.partner_id && (
-              <DetailRow label="Customer">{project.partner_id[1]}</DetailRow>
-            )}
-            {project.date_start && (
-              <DetailRow label="Start date">{project.date_start}</DetailRow>
-            )}
-            {project.date && (
-              <DetailRow label="Deadline" last={!project.date_start && !project.partner_id}>
-                <span className="font-mono">{project.date}</span>
-              </DetailRow>
-            )}
-            {!project.date_start && !project.date && !project.partner_id && (
-              <DetailRow label="" last>
-                <span className="text-muted-foreground text-xs">No extra details</span>
-              </DetailRow>
-            )}
-          </div>
-        </div>
-
-        {/* Task stats */}
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/70 bg-muted/20 px-5 py-4 flex items-center gap-2">
-            <TrendingUp className="size-4 text-muted-foreground" />
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Tasks
-            </p>
-          </div>
-          <div className="px-5 py-1">
-            <DetailRow label="Open">
-              <span className="tabular-nums">{project.open_task_count}</span>
-            </DetailRow>
-            <DetailRow label="Closed">
-              <span className="tabular-nums text-emerald-500">{project.closed_task_count}</span>
-            </DetailRow>
-            <DetailRow label="Total" last>
-              <span className="tabular-nums font-semibold">{project.task_count}</span>
-            </DetailRow>
-          </div>
-        </div>
-
-        {/* Milestones */}
-        <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-          <div className="border-b border-border/70 bg-muted/20 px-5 py-4 flex items-center gap-2">
-            <Target className="size-4 text-muted-foreground" />
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Milestones
-            </p>
-          </div>
-          {milestoneData.length === 0 ? (
-            <div className="px-5 py-6 text-center">
-              <p className="text-sm text-muted-foreground">No milestones set</p>
-            </div>
-          ) : (
-            <div className="px-5 py-1">
-              {milestoneData.slice(0, 5).map((m: any, idx: number) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    'flex items-center justify-between py-3 text-sm',
-                    idx < Math.min(milestoneData.length, 5) - 1 && 'border-b border-border/50',
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {m.is_reached ? (
-                      <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
-                    ) : (
-                      <Clock className="size-3.5 shrink-0 text-muted-foreground" />
-                    )}
-                    <span
-                      className={cn(
-                        'truncate',
-                        m.is_reached && 'line-through text-muted-foreground',
-                      )}
-                    >
-                      {m.name}
-                    </span>
-                  </div>
-                  {m.deadline && (
-                    <span className="text-[11px] text-muted-foreground font-mono ml-2 shrink-0">
-                      {m.deadline}
-                    </span>
-                  )}
-                </div>
+      <FormField label={label}>
+        <div className="relative">
+          <Input value={open ? q : m2oVal(form[field])} className="rounded-xl h-9" autoComplete="off"
+            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+            onFocus={() => { setQ(m2oVal(form[field])); setOpen(true) }}
+            onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
+          {open && (m2oResults[field] || []).length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+              {(m2oResults[field] || []).map((r: any) => (
+                <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
+                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}>{r.display_name}</button>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </FormField>
+    )
+  }
 
-      {/* Kanban pipeline */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-        <div className="border-b border-border/70 bg-muted/20 px-6 py-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Task Pipeline
-          </p>
+  const TF = ({ field, label, type = 'text' }: { field: string; label: string; type?: string }) => {
+    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    return <FormField label={label}><Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" /></FormField>
+  }
+
+  const tabs: FormTab[] = [
+    {
+      key: 'description', label: 'Description',
+      content: editing
+        ? <Textarea value={form.description || ''} onChange={e => setField('description', e.target.value)} rows={6} placeholder="Project description..." className="rounded-xl resize-y" />
+        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.description }} /> : <p className="text-sm text-muted-foreground">No description</p>,
+    },
+    {
+      key: 'settings', label: 'Settings',
+      content: (
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="space-y-2">
+            <TF field="label_tasks" label="Task Label" />
+            <ReadonlyField label="Milestones" value={form.allow_milestones ? 'Enabled' : 'Disabled'} />
+          </div>
+          <div className="space-y-2">
+            <M2O field="stage_id" model="project.project.stage" label="Stage" />
+          </div>
         </div>
+      ),
+    },
+  ]
 
-        {pipelineData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
-              <ListTodo className="size-6 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium">No stages configured</p>
-            <p className="text-xs text-muted-foreground">Add stages to this project to see the kanban board.</p>
+  return (
+    <RecordForm
+      editing={editing} onEdit={() => setEditing(true)} onSave={() => saveMut.mutate()}
+      onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setEditing(false) } }}
+      backTo="/projects/list" smartButtons={smartButtons}
+      headerActions={
+        !isNew ? (
+          <div className="flex items-center gap-2">
+            <div className={cn('h-2.5 w-2.5 rounded-full', status.color)} />
+            <span className="text-xs font-medium text-muted-foreground">{status.label}</span>
           </div>
-        ) : (
-          <div className="p-4 overflow-x-auto">
-            <div className="flex gap-3 pb-2" style={{ minWidth: 'max-content' }}>
-              {pipelineData.map((col: any) => (
-                <div
-                  key={col.stage.id}
-                  className="flex w-64 shrink-0 flex-col rounded-2xl border border-border/60 bg-muted/20 overflow-hidden"
-                >
-                  {/* Column header */}
-                  <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-3.5 py-2.5">
-                    <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground truncate">
-                      {col.stage.name}
-                    </h4>
-                    <span className="ml-2 shrink-0 rounded-full border border-border/60 bg-card px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
-                      {col.count}
-                    </span>
-                  </div>
-
-                  {/* Tasks */}
-                  <div
-                    className="flex flex-col gap-2 p-2.5 overflow-y-auto"
-                    style={{ maxHeight: '420px' }}
-                  >
-                    {col.tasks.length === 0 ? (
-                      <p className="py-6 text-center text-xs text-muted-foreground">No tasks</p>
-                    ) : (
-                      col.tasks.map((task: any) => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onClick={() => navigate(`/projects/tasks/${task.id}`)}
-                        />
-                      ))
-                    )}
-                  </div>
+        ) : undefined
+      }
+      topContent={
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center"><FolderKanban className="h-6 w-6 text-primary" /></div>
+          {editing ? (
+            <div className="flex-1">
+              <Input value={form.name || ''} onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }} placeholder="Project name"
+                className={`text-xl font-bold border-0 border-b rounded-none px-0 h-auto py-1 w-full focus-visible:ring-0 ${errors.name ? 'border-red-500 focus-visible:border-red-500' : 'border-border/40 focus-visible:border-primary'}`} />
+              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+            </div>
+          ) : (
+            <h2 className="text-2xl font-bold tracking-tight">{form.name || 'New Project'}</h2>
+          )}
+        </div>
+      }
+      leftFields={
+        <>
+          <M2O field="partner_id" model="res.partner" label="Customer" />
+          <M2O field="user_id" model="res.users" label="Project Manager" />
+        </>
+      }
+      rightFields={
+        <>
+          <TF field="date_start" label="Start Date" type="date" />
+          <TF field="date" label="End Date" type="date" />
+          {!editing ? (
+            <ReadonlyField label="Tags" value={
+              Array.isArray(form.tag_ids) && form.tag_ids.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {form.tag_ids.map((t: any, i: number) => <Badge key={i} variant="secondary" className="rounded-full text-xs">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>)}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+              ) : undefined
+            } />
+          ) : null}
+        </>
+      }
+      tabs={tabs}
+      chatter={recordId ? <Chatter model="project.project" resId={recordId} /> : undefined}
+    />
   )
 }

@@ -1,211 +1,120 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import {
-  Button, Badge, Input, Skeleton, cn,
-  CardTitle, CardDescription,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@mashora/design-system'
-import { Plus, Search, Star, SlidersHorizontal, FolderKanban } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Badge, cn } from '@mashora/design-system'
+import { FolderKanban, CheckSquare } from 'lucide-react'
+import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const LIST_FIELDS = [
+  'id', 'name', 'partner_id', 'user_id', 'date_start', 'date',
+  'task_count', 'open_task_count', 'tag_ids', 'last_update_status',
+  'stage_id', 'color', 'active',
+]
 
-interface Project {
-  id: number
-  name: string
-  user_id: [number, string] | false
-  partner_id: [number, string] | false
-  task_count: number
-  open_task_count: number
-  closed_task_count: number
-  task_completion_percentage: number
-  last_update_status: string | false
-  date_start: string | false
-  date: string | false
-  tag_ids: any[]
-  is_favorite: boolean
+const STATUS_COLORS: Record<string, { label: string; color: string }> = {
+  on_track: { label: 'On Track', color: 'text-emerald-400' },
+  at_risk: { label: 'At Risk', color: 'text-amber-400' },
+  off_track: { label: 'Off Track', color: 'text-red-400' },
+  on_hold: { label: 'On Hold', color: 'text-blue-400' },
+  done: { label: 'Done', color: 'text-emerald-400' },
+  to_define: { label: 'To Define', color: 'text-muted-foreground' },
 }
 
-// ─── Status config ────────────────────────────────────────────────────────────
-
-const statusConfig: Record<string, { badge: 'success' | 'warning' | 'destructive' | 'info' | 'secondary'; label: string }> = {
-  on_track: { badge: 'success', label: 'On Track' },
-  at_risk: { badge: 'warning', label: 'At Risk' },
-  off_track: { badge: 'destructive', label: 'Off Track' },
-  on_hold: { badge: 'info', label: 'On Hold' },
-  done: { badge: 'secondary', label: 'Done' },
-  to_define: { badge: 'secondary', label: 'Not Set' },
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({ value }: { value: number }) {
-  const pct = Math.min(100, Math.max(0, Math.round(value)))
-  const color =
-    pct >= 80 ? 'bg-emerald-500' :
-    pct >= 40 ? 'bg-amber-500' :
-    'bg-zinc-400 dark:bg-zinc-600'
-
-  return (
-    <div className="flex items-center gap-2.5 min-w-[140px]">
-      <div className="h-1.5 flex-1 rounded-full bg-border/60 overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', color)}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="w-8 text-right text-xs font-mono text-muted-foreground tabular-nums">
-        {pct}%
-      </span>
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const FILTERS: FilterOption[] = [
+  { key: 'active', label: 'Active', domain: [['active', '=', true]] },
+  { key: 'my', label: 'My Projects', domain: [['user_id', '!=', false]] },
+  { key: 'at_risk', label: 'At Risk', domain: [['last_update_status', '=', 'at_risk']] },
+]
 
 export default function ProjectList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [activeFilters, setActiveFilters] = useState<string[]>([])
+  const [page, setPage] = useState(0)
+  const [sortField, setSortField] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const pageSize = 40
 
-  const params: Record<string, any> = { limit: 50, search: search || undefined }
+  const domain: any[] = []
+  if (search) domain.push(['name', 'ilike', search])
+  for (const key of activeFilters) {
+    const f = FILTERS.find(fl => fl.key === key)
+    if (f) domain.push(...f.domain)
+  }
+
+  const order = sortField ? `${sortField} ${sortDir}` : 'name asc'
 
   const { data, isLoading } = useQuery({
-    queryKey: ['projects', search],
-    queryFn: () => erpClient.raw.post('/projects/list', params).then((r) => r.data),
+    queryKey: ['projects', domain, page, order],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/project.project', {
+        domain: domain.length ? domain : undefined,
+        fields: LIST_FIELDS, offset: page * pageSize, limit: pageSize, order,
+      })
+      return data
+    },
   })
 
-  const records: Project[] = data?.records ?? []
+  const columns: Column[] = [
+    {
+      key: 'name', label: 'Project',
+      render: (_, row) => (
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <FolderKanban className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{row.name}</p>
+            {row.partner_id && <p className="text-xs text-muted-foreground">{Array.isArray(row.partner_id) ? row.partner_id[1] : ''}</p>}
+          </div>
+        </div>
+      ),
+    },
+    { key: 'user_id', label: 'Manager', format: v => Array.isArray(v) ? v[1] : '' },
+    {
+      key: 'task_count', label: 'Tasks', align: 'center' as const,
+      render: (_, row) => (
+        <div className="flex items-center gap-1.5 justify-center">
+          <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm tabular-nums">{row.open_task_count || 0} / {row.task_count || 0}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'last_update_status', label: 'Status',
+      render: v => {
+        const s = STATUS_COLORS[v] || STATUS_COLORS.to_define
+        return <span className={cn('text-xs font-medium', s.color)}>{s.label}</span>
+      },
+    },
+    { key: 'date_start', label: 'Start', format: v => v ? new Date(v).toLocaleDateString() : '' },
+    { key: 'date', label: 'End', format: v => v ? new Date(v).toLocaleDateString() : '' },
+    {
+      key: 'tag_ids', label: 'Tags', sortable: false,
+      render: v => {
+        if (!Array.isArray(v) || !v.length) return ''
+        return (
+          <div className="flex flex-wrap gap-1">
+            {v.slice(0, 2).map((t: any, i: number) => (
+              <Badge key={i} variant="secondary" className="text-[10px] rounded-full px-1.5 py-0">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>
+            ))}
+          </div>
+        )
+      },
+    },
+  ]
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-            Projects
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">All Projects</h1>
-          <p className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading...' : `${data?.total ?? 0} projects`}
-          </p>
-        </div>
-        <Button className="rounded-2xl" onClick={() => navigate('/projects/new')}>
-          <Plus className="h-4 w-4" />
-          New Project
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search projects..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl"
-          />
-        </div>
-      </div>
-
-      {/* Table card */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
-        <div className="border-b border-border/70 bg-muted/20 px-6 py-4 flex items-center justify-between">
-          <div>
-            <CardTitle>Projects</CardTitle>
-            <CardDescription className="mt-0.5">
-              {isLoading ? 'Loading...' : `${records.length} result${records.length !== 1 ? 's' : ''}`}
-            </CardDescription>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          </div>
-        ) : records.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
-              <SlidersHorizontal className="size-6 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium">No projects found</p>
-            <p className="text-xs text-muted-foreground">
-              Try adjusting your search or create a new project.
-            </p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/50">
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Project
-                </TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Manager
-                </TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Customer
-                </TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Progress
-                </TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Tasks
-                </TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Status
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((row) => {
-                const status = row.last_update_status || 'to_define'
-                const cfg = statusConfig[status] ?? statusConfig.to_define
-                return (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer border-border/40 hover:bg-muted/50 transition-colors"
-                    onClick={() => navigate(`/projects/${row.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-lg border border-border/60 bg-muted/50 p-1.5 text-muted-foreground shrink-0">
-                          <FolderKanban className="size-3.5" />
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium">{row.name}</span>
-                          {row.is_favorite && (
-                            <Star className="ml-1.5 inline h-3 w-3 fill-amber-400 text-amber-400" />
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {row.user_id ? row.user_id[1] : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {row.partner_id ? row.partner_id[1] : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <ProgressBar value={row.task_completion_percentage} />
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm tabular-nums">
-                        <span className="font-medium">{row.closed_task_count}</span>
-                        <span className="text-muted-foreground"> / {row.task_count}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={cfg.badge}>{cfg.label}</Badge>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+    <div className="space-y-4">
+      <PageHeader title="Projects" subtitle="project" onNew={() => navigate('/projects/new')} />
+      <SearchBar placeholder="Search projects..." onSearch={v => { setSearch(v); setPage(0) }}
+        filters={FILTERS} activeFilters={activeFilters}
+        onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
+      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
+        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+        rowLink={row => `/projects/${row.id}`} emptyMessage="No projects found" emptyIcon={<FolderKanban className="h-10 w-10" />} />
     </div>
   )
 }

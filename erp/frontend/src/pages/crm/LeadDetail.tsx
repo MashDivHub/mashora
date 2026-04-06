@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Input, Textarea, Badge, Button, Skeleton, cn } from '@mashora/design-system'
 import { Star, Trophy, XCircle, FileText, ShoppingCart } from 'lucide-react'
-import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, stepsFromSelection, type SmartButton, type FormTab } from '@/components/shared'
+import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, stepsFromSelection, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 
@@ -56,8 +56,23 @@ export default function LeadDetail() {
 
   const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })); setDirty(true) }, [])
 
+  // Validation
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validate = useCallback((): boolean => {
+    const errs: Record<string, string> = {}
+    if (!form.name?.trim()) errs.name = 'Name is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Validation Error', Object.values(errs).join(', '))
+      return false
+    }
+    return true
+  }, [form])
+
   const saveMut = useMutation({
     mutationFn: async () => {
+      if (!validate()) throw new Error('Validation failed')
       const vals: Record<string, any> = {}
       const simple = ['name', 'partner_name', 'contact_name', 'email_from', 'phone', 'mobile',
         'expected_revenue', 'probability', 'priority', 'type', 'date_deadline',
@@ -81,9 +96,16 @@ export default function LeadDetail() {
     },
     onSuccess: (data) => {
       setDirty(false); setEditing(false)
+      setErrors({})
+      toast.success('Saved', 'Lead saved successfully')
       queryClient.invalidateQueries({ queryKey: ['crm-lead'] })
       queryClient.invalidateQueries({ queryKey: ['crm-pipeline'] })
       if (isNew && data?.id) navigate(`/crm/leads/${data.id}`, { replace: true })
+    },
+    onError: (e: any) => {
+      if (e.message !== 'Validation failed') {
+        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+      }
     },
   })
 
@@ -212,8 +234,11 @@ export default function LeadDetail() {
       topContent={
         <div className="space-y-2 mb-2">
           {editing ? (
-            <Input value={form.name || ''} onChange={e => setField('name', e.target.value)} placeholder="Opportunity name"
-              className="text-xl font-bold border-0 border-b border-border/40 rounded-none px-0 h-auto py-1 focus-visible:ring-0 focus-visible:border-primary" />
+            <div>
+              <Input value={form.name || ''} onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }} placeholder="Opportunity name"
+                className={`text-xl font-bold border-0 border-b rounded-none px-0 h-auto py-1 focus-visible:ring-0 ${errors.name ? 'border-red-500 focus-visible:border-red-500' : 'border-border/40 focus-visible:border-primary'}`} />
+              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+            </div>
           ) : (
             <h2 className="text-2xl font-bold tracking-tight">{form.name || 'New Opportunity'}</h2>
           )}
