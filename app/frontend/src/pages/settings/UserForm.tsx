@@ -5,6 +5,7 @@ import { Input, Badge, Skeleton } from '@mashora/design-system'
 import { Shield, User } from 'lucide-react'
 import { RecordForm, FormField, FormSection, ReadonlyField, toast, type FormTab } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const FORM_FIELDS = [
   'id', 'name', 'login', 'email', 'image_128', 'active', 'share',
@@ -160,7 +161,7 @@ export default function UserForm() {
       key: 'signature', label: 'Email Signature',
       content: editing
         ? <FormField label="Signature"><Input value={form.signature || ''} onChange={e => setField('signature', e.target.value)} className="rounded-xl h-9" /></FormField>
-        : form.signature ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.signature }} /> : <ReadonlyField label="Signature" value={undefined} />,
+        : form.signature ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.signature)} /> : <ReadonlyField label="Signature" value={undefined} />,
     },
   ]
 

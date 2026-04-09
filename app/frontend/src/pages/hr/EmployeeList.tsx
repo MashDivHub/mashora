@@ -36,7 +36,7 @@ export default function EmployeeList() {
   if (search) domain.push('|', '|', ['name', 'ilike', search], ['work_email', 'ilike', search], ['job_title', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'name asc'

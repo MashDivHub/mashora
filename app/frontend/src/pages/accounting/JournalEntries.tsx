@@ -38,7 +38,7 @@ export default function JournalEntries() {
   if (search) domain.push('|', ['name', 'ilike', search], ['ref', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find((fl) => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'date desc'
@@ -46,11 +46,8 @@ export default function JournalEntries() {
   const { data, isLoading } = useQuery({
     queryKey: ['journal-entries', domain, page, order],
     queryFn: async () => {
-      const { data } = await erpClient.raw.post('/accounting/journal-entries', {
-        domain: domain.length ? domain : undefined,
-        offset: page * pageSize,
-        limit: pageSize,
-        order,
+      const { data } = await erpClient.raw.post('/accounting/journal-entries', domain.length ? { domain } : null, {
+        params: { offset: page * pageSize, limit: pageSize, order },
       })
       return data
     },

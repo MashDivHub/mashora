@@ -51,10 +51,14 @@ async def login(body: LoginRequest):
     )
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 @router.post("/refresh")
-async def refresh_token(refresh_token: str):
+async def refresh_token(body: RefreshRequest):
     """Exchange a refresh token for a new access token."""
-    payload = verify_token(refresh_token)
+    payload = verify_token(body.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
 

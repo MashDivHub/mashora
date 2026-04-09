@@ -5,6 +5,7 @@ Reads installed modules and settings from SQLAlchemy-backed tables.
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.middleware.auth import get_optional_user, CurrentUser
 from app.services.base import async_search_read, async_get, async_create, async_update
@@ -44,12 +45,16 @@ async def open_settings(user: CurrentUser | None = Depends(get_optional_user)):
     return {"error": "Settings not available"}
 
 
+class ApplySettingsBody(BaseModel):
+    id: int
+    vals: dict | None = None
+
+
 @router.post("/apply")
 async def apply_settings(
-    wizard_id: int,
-    vals: dict | None = None,
+    body: ApplySettingsBody,
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Apply settings changes."""
-    updated = await async_update("res.config.settings", wizard_id, vals or {}, uid=_uid(user))
+    updated = await async_update("res.config.settings", body.id, body.vals or {}, uid=_uid(user))
     return {"success": True, "data": updated}

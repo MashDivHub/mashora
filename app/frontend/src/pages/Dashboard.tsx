@@ -18,8 +18,6 @@ import { erpClient } from '@/lib/erp-api'
 
 interface OrmHealth {
   status: string
-  database: string
-  models_loaded: number
   user_count: number
 }
 
@@ -126,8 +124,6 @@ function OrmHealthCard({ data }: { data: OrmHealth }) {
       <CardContent className="p-0">
         <div className="divide-y divide-border/50">
           {[
-            { label: 'Database', value: data.database, mono: true },
-            { label: 'Models loaded', value: data.models_loaded, mono: true },
             { label: 'Active users', value: data.user_count, mono: true },
           ].map(({ label, value, mono }) => (
             <div key={label} className="flex items-center justify-between px-6 py-3.5">

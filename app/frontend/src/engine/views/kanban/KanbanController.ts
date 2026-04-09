@@ -21,8 +21,7 @@ export async function loadKanbanData(
     groupby: [groupByField],
   })
 
-  const columns: KanbanColumn[] = []
-  for (const group of groupData.groups || []) {
+  const columns = await Promise.all((groupData.groups || []).map(async (group: any) => {
     const groupValue = group[groupByField]
     const groupLabel = Array.isArray(groupValue) ? groupValue[1] : String(groupValue || 'Undefined')
     const groupDomain = group.__domain || [...domain, [groupByField, '=', Array.isArray(groupValue) ? groupValue[0] : groupValue]]
@@ -35,14 +34,14 @@ export async function loadKanbanData(
       order: 'sequence asc, id desc',
     })
 
-    columns.push({
+    return {
       groupValue,
       groupLabel,
       count: group[`${groupByField}_count`] || recordData.total || 0,
       records: recordData.records || [],
       aggregates: {},
-    })
-  }
+    }
+  }))
 
   return columns
 }

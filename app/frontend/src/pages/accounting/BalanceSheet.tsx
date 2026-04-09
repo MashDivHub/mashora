@@ -120,7 +120,7 @@ export default function BalanceSheet() {
     queryKey: ['balance-sheet', asOf],
     queryFn: () =>
       erpClient.raw
-        .get('/accounting/reports/balance-sheet', { params: { date: asOf } })
+        .get('/accounting/reports/balance-sheet', { params: { date_to: asOf } })
         .then((r) => r.data),
     enabled: false,
   })

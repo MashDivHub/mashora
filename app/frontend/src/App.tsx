@@ -1,8 +1,10 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react'
 import { computeLayout } from 'boneyard-js/layout'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import { useAuthStore } from './engine/AuthStore'
 
 // Engine router
 const ActionRouter = lazy(() => import('./engine/ActionRouter'))
@@ -331,11 +333,15 @@ function LegacyRedirect({ model }: { model: string }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    useAuthStore.getState().fetchUser()
+  }, [])
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
 
           {/* Hand-coded dashboards (client actions) */}
@@ -533,7 +539,6 @@ export default function App() {
           <Route path="partners/:id" element={<LegacyRedirect model="res.partner" />} />
           <Route path="accounting/invoices" element={<Navigate to="/invoicing/invoices" replace />} />
           <Route path="accounting/invoices/:id" element={<LegacyRedirect model="account.move" />} />
-          <Route path="accounting/accounts" element={<Navigate to="/model/account.account" replace />} />
           <Route path="accounting/payments" element={<Navigate to="/invoicing/payments" replace />} />
           {/* hr/leaves and website/products now have hand-coded routes above */}
 

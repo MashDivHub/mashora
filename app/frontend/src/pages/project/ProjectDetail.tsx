@@ -6,6 +6,7 @@ import { CheckSquare, FolderKanban } from 'lucide-react'
 import { RecordForm, FormField, ReadonlyField, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const FORM_FIELDS = [
   'id', 'name', 'partner_id', 'user_id', 'date_start', 'date',
@@ -149,7 +150,7 @@ export default function ProjectDetail() {
       key: 'description', label: 'Description',
       content: editing
         ? <Textarea value={form.description || ''} onChange={e => setField('description', e.target.value)} rows={6} placeholder="Project description..." className="rounded-xl resize-y" />
-        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.description }} /> : <p className="text-sm text-muted-foreground">No description</p>,
+        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.description)} /> : <p className="text-sm text-muted-foreground">No description</p>,
     },
     {
       key: 'settings', label: 'Settings',

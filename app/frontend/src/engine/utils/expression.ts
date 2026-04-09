@@ -1,5 +1,5 @@
 /**
- * Evaluates Python-like expressions used in Odoo 19+ view attributes.
+ * Evaluates Python-like expressions used in Mashora 19+ view attributes.
  * Examples: "state != 'draft'", "amount > 0 and state == 'posted'", "not is_company"
  */
 
@@ -68,9 +68,9 @@ function tokenize(expr: string): Token[] {
 }
 
 /**
- * Python-like equality: False == 0 == '' in Odoo context.
+ * Python-like equality: False == 0 == '' in Mashora context.
  * In Python: False == 0 is True, but False == '' is False.
- * For Odoo views we need: falsy values match each other for practical purposes.
+ * For Mashora views we need: falsy values match each other for practical purposes.
  */
 function pyEq(a: any, b: any): boolean {
   if (a === b) return true
@@ -78,7 +78,7 @@ function pyEq(a: any, b: any): boolean {
   if ((a === null || a === undefined || a === false) && (b === null || b === undefined || b === false)) return true
   // Python: False == 0 is True, 0 == False is True
   if ((a === false || a === 0 || a === null || a === undefined) && (b === false || b === 0 || b === null || b === undefined)) return true
-  // Empty string == False/None in Odoo view context
+  // Empty string == False/None in Mashora view context
   if (a === '' && (b === false || b === null || b === undefined)) return true
   if (b === '' && (a === false || a === null || a === undefined)) return true
   return false

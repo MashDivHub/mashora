@@ -39,7 +39,7 @@ export default function LocationList() {
   const pageSize = 50
 
   const usageFilter = activeFilters.length > 0
-    ? activeFilters.map(k => FILTERS.find(f => f.key === k)?.domain[0]).filter(Boolean)
+    ? activeFilters.map(k => FILTERS.find(f => f.key === k)?.domain?.[0]).filter(Boolean)
     : undefined
 
   const order = sortField ? `${sortField} ${sortDir}` : 'complete_name asc'

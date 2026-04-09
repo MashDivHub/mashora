@@ -25,6 +25,7 @@ const FILTERS: FilterOption[] = [
   { key: 'orders', label: 'Purchase Orders', domain: [['state', '=', 'purchase']] },
   { key: 'to_approve', label: 'To Approve', domain: [['state', '=', 'to approve']] },
   { key: 'to_bill', label: 'To Bill', domain: [['invoice_status', '=', 'to invoice']] },
+  { key: 'late', label: 'Late', domain: [['state', '=', 'purchase'], ['date_planned', '<', new Date().toISOString().split('T')[0]]] },
 ]
 
 export default function PurchaseOrderList() {
@@ -42,7 +43,7 @@ export default function PurchaseOrderList() {
   if (search) domain.push('|', ['name', 'ilike', search], ['partner_id', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'date_order desc'

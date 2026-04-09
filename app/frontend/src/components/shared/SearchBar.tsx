@@ -5,7 +5,8 @@ import { Search, X, SlidersHorizontal } from 'lucide-react'
 export interface FilterOption {
   key: string
   label: string
-  domain: any[]
+  domain?: any[]
+  active?: boolean
 }
 
 export interface SearchBarProps {
@@ -18,6 +19,7 @@ export interface SearchBarProps {
   /** Debounce delay in ms */
   debounce?: number
   className?: string
+  children?: React.ReactNode
 }
 
 export default function SearchBar({

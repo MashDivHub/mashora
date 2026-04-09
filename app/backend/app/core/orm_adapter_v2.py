@@ -23,15 +23,9 @@ from app.core.domain_parser import parse_domain
 from app.core.model_registry import get_fields_info, get_model_class
 from app.db.session import _get_session_factory
 
+from app.services.base import RecordNotFoundError  # noqa: F401 — re-export for backward compat
+
 _logger = logging.getLogger(__name__)
-
-
-class RecordNotFoundError(Exception):
-    """Raised when a record does not exist."""
-    def __init__(self, model: str, record_id: int):
-        self.model = model
-        self.record_id = record_id
-        super().__init__(f"Record {model}({record_id}) does not exist.")
 
 
 async def _get_session() -> AsyncSession:

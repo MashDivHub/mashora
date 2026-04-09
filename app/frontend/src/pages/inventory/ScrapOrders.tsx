@@ -33,7 +33,7 @@ export default function ScrapOrders() {
   if (search) domain.push(['name', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'create_date desc'

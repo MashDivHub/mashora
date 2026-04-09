@@ -40,7 +40,7 @@ export default function ContactList() {
   }
   for (const key of activeFilters) {
     const filter = FILTERS.find(f => f.key === key)
-    if (filter) domain.push(...filter.domain)
+    if (filter?.domain) domain.push(...filter.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'name asc'

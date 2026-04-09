@@ -140,15 +140,10 @@ async def get_picking(
 
     move_ids = data.get("move_ids") or []
     if move_ids:
-        moves = []
-        for mid in move_ids:
-            moves.extend(
-                await async_get_related(
-                    "stock.picking", picking_id, "picking_id", "stock.move",
-                    fields=MOVE_FIELDS,
-                )
-            )
-        data["moves"] = moves
+        data["moves"] = await async_get_related(
+            "stock.picking", picking_id, "picking_id", "stock.move",
+            fields=MOVE_FIELDS,
+        )
     else:
         data["moves"] = []
 

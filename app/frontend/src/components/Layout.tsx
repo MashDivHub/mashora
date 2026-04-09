@@ -59,6 +59,7 @@ import { useLanguage } from '@/lib/i18n'
 import { DebugToggle } from '@/engine/DebugMode'
 import { useCompanyStore } from '@/engine/CompanyStore'
 import { useNotificationStore } from '@/engine/NotificationStore'
+import { useAuthStore } from '@/engine/AuthStore'
 import { useBusSubscription } from '@/lib/websocket'
 
 // ---------------------------------------------------------------------------
@@ -422,6 +423,12 @@ export default function Layout() {
   const { companies, currentCompanyId, fetchCompanies, setCurrentCompany } = useCompanyStore()
   const queryClient = useQueryClient()
   const { notifications, unreadCount, markRead, markAllRead, fetchNotifications } = useNotificationStore()
+  const { user, logout } = useAuthStore()
+  const navigate = useNavigate()
+
+  const userInitials = user?.name
+    ? user.name.split(' ').filter(Boolean).slice(0, 2).map((n) => n[0].toUpperCase()).join('')
+    : 'ME'
 
   useEffect(() => {
     fetchCompanies()
@@ -716,27 +723,33 @@ export default function Layout() {
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 rounded-full border border-border/70 bg-card/80 py-1 pl-1 pr-2.5 transition-colors hover:bg-accent">
                       <Avatar className="size-7">
-                        <AvatarFallback className="text-xs font-semibold">ME</AvatarFallback>
+                        <AvatarFallback className="text-xs font-semibold">{userInitials}</AvatarFallback>
                       </Avatar>
-                      <span className="hidden text-sm font-medium lg:inline">Admin</span>
+                      <span className="hidden text-sm font-medium lg:inline">{user?.name || 'User'}</span>
                       <ChevronDown className="hidden size-3 text-muted-foreground lg:block" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div className="flex flex-col gap-1">
-                        <span className="font-semibold">Mashora Admin</span>
+                        <span className="font-semibold">{user?.name || 'User'}</span>
                         <span className="text-xs font-normal text-muted-foreground">
-                          admin@mashora.com
+                          {user?.email || ''}
                         </span>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="cursor-pointer rounded-lg gap-2">
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg gap-2"
+                      onClick={() => navigate(`/settings/users/${user?.id}`)}
+                    >
                       <User className="size-4" />
                       My Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer rounded-lg gap-2">
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg gap-2"
+                      onClick={() => navigate('/settings')}
+                    >
                       <Settings className="size-4" />
                       Settings
                     </DropdownMenuItem>
@@ -745,7 +758,10 @@ export default function Layout() {
                       Notifications
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="cursor-pointer rounded-lg gap-2 text-destructive focus:text-destructive">
+                    <DropdownMenuItem
+                      className="cursor-pointer rounded-lg gap-2 text-destructive focus:text-destructive"
+                      onClick={logout}
+                    >
                       <LogOut className="size-4" />
                       Log out
                     </DropdownMenuItem>

@@ -36,11 +36,8 @@ export default function BankStatements() {
   const { data, isLoading } = useQuery({
     queryKey: ['bank-statements', page, order],
     queryFn: async () => {
-      const { data } = await erpClient.raw.post('/accounting/bank-statements', {
-        domain: [],
-        offset: page * pageSize,
-        limit: pageSize,
-        order,
+      const { data } = await erpClient.raw.post('/accounting/bank-statements', null, {
+        params: { offset: page * pageSize, limit: pageSize, order },
       })
       return data
     },

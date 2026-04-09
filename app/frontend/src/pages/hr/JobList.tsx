@@ -32,7 +32,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 function JobCard({ job }: { job: JobRecord }) {
   const isHiring = job.no_of_recruitment > 0
 
-  // Strip HTML tags from Odoo description field
+  // Strip HTML tags from Mashora description field
   const plainDescription = job.description
     ? job.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
     : ''

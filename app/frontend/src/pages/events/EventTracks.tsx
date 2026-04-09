@@ -88,7 +88,7 @@ export default function EventTracks() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/30 bg-card/50 py-20 text-muted-foreground">
           <Mic className="h-10 w-10" />
           <p className="text-sm font-medium">Event tracks module not installed</p>
-          <p className="text-xs">Enable the Event Tracks module in Odoo to use this feature.</p>
+          <p className="text-xs">Enable the Event Tracks module to use this feature.</p>
         </div>
       </div>
     )

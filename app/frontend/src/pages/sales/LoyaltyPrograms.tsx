@@ -130,8 +130,8 @@ export default function LoyaltyPrograms() {
           {records.map(program => {
             const typeLabel = PROGRAM_TYPES[program.program_type] ?? program.program_type
             const badgeClass = TYPE_BADGE_CLASS[program.program_type] ?? 'bg-muted/30 text-muted-foreground border-border/40'
-            const hasDateFrom = program.date_from && program.date_from !== false
-            const hasDateTo = program.date_to && program.date_to !== false
+            const hasDateFrom = !!program.date_from
+            const hasDateTo = !!program.date_to
             const showDates = hasDateFrom || hasDateTo
 
             return (

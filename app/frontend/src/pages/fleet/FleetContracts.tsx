@@ -115,7 +115,7 @@ export default function FleetContracts() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/30 bg-card/50 py-20 text-muted-foreground">
           <FileText className="h-10 w-10" />
           <p className="text-sm font-medium">Fleet contracts not available</p>
-          <p className="text-xs">Enable the Fleet module in Odoo to use this feature.</p>
+          <p className="text-xs">Enable the Fleet module to use this feature.</p>
         </div>
       </div>
     )

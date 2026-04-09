@@ -69,7 +69,7 @@ export default function SkillsMatrix() {
   // If the model doesn't exist the API will return an error
   const notInstalled =
     isError ||
-    (error instanceof Error && error.message.toLowerCase().includes('model'))
+    (error != null && typeof error === 'object' && 'message' in error && String((error as any).message).toLowerCase().includes('model'))
 
   if (notInstalled) {
     return (
@@ -78,7 +78,7 @@ export default function SkillsMatrix() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/30 bg-card/50 py-20 text-muted-foreground">
           <Layers className="h-10 w-10" />
           <p className="text-sm font-medium">Skills module not installed</p>
-          <p className="text-xs">Enable the Skills module in Odoo to use this feature.</p>
+          <p className="text-xs">Enable the Skills module to use this feature.</p>
         </div>
       </div>
     )

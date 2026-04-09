@@ -6,6 +6,7 @@
  *   <Chatter model="account.move" resId={invoiceId} />
  */
 import React, { useState } from 'react'
+import { sanitizedHtml } from '@/lib/sanitize'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Button, Badge, Skeleton, Textarea, cn,
@@ -364,7 +365,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
                         </div>
                         <div
                           className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-p:my-1 prose-a:text-foreground prose-a:underline-offset-4"
-                          dangerouslySetInnerHTML={{ __html: msg.body || '' }}
+                          dangerouslySetInnerHTML={sanitizedHtml(msg.body)}
                         />
                         {msg.tracking_value_ids?.length > 0 && (
                           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground">

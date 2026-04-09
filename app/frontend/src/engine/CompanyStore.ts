@@ -39,5 +39,8 @@ export const useCompanyStore = create<CompanyState>((set, get) => ({
 // Initialize from localStorage
 const storedCompanyId = localStorage.getItem('mashora_company_id')
 if (storedCompanyId) {
-  useCompanyStore.setState({ currentCompanyId: parseInt(storedCompanyId) })
+  const parsed = parseInt(storedCompanyId, 10)
+  if (!isNaN(parsed)) {
+    useCompanyStore.setState({ currentCompanyId: parsed })
+  }
 }

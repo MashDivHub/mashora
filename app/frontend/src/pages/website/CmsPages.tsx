@@ -5,11 +5,11 @@ import { Globe, Eye, EyeOff } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-const FIELDS = ['id', 'name', 'url', 'website_id', 'is_published', 'date_publish', 'website_indexed']
+const FIELDS = ['id', 'name', 'url', 'website_id', 'website_published', 'date_publish', 'website_indexed']
 
 const FILTERS: FilterOption[] = [
-  { key: 'published', label: 'Published', domain: [['is_published', '=', true]] },
-  { key: 'unpublished', label: 'Unpublished', domain: [['is_published', '=', false]] },
+  { key: 'published', label: 'Published', domain: [['website_published', '=', true]] },
+  { key: 'unpublished', label: 'Unpublished', domain: [['website_published', '=', false]] },
   { key: 'indexed', label: 'Indexed', domain: [['website_indexed', '=', true]] },
 ]
 
@@ -24,7 +24,7 @@ export default function CmsPages() {
   if (search) domain.push('|', ['name', 'ilike', search], ['url', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const { data, isLoading } = useQuery({
@@ -51,7 +51,7 @@ export default function CmsPages() {
     },
     { key: 'url', label: 'URL', render: v => <span className="text-sm font-mono text-muted-foreground">{v}</span> },
     {
-      key: 'is_published', label: 'Status',
+      key: 'website_published', label: 'Status',
       render: v => v ? (
         <Badge variant="default" className="rounded-full text-xs gap-1 bg-emerald-600"><Eye className="h-3 w-3" /> Published</Badge>
       ) : (

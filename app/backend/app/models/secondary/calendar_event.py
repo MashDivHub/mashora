@@ -44,6 +44,10 @@ class CalendarEvent(Base, TimestampMixin, ActiveMixin):
 
     duration: Mapped[Optional[float]] = mapped_column(Double, nullable=True)
 
+    # External calendar IDs for sync
+    google_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    microsoft_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     # Relationships
     attendees: Mapped[List["CalendarAttendee"]] = relationship("CalendarAttendee", back_populates="event")
 

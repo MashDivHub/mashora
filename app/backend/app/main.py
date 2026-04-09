@@ -22,14 +22,20 @@ _logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup: initialize SQLAlchemy engine. Shutdown: dispose."""
     settings = get_settings()
+    settings.validate_production()
     _logger.info("Starting Mashora ERP API...")
 
-    from app.db.engine import get_engine, dispose_engine
+    from app.db.engine import get_engine
     from app.core.model_registry import rebuild_registry
-    import app.models  # noqa: F401 — register all models with Base
+    import app.models  # noqa: F401
     get_engine()
     rebuild_registry()
     _logger.info("SQLAlchemy ORM initialized successfully.")
+
+    from app.routers.bus import manager as bus_manager
+    from app.services.bus_events import set_bus_manager
+    set_bus_manager(bus_manager)
+    _logger.info("WebSocket bus manager registered.")
 
     _register_exception_handlers()
 
@@ -40,6 +46,8 @@ async def lifespan(app: FastAPI):
     _logger.info("Mashora ERP API shut down.")
 
 
+settings = get_settings()
+
 app = FastAPI(
     title="Mashora ERP API",
     version="1.0.0",
@@ -49,8 +57,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -95,6 +103,8 @@ from app.routers.actions import router as actions_router
 from app.routers.menus import router as menus_router
 from app.routers.settings import router as settings_router
 from app.routers.attachments import router as attachments_router
+from app.routers.email import router as email_router
+from app.routers.calendar_sync import router as calendar_sync_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(generic_router, prefix="/api/v1")
@@ -121,6 +131,8 @@ app.include_router(actions_router, prefix="/api/v1")
 app.include_router(menus_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(attachments_router, prefix="/api/v1")
+app.include_router(email_router, prefix="/api/v1")
+app.include_router(calendar_sync_router, prefix="/api/v1")
 
 
 @app.get("/")

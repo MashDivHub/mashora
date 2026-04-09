@@ -16,6 +16,7 @@ import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 import AttachmentPanel from '../../AttachmentPanel'
 import { DebugPanel } from '../../DebugMode'
+import { toast } from '@/components/shared'
 
 export default function FormView({ model, recordId }: ViewProps) {
   const navigate = useNavigate()
@@ -65,7 +66,11 @@ export default function FormView({ model, recordId }: ViewProps) {
       if (updates && Object.keys(updates).length > 0) {
         setState(prev => prev ? mergeOnchangeResult(prev, updates) : prev)
       }
-    } catch {}
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || 'An error occurred'
+      console.error('Onchange failed:', msg)
+      toast.error('Field update failed', msg)
+    }
   }, [state, model])
 
   const handleSave = useCallback(async () => {
@@ -80,7 +85,11 @@ export default function FormView({ model, recordId }: ViewProps) {
       } else {
         queryClient.invalidateQueries({ queryKey: ['form', model, recordId] })
       }
-    } catch {}
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.message || 'An error occurred'
+      console.error('Save failed:', msg)
+      toast.error('Save failed', msg)
+    }
   }, [state, model, recordId, navigate, queryClient])
 
   const handleDiscard = useCallback(() => {

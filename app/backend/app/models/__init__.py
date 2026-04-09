@@ -8,4 +8,5 @@ from app.models.crm import *  # noqa
 from app.models.hr import *  # noqa
 from app.models.project import *  # noqa
 from app.models.website import *  # noqa
+from app.models.mrp import *  # noqa
 from app.models.secondary import *  # noqa

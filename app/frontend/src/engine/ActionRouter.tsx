@@ -1,11 +1,20 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useState, useEffect } from 'react'
 import { fetchAction, fetchActionForModel } from './ActionService'
 import { LazyFormView, LazyListView, LazyKanbanView, LazyCalendarView, LazyGraphView, LazyPivotView } from './ViewRegistry'
 import type { ViewProps } from './ViewRegistry'
 import { Skeleton } from '@mashora/design-system'
 import { getClientAction } from './ClientActionRegistry'
+
+function UrlAction({ url, target }: { url?: string; target?: string }) {
+  useEffect(() => {
+    if (url) {
+      window.open(url, target === 'self' ? '_self' : '_blank')
+    }
+  }, [url, target])
+  return <div className="text-muted-foreground p-8">Redirecting...</div>
+}
 
 function ViewFallback() {
   return (
@@ -73,10 +82,7 @@ export default function ActionRouter() {
 
   // Handle URL actions
   if (action.action_type === 'ir.actions.act_url' || action.type === 'ir.actions.act_url') {
-    if (action.url) {
-      window.open(action.url, action.target === 'self' ? '_self' : '_blank')
-    }
-    return <div className="text-muted-foreground p-8">Redirecting...</div>
+    return <UrlAction url={action.url} target={action.target} />
   }
 
   // Handle server actions (these usually return another action)

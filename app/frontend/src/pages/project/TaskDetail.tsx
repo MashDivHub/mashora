@@ -6,6 +6,7 @@ import { Star, FolderKanban } from 'lucide-react'
 import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const FORM_FIELDS = [
   'id', 'name', 'project_id', 'user_ids', 'stage_id', 'priority', 'state',
@@ -159,7 +160,7 @@ export default function TaskDetail() {
       key: 'description', label: 'Description',
       content: editing
         ? <Textarea value={form.description || ''} onChange={e => setField('description', e.target.value)} rows={8} placeholder="Task description..." className="rounded-xl resize-y" />
-        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.description }} /> : <p className="text-sm text-muted-foreground">No description</p>,
+        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.description)} /> : <p className="text-sm text-muted-foreground">No description</p>,
     },
     {
       key: 'subtasks', label: 'Sub-tasks',

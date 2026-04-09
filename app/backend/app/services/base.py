@@ -24,6 +24,7 @@ from app.core.domain_parser import parse_domain
 from app.core.model_registry import get_model_class
 from app.db.base import Base
 from app.db.session import _get_session_factory
+from app.services.bus_events import notify_record_change
 
 _logger = logging.getLogger(__name__)
 
@@ -74,9 +75,10 @@ def _records_to_list(records, fields: Optional[list[str]] = None) -> list[dict[s
 
 
 async def get_session() -> AsyncSession:
-    """Get a new async session."""
+    """Get a new async session with auto-commit/rollback."""
     factory = _get_session_factory()
-    return factory()
+    session = factory()
+    return session
 
 
 async def async_search_read(
@@ -179,6 +181,7 @@ async def async_create(
         await session.refresh(record)
         data = _to_dict(record, fields)
         await session.commit()
+        await notify_record_change(model, data["id"], "create", uid=uid)
         return data
 
 
@@ -212,6 +215,7 @@ async def async_update(
         await session.refresh(record)
         data = _to_dict(record, fields)
         await session.commit()
+        await notify_record_change(model, record_id, "update", uid=uid, changed_fields=list(vals.keys()))
         return data
 
 
@@ -230,6 +234,7 @@ async def async_delete(
             raise RecordNotFoundError(model, record_id)
         await session.delete(record)
         await session.commit()
+        await notify_record_change(model, record_id, "delete")
         return True
 
 

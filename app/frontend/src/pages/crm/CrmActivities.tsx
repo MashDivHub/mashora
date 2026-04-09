@@ -48,7 +48,7 @@ export default function CrmActivities() {
   if (search) domain.push(['summary', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'date_deadline asc'

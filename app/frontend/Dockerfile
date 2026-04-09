@@ -7,16 +7,16 @@ COPY ../../package.json ../../pnpm-workspace.yaml ../../pnpm-lock.yaml* ./
 COPY ../../packages ./packages
 
 # Copy frontend app
-COPY . ./erp/frontend
+COPY . ./app/frontend
 
-WORKDIR /app/erp/frontend
+WORKDIR /app/app/frontend
 RUN npm install
 RUN npm run build
 
 # Production stage — serve with nginx
 FROM nginx:alpine
 
-COPY --from=build /app/erp/frontend/dist /usr/share/nginx/html
+COPY --from=build /app/app/frontend/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000

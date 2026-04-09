@@ -4,6 +4,7 @@ import { Badge, Skeleton } from '@mashora/design-system'
 import { Tag } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ export default function BlogDetail() {
         <h2 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wide">Content</h2>
         <div
           className="prose dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: data.content || '' }}
+          dangerouslySetInnerHTML={sanitizedHtml(data.content)}
         />
       </div>
 

@@ -31,12 +31,12 @@ export default function ProjectDashboard() {
     )
   }
 
-  const overdue = data?.overdue_tasks ?? 0
+  const overdue = data?.tasks?.overdue ?? 0
 
   const stats: StatCardData[] = [
     {
       label: 'Active Projects',
-      value: data?.total_projects ?? 0,
+      value: data?.projects?.active ?? 0,
       sub: 'projects',
       icon: <FolderKanban className="h-5 w-5" />,
       color: 'info',
@@ -44,7 +44,7 @@ export default function ProjectDashboard() {
     },
     {
       label: 'Open Tasks',
-      value: data?.active_tasks ?? 0,
+      value: data?.tasks?.open ?? 0,
       sub: 'in progress',
       icon: <ClipboardList className="h-5 w-5" />,
       color: 'success',
@@ -52,7 +52,7 @@ export default function ProjectDashboard() {
     },
     {
       label: 'My Tasks',
-      value: data?.my_tasks ?? 0,
+      value: data?.tasks?.my_tasks ?? 0,
       sub: 'assigned to me',
       icon: <CheckSquare className="h-5 w-5" />,
       color: 'warning',

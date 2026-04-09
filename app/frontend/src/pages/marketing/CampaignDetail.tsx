@@ -4,6 +4,7 @@ import { Badge, Skeleton, cn } from '@mashora/design-system'
 import { Mail } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 interface MailingDetail {
   id: number
@@ -199,7 +200,7 @@ export default function CampaignDetail() {
           <h2 className="text-sm font-semibold mb-4">Body Preview</h2>
           <div
             className="prose dark:prose-invert max-w-none text-sm"
-            dangerouslySetInnerHTML={{ __html: mailing.body_html }}
+            dangerouslySetInnerHTML={sanitizedHtml(mailing.body_html)}
           />
         </div>
       )}

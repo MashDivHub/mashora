@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from 'next-themes'
 import { ArrowRight, MoonStar, SunMedium, Layers, Shield, Zap } from 'lucide-react'
 import { Button, Card, CardContent, Input, Label } from '@mashora/design-system'
+import { useAuthStore } from '@/engine/AuthStore'
 
 // ─── Theme Toggle ──────────────────────────────────────────────────────────────
 
@@ -34,16 +35,23 @@ const features = [
 
 export default function Login() {
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
+  const { login, loading, error, isAuthenticated, clearError } = useAuthStore()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    // TODO: Implement real auth in Phase 0.6
-    setTimeout(() => {
-      navigate('/dashboard')
-      setLoading(false)
-    }, 500)
+    clearError()
+    const ok = await login(email, password)
+    if (ok) {
+      navigate('/dashboard', { replace: true })
+    }
   }
 
   return (
@@ -161,6 +169,8 @@ export default function Login() {
                       placeholder="admin@mashora.com"
                       autoComplete="email"
                       required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -171,8 +181,16 @@ export default function Login() {
                       placeholder="••••••••"
                       autoComplete="current-password"
                       required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
+
+                  {error && (
+                    <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </p>
+                  )}
 
                   <Button
                     type="submit"
@@ -195,7 +213,9 @@ export default function Login() {
 
                 {/* Hint */}
                 <p className="text-center text-xs text-muted-foreground">
-                  Authentication is a placeholder — real auth ships in Phase 0.6.
+                  <a href="#" className="underline underline-offset-4 hover:text-foreground">
+                    Forgot your password?
+                  </a>
                 </p>
               </CardContent>
             </Card>

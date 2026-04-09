@@ -67,12 +67,9 @@ export default function CrmDashboard() {
       } catch {}
 
       return {
-        opportunities: pipeline.total || 0,
-        won_count: won.total || 0,
-        won_revenue,
-        expected_revenue: total_expected,
-        total_expected,
-        overdue_activities: activities.total || 0,
+        opportunities: { open: pipeline.total || 0, won_this_month: won.total || 0, lost_this_month: 0, total_expected_revenue: total_expected },
+        leads: { new_this_month: 0, unassigned: 0 },
+        overdue_activities: activities?.total || 0,
       }
     },
     staleTime: 60_000,

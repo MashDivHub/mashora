@@ -169,6 +169,15 @@ async def confirm_order(
     return await async_action("sale.order", order_id, "state", "sale", uid=uid, fields=SO_LIST_FIELDS)
 
 
+async def send_quotation(
+    order_id: int,
+    uid: int = 1,
+    context: Optional[dict] = None,
+) -> dict:
+    """Send a quotation → state transitions from draft to sent."""
+    return await async_action("sale.order", order_id, "state", "sent", uid=uid, fields=SO_LIST_FIELDS)
+
+
 async def cancel_order(
     order_id: int,
     uid: int = 1,

@@ -6,6 +6,7 @@ import { Star, Trophy, XCircle, FileText, ShoppingCart } from 'lucide-react'
 import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, stepsFromSelection, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const FORM_FIELDS = [
   'id', 'name', 'partner_id', 'partner_name', 'contact_name', 'email_from', 'phone', 'mobile',
@@ -111,11 +112,11 @@ export default function LeadDetail() {
 
   // Won / Lost actions
   const wonMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/model/crm.lead/call`, { record_ids: [recordId], method: 'action_set_won_rainbowman' }),
+    mutationFn: () => erpClient.raw.post(`/crm/leads/${recordId}/won`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', recordId] }),
   })
   const lostMut = useMutation({
-    mutationFn: () => erpClient.raw.post(`/model/crm.lead/call`, { record_ids: [recordId], method: 'action_set_lost' }),
+    mutationFn: () => erpClient.raw.post(`/crm/leads/${recordId}/lost`, { lost_reason_id: 1 }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crm-lead', recordId] }),
   })
 
@@ -179,7 +180,7 @@ export default function LeadDetail() {
       key: 'notes', label: 'Internal Notes',
       content: editing
         ? <Textarea value={form.description || ''} onChange={e => setField('description', e.target.value)} rows={6} placeholder="Internal notes..." className="rounded-xl resize-y" />
-        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.description }} /> : <p className="text-sm text-muted-foreground">No notes</p>,
+        : form.description ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.description)} /> : <p className="text-sm text-muted-foreground">No notes</p>,
     },
     {
       key: 'extra', label: 'Extra Info',

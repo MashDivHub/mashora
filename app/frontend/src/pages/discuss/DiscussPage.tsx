@@ -4,6 +4,7 @@ import { Input, Button, Badge, Skeleton, cn } from '@mashora/design-system'
 import { Hash, MessageSquare, Plus, Send, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const CHANNEL_FIELDS = ['id', 'name', 'channel_type', 'description']
 const MSG_FIELDS = ['id', 'body', 'author_id', 'date', 'message_type', 'subtype_id']
@@ -142,7 +143,7 @@ export default function DiscussPage() {
                   if (isNotif) {
                     return (
                       <div key={msg.id} className="text-xs text-muted-foreground text-center py-1">
-                        <span dangerouslySetInnerHTML={{ __html: msg.body }} />
+                        <span dangerouslySetInnerHTML={sanitizedHtml(msg.body)} />
                       </div>
                     )
                   }
@@ -156,7 +157,7 @@ export default function DiscussPage() {
                           <span className="text-sm font-medium">{author}</span>
                           <span className="text-[10px] text-muted-foreground">{time}</span>
                         </div>
-                        <div className="text-sm mt-0.5 prose prose-sm dark:prose-invert max-w-none [&>p]:m-0" dangerouslySetInnerHTML={{ __html: msg.body }} />
+                        <div className="text-sm mt-0.5 prose prose-sm dark:prose-invert max-w-none [&>p]:m-0" dangerouslySetInnerHTML={sanitizedHtml(msg.body)} />
                       </div>
                     </div>
                   )

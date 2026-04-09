@@ -9,6 +9,7 @@ from typing import Any, Optional
 from app.core.model_registry import get_model_class
 from app.services.base import (
     RecordNotFoundError,
+    async_action,
     async_count,
     async_create,
     async_delete,
@@ -136,7 +137,10 @@ async def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optio
 async def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("repair.order") is None:
         raise RuntimeError("repair module not installed")
-    # action is a state-transition verb; map common ones to state field updates
+    state_map = {"action_repair_confirm": "confirmed", "action_repair_start": "under_repair", "action_repair_end": "done", "action_repair_cancel": "cancel"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("repair.order", repair_id, "state", new_state, uid=uid, fields=REPAIR_FIELDS)
     return await async_get_or_raise("repair.order", repair_id, REPAIR_FIELDS)
 
 
@@ -241,6 +245,10 @@ async def update_production(production_id: int, vals: dict, uid: int = 1, contex
 async def production_action(production_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("mrp.production") is None:
         raise RuntimeError("mrp module not installed")
+    state_map = {"action_confirm": "confirmed", "button_start": "progress", "button_mark_done": "done", "action_cancel": "cancel"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("mrp.production", production_id, "state", new_state, uid=uid, fields=PRODUCTION_FIELDS)
     return await async_get_or_raise("mrp.production", production_id, PRODUCTION_FIELDS)
 
 
@@ -383,6 +391,10 @@ async def update_event(event_id: int, vals: dict, uid: int = 1, context: Optiona
 async def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("event.event") is None:
         raise RuntimeError("event module not installed")
+    state_map = {"button_confirm": "confirm", "button_cancel": "cancel"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("event.event", event_id, "state", new_state, uid=uid, fields=EVENT_FIELDS)
     return await async_get_or_raise("event.event", event_id, EVENT_FIELDS)
 
 
@@ -449,6 +461,10 @@ async def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optio
 async def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("survey.survey") is None:
         raise RuntimeError("survey module not installed")
+    state_map = {"action_start_survey": "open", "action_close": "closed"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("survey.survey", survey_id, "state", new_state, uid=uid, fields=SURVEY_FIELDS)
     return await async_get_or_raise("survey.survey", survey_id, SURVEY_FIELDS)
 
 
@@ -506,6 +522,10 @@ async def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Opt
 async def mailing_action(mailing_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("mailing.mailing") is None:
         raise RuntimeError("mass_mailing module not installed")
+    state_map = {"action_schedule": "in_queue", "action_cancel": "draft", "action_put_in_queue": "in_queue", "action_test": "test"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("mailing.mailing", mailing_id, "state", new_state, uid=uid, fields=MAILING_FIELDS)
     return await async_get_or_raise("mailing.mailing", mailing_id, MAILING_FIELDS)
 
 
@@ -707,6 +727,10 @@ async def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = 
 async def pos_session_action(session_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("pos.session") is None:
         raise RuntimeError("point_of_sale module not installed")
+    state_map = {"action_pos_session_open": "opened", "action_pos_session_close": "closed"}
+    new_state = state_map.get(action)
+    if new_state:
+        return await async_action("pos.session", session_id, "state", new_state, uid=uid, fields=POS_SESSION_FIELDS)
     return await async_get_or_raise("pos.session", session_id, POS_SESSION_FIELDS)
 
 
@@ -760,4 +784,5 @@ async def delete_calendar_event(event_id: int, uid: int = 1, context: Optional[d
 
 
 async def calendar_event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    # Calendar events don't have a state machine — just return the record
     return await async_get_or_raise("calendar.event", event_id, CALENDAR_FIELDS)

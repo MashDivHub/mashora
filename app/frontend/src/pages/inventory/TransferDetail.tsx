@@ -7,6 +7,7 @@ import {
 } from '@mashora/design-system'
 import { CheckCircle, Printer, RotateCcw, XCircle, Truck, ArrowRight } from 'lucide-react'
 import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type FormTab } from '@/components/shared'
+import { sanitizedHtml } from '@/lib/sanitize'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 
@@ -229,7 +230,7 @@ export default function TransferDetail() {
       key: 'note', label: 'Note',
       content: editing
         ? <FormField label="Note"><Input value={form.note || ''} onChange={e => setField('note', e.target.value)} className="rounded-xl h-9" /></FormField>
-        : <ReadonlyField label="Note" value={form.note ? <span dangerouslySetInnerHTML={{ __html: form.note }} /> : undefined} />,
+        : <ReadonlyField label="Note" value={form.note ? <span dangerouslySetInnerHTML={sanitizedHtml(form.note)} /> : undefined} />,
     },
   ]
 

@@ -140,14 +140,14 @@ async def get_project(project_id: int, uid: int = 1, context: Optional[dict] = N
 async def create_project(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "tag_ids" in clean_vals:
-        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+        clean_vals["tag_ids"] = clean_vals["tag_ids"]
     return await async_create("project.project", clean_vals, uid, PROJECT_LIST_FIELDS)
 
 
 async def update_project(project_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "tag_ids" in clean_vals:
-        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+        clean_vals["tag_ids"] = clean_vals["tag_ids"]
     return await async_update("project.project", project_id, clean_vals, uid, PROJECT_LIST_FIELDS)
 
 
@@ -192,18 +192,18 @@ async def get_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -
 async def create_task(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "user_ids" in clean_vals:
-        clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
+        clean_vals["user_ids"] = clean_vals["user_ids"]
     if "tag_ids" in clean_vals:
-        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+        clean_vals["tag_ids"] = clean_vals["tag_ids"]
     return await async_create("project.task", clean_vals, uid, TASK_LIST_FIELDS)
 
 
 async def update_task(task_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "user_ids" in clean_vals:
-        clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
+        clean_vals["user_ids"] = clean_vals["user_ids"]
     if "tag_ids" in clean_vals:
-        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+        clean_vals["tag_ids"] = clean_vals["tag_ids"]
     return await async_update("project.task", task_id, clean_vals, uid, TASK_LIST_FIELDS)
 
 

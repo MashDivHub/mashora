@@ -7,6 +7,7 @@ import {
 } from '@mashora/design-system'
 import { Send, CheckCircle, Printer, CreditCard, RotateCcw, FileText, XCircle } from 'lucide-react'
 import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type SmartButton, type FormTab } from '@/components/shared'
+import { sanitizedHtml } from '@/lib/sanitize'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 
@@ -276,7 +277,7 @@ export default function InvoiceDetail() {
       key: 'terms', label: 'Terms',
       content: editing
         ? <FormField label="Terms and Conditions"><Input value={form.narration || ''} onChange={e => setField('narration', e.target.value)} className="rounded-xl h-9" /></FormField>
-        : <ReadonlyField label="Terms and Conditions" value={form.narration ? <span dangerouslySetInnerHTML={{ __html: form.narration }} /> : undefined} />,
+        : <ReadonlyField label="Terms and Conditions" value={form.narration ? <span dangerouslySetInnerHTML={sanitizedHtml(form.narration)} /> : undefined} />,
     },
   ]
 

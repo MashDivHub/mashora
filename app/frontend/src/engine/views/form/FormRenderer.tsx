@@ -21,7 +21,7 @@ interface FormRendererProps {
   onButtonClick: (method: string, confirm?: string) => void
 }
 
-/* ── Format monetary with Odoo currency_id ([id, "USD"]) ── */
+/* ── Format monetary with Mashora currency_id ([id, "USD"]) ── */
 function fmtMoney(value: any, currencyId?: any): string {
   if (value === null || value === false || value === undefined) return ''
   const sym = Array.isArray(currencyId) ? currencyId[1] || '$' : (typeof currencyId === 'string' ? currencyId : '$')
@@ -240,7 +240,7 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
       case 'sheet':
         return <div key={key} className="px-6 py-4 space-y-4">{children}</div>
 
-      // ── Div: Odoo uses CSS classes to convey layout semantics ──
+      // ── Div: Mashora uses CSS classes to convey layout semantics ──
       case 'div': {
         const name = el.name || el.attrs?.name || ''
 

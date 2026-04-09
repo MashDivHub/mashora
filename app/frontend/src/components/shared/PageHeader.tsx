@@ -4,13 +4,15 @@ import { Button, cn } from '@mashora/design-system'
 import { Plus, ChevronLeft } from 'lucide-react'
 
 export interface PageHeaderProps {
-  title: string
+  title: ReactNode
   subtitle?: string
   /** Show a "New" button — pass the route or onClick handler */
   onNew?: string | (() => void)
   newLabel?: string
   /** Show a back button */
   backTo?: string | (() => void)
+  backLabel?: string
+  icon?: ReactNode
   /** Extra action buttons on the right */
   actions?: ReactNode
   /** Extra content below the title (e.g., filter chips) */

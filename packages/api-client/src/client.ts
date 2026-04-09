@@ -35,9 +35,7 @@ export function createApiClient(config: ApiClientConfig): AxiosInstance {
 
     if (!refreshPromise) {
       refreshPromise = axios
-        .post(`${baseURL}${refreshUrl}`, null, {
-          params: { refresh_token: refreshToken },
-        })
+        .post(`${baseURL}${refreshUrl}`, { refresh_token: refreshToken })
         .then((response) => {
           const { access_token, refresh_token } = response.data as {
             access_token: string

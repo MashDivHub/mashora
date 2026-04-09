@@ -75,20 +75,33 @@ async def authenticate_user(login: str, password: str) -> Optional[dict[str, Any
         if not stored_hash or not pwd_context.verify(password, stored_hash):
             return None
 
+        # Resolve name/email from linked partner
+        user_name = ""
+        user_email = ""
+        partner_id = getattr(user, "partner_id", None)
+        if partner_id:
+            PartnerCls = get_model_class("res.partner")
+            if PartnerCls:
+                partner = await session.get(PartnerCls, partner_id)
+                if partner:
+                    pname = getattr(partner, "name", "")
+                    user_name = pname.get("en_US", str(pname)) if isinstance(pname, dict) else str(pname or "")
+                    user_email = getattr(partner, "email", "") or ""
+
         company_name = ""
         if user.company_id:
             CompanyCls = get_model_class("res.company")
             if CompanyCls:
                 company = await session.get(CompanyCls, user.company_id)
                 if company:
-                    name = getattr(company, "name", "")
-                    company_name = name.get("en_US", "") if isinstance(name, dict) else str(name)
+                    cname = getattr(company, "name", "")
+                    company_name = cname.get("en_US", "") if isinstance(cname, dict) else str(cname)
 
         return {
             "uid": user.id,
-            "name": getattr(user, "name", ""),
+            "name": user_name,
             "login": getattr(user, "login", ""),
-            "email": getattr(user, "email", "") or "",
+            "email": user_email,
             "lang": getattr(user, "lang", "en_US") or "en_US",
             "tz": getattr(user, "tz", "UTC") or "UTC",
             "company_id": user.company_id,

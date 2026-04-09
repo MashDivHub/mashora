@@ -9,11 +9,9 @@ class TestConfig:
     def test_settings_defaults(self):
         from app.config import Settings
         s = Settings()
-        assert s.app_name == "Mashora ERP API"
-        # Default is "mashora" but .env may override to "mashora_erp"
-        assert s.mashora_db_name in ("mashora", "mashora_erp")
+        assert s.app_name == "Mashora API"
         assert s.jwt_algorithm == "HS256"
-        assert s.orm_thread_pool_size == 8
+        assert s.mashora_db_port == 5432
 
     def test_settings_override(self):
         os.environ["MASHORA_DB_NAME"] = "test_db"
@@ -26,8 +24,9 @@ class TestConfig:
         del os.environ["MASHORA_DB_NAME"]
         del os.environ["JWT_SECRET_KEY"]
 
-    def test_addons_path(self):
+    def test_cors_origin_list(self):
         from app.config import Settings
         s = Settings()
-        path = s.get_addons_path()
-        assert "addons" in path
+        origins = s.cors_origin_list
+        assert isinstance(origins, list)
+        assert len(origins) > 0

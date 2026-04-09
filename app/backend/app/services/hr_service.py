@@ -21,6 +21,7 @@ from app.services.base import (
     async_update,
     async_delete,
     async_action,
+    _first_of_month,
 )
 from app.core.model_registry import get_model_class
 
@@ -141,14 +142,14 @@ async def get_employee(employee_id: int, uid: int = 1, context: Optional[dict] =
 async def create_employee(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "category_ids" in clean_vals:
-        clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
+        clean_vals["category_ids"] = clean_vals["category_ids"]
     return await async_create("hr.employee", clean_vals, uid, EMPLOYEE_LIST_FIELDS)
 
 
 async def update_employee(employee_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     clean_vals = {k: v for k, v in vals.items() if v is not None}
     if "category_ids" in clean_vals:
-        clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
+        clean_vals["category_ids"] = clean_vals["category_ids"]
     return await async_update("hr.employee", employee_id, clean_vals, uid, EMPLOYEE_LIST_FIELDS)
 
 
@@ -286,7 +287,7 @@ async def list_leave_types(uid: int = 1, context: Optional[dict] = None) -> dict
 
 async def get_hr_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
     total_employees = await async_count("hr.employee", [["active", "=", True]])
-    newly_hired = await async_count("hr.employee", [["newly_hired", "=", True]])
+    newly_hired = await async_count("hr.employee", [["active", "=", True], ["create_date", ">=", _first_of_month()]])
 
     # Department breakdown
     dept_result = await async_search_read("hr.department", [], ["name", "total_employee"], limit=1000)
@@ -395,7 +396,7 @@ async def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dic
         raise RuntimeError("hr_expense module not installed")
     # Create an expense sheet grouping the given expense IDs
     sheet_vals = {
-        "expense_line_ids": [(6, 0, expense_ids)],
+        "expense_line_ids": expense_ids,
     }
     return await async_create("hr.expense.sheet", sheet_vals, uid, EXPENSE_SHEET_FIELDS)
 

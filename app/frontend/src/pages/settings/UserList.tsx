@@ -27,7 +27,7 @@ export default function UserList() {
   if (search) domain.push('|', '|', ['name', 'ilike', search], ['login', 'ilike', search], ['email', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
-    if (f) domain.push(...f.domain)
+    if (f?.domain) domain.push(...f.domain)
   }
 
   const order = sortField ? `${sortField} ${sortDir}` : 'name asc'

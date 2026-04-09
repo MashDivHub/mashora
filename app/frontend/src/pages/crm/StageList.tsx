@@ -10,7 +10,7 @@ interface Stage {
   is_won: boolean
   sequence: number
   fold: boolean
-  team_id: [number, string] | false
+  team_ids?: number[]
 }
 
 interface StagesResponse {
@@ -77,7 +77,7 @@ export default function StageList() {
 
                   {/* Right: team */}
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {Array.isArray(stage.team_id) ? stage.team_id[1] : 'All Teams'}
+                    {stage.team_ids && stage.team_ids.length > 0 ? `${stage.team_ids.length} team${stage.team_ids.length !== 1 ? 's' : ''}` : 'All Teams'}
                   </span>
                 </div>
               </div>

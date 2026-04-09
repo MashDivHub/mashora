@@ -8,6 +8,7 @@ import {
 } from '@mashora/design-system'
 import { Send, CheckCircle, Printer, Eye, FileText, Truck } from 'lucide-react'
 import { RecordForm, FormField, ReadonlyField, StatusBar, M2OInput, toast, type SmartButton, type FormTab } from '@/components/shared'
+import { sanitizedHtml } from '@/lib/sanitize'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
 
@@ -278,7 +279,7 @@ export default function SalesOrderDetail() {
       key: 'notes', label: 'Terms',
       content: editing
         ? <FormField label="Terms and Conditions"><Input value={form.note || ''} onChange={e => setField('note', e.target.value)} className="rounded-xl h-9" /></FormField>
-        : <ReadonlyField label="Terms and Conditions" value={form.note ? <span dangerouslySetInnerHTML={{ __html: form.note }} /> : undefined} />,
+        : <ReadonlyField label="Terms and Conditions" value={form.note ? <span dangerouslySetInnerHTML={sanitizedHtml(form.note)} /> : undefined} />,
     },
   ]
 
@@ -290,7 +291,7 @@ export default function SalesOrderDetail() {
       statusBar={<StatusBar steps={STATES} current={state} />}
       headerActions={
         <>
-          {isDraft && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callAction('confirm', 'Send Quotation')}><Send className="h-3.5 w-3.5" /> Send</Button>}
+          {isDraft && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callAction('send', 'Send Quotation')}><Send className="h-3.5 w-3.5" /> Send</Button>}
           {(isDraft || isSent) && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => callAction('confirm', 'Confirm Order')}><CheckCircle className="h-3.5 w-3.5" /> Confirm</Button>}
           {!isNew && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Printer className="h-3.5 w-3.5" /> Print</Button>}
           {isDraft && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Eye className="h-3.5 w-3.5" /> Preview</Button>}

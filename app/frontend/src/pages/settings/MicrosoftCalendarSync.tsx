@@ -19,7 +19,7 @@ export default function MicrosoftCalendarSync() {
           limit: 1,
           order: 'id desc',
         })
-        return (data?.data?.[0] ?? data?.[0]) || null
+        return data?.records?.[0] || null
       } catch {
         return null
       }

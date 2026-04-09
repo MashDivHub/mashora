@@ -6,6 +6,7 @@ import { Building2, User, Star, BarChart3, FileText, Calendar, CheckSquare, Shop
 import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { sanitizedHtml } from '@/lib/sanitize'
 
 const FORM_FIELDS = [
   'id', 'name', 'display_name', 'email', 'phone', 'mobile', 'website',
@@ -298,7 +299,7 @@ export default function ContactForm() {
             />
           ) : (
             form.comment
-              ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: form.comment }} />
+              ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.comment)} />
               : <p className="text-sm text-muted-foreground">No notes</p>
           )}
         </div>

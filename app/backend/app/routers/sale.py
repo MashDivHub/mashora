@@ -23,6 +23,7 @@ from app.services.sale_service import (
     create_order,
     update_order,
     confirm_order,
+    send_quotation,
     cancel_order,
     reset_to_draft,
     lock_order,
@@ -82,6 +83,12 @@ async def update_existing_order(order_id: int, body: SaleOrderUpdate, user: Curr
     """Update a draft quotation."""
     vals = body.model_dump(exclude_none=True)
     return await update_order(order_id=order_id, vals=vals)
+
+
+@router.post("/orders/{order_id}/send")
+async def send_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Send quotation → state transitions from draft to sent."""
+    return await send_quotation(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/confirm")
