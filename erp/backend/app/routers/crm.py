@@ -37,6 +37,8 @@ from app.services.crm_service import (
     list_lost_reasons,
     get_pipeline_data,
     get_crm_dashboard,
+    list_crm_activities,
+    list_activity_types,
 )
 
 router = APIRouter(prefix="/crm", tags=["crm"])
@@ -177,3 +179,18 @@ async def get_lost_reasons(user: CurrentUser | None = Depends(get_optional_user)
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get CRM dashboard summary metrics."""
     return await orm_call(get_crm_dashboard, uid=_uid(user), context=_ctx(user))
+
+
+# ============================================
+# Activities
+# ============================================
+
+@router.post("/activities")
+async def crm_activities(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """List CRM activities."""
+    return await orm_call(list_crm_activities, params=params or {}, uid=_uid(user), context=_ctx(user))
+
+@router.get("/activity-types")
+async def activity_types(user: CurrentUser | None = Depends(get_optional_user)):
+    """List activity types."""
+    return await orm_call(list_activity_types, uid=_uid(user), context=_ctx(user))

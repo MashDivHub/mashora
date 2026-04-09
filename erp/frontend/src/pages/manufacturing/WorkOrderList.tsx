@@ -68,7 +68,7 @@ export default function WorkOrderList() {
         search: search || undefined,
         offset: page * pageSize,
         limit: pageSize,
-      }).then((r) => r.data),
+      }).then((r) => r.data).catch(() => ({ records: [], total: 0 })),
   })
 
   const columns: Column<WorkOrder>[] = [

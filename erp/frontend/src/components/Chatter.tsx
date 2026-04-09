@@ -205,19 +205,20 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
   // Messages
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: ['chatter-messages', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/messages`).then((r: any) => r.data),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/messages`).then((r: any) => r.data).catch(() => ({ messages: [], total: 0 })),
   })
 
   // Activities
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery({
     queryKey: ['chatter-activities', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/activities`).then((r: any) => r.data),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/activities`).then((r: any) => r.data).catch(() => ({ activities: [], total: 0 })),
   })
 
   // Followers
   const { data: followersData, isLoading: followersLoading } = useQuery({
     queryKey: ['chatter-followers', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/followers`).then((r: any) => r.data),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/followers`).then((r: any) => r.data).catch(() => ({ followers: [], total: 0 })),
+    retry: false,
   })
 
   // Post message

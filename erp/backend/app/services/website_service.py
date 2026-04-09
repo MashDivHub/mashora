@@ -459,3 +459,76 @@ def get_website_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
             "abandoned_carts": abandoned_carts,
             "online_revenue": online_revenue,
         }
+
+
+# --- Blog ---
+
+BLOG_POST_FIELDS = [
+    "id", "name", "subtitle", "author_id", "blog_id",
+    "content", "website_published", "post_date",
+    "visits", "tag_ids", "create_date", "write_date",
+]
+
+
+def list_blog_posts(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List blog posts with filters."""
+    domain: list[Any] = []
+    if params.get("published") is not None:
+        domain.append(["website_published", "=", params["published"]])
+    if params.get("blog_id"):
+        domain.append(["blog_id", "=", params["blog_id"]])
+    if params.get("search"):
+        domain.append(["name", "ilike", params["search"]])
+    with mashora_env(uid=uid, context=context) as env:
+        if "blog.post" not in env.registry:
+            return {"records": [], "total": 0, "warning": "website_blog module not installed"}
+        Post = env["blog.post"]
+        total = Post.search_count(domain)
+        records = Post.search(domain, offset=params.get("offset", 0),
+                              limit=params.get("limit", 20),
+                              order=params.get("order", "post_date desc"))
+        return {"records": records.read(BLOG_POST_FIELDS), "total": total}
+
+
+def get_blog_post(post_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Get a single blog post."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "blog.post" not in env.registry:
+            return None
+        post = env["blog.post"].browse(post_id)
+        if not post.exists():
+            return None
+        return post.read(BLOG_POST_FIELDS)[0]
+
+
+def list_blogs(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List blog categories."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "blog.blog" not in env.registry:
+            return {"records": [], "total": 0}
+        Blog = env["blog.blog"]
+        blogs = Blog.search([], order="name asc")
+        data = blogs.read(["id", "name", "subtitle", "active"])
+        return {"records": data, "total": len(data)}
+
+
+def publish_page(page_id: int, publish: bool, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Publish or unpublish a CMS page."""
+    with mashora_env(uid=uid, context=context) as env:
+        page = env["website.page"].browse(page_id)
+        if not page.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Page {page_id} not found")
+        page.write({"website_published": publish})
+        return page.read(["id", "name", "url", "website_published"])[0]
+
+
+def publish_product(product_id: int, publish: bool, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """Publish or unpublish a product on the website."""
+    with mashora_env(uid=uid, context=context) as env:
+        product = env["product.template"].browse(product_id)
+        if not product.exists():
+            from mashora.exceptions import MissingError
+            raise MissingError(f"Product {product_id} not found")
+        product.write({"website_published": publish})
+        return product.read(["id", "name", "website_published"])[0]

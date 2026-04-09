@@ -409,3 +409,45 @@ def get_crm_dashboard(
 def _first_of_month() -> str:
     import datetime
     return datetime.date.today().replace(day=1).isoformat()
+
+
+# ============================================
+# CRM Extensions — Activities, Lost Reasons
+# ============================================
+
+def list_crm_activities(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List CRM activities (meetings, calls, emails)."""
+    domain: list[Any] = [["res_model", "=", "crm.lead"]]
+    if params.get("user_id"):
+        domain.append(["user_id", "=", params["user_id"]])
+    if params.get("activity_type_id"):
+        domain.append(["activity_type_id", "=", params["activity_type_id"]])
+    if params.get("date_from"):
+        domain.append(["date_deadline", ">=", str(params["date_from"])])
+    if params.get("date_to"):
+        domain.append(["date_deadline", "<=", str(params["date_to"])])
+    if params.get("search"):
+        domain.append(["summary", "ilike", params["search"]])
+    with mashora_env(uid=uid, context=context) as env:
+        if "mail.activity" not in env.registry:
+            return {"records": [], "total": 0}
+        A = env["mail.activity"]
+        total = A.search_count(domain)
+        records = A.search(domain, offset=params.get("offset", 0),
+                           limit=params.get("limit", 40),
+                           order=params.get("order", "date_deadline asc"))
+        data = records.read([
+            "id", "summary", "note", "date_deadline", "user_id",
+            "activity_type_id", "res_id", "res_name", "state",
+        ])
+        return {"records": data, "total": total}
+
+
+def list_activity_types(uid: int = 1, context: Optional[dict] = None) -> dict:
+    """List activity types (call, email, meeting, etc.)."""
+    with mashora_env(uid=uid, context=context) as env:
+        if "mail.activity.type" not in env.registry:
+            return {"records": [], "total": 0}
+        AT = env["mail.activity.type"]
+        types = AT.search([], order="sequence asc")
+        return {"records": types.read(["id", "name", "category", "icon"]), "total": len(types)}

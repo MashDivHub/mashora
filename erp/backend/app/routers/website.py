@@ -39,6 +39,11 @@ from app.services.website_service import (
     confirm_checkout,
     get_customer_addresses,
     get_website_dashboard,
+    list_blog_posts,
+    get_blog_post,
+    list_blogs,
+    publish_page,
+    publish_product,
 )
 
 router = APIRouter(prefix="/website", tags=["website"])
@@ -220,3 +225,41 @@ async def get_addresses(
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get website/eCommerce dashboard metrics."""
     return await orm_call(get_website_dashboard, uid=_uid(user), context=_ctx(user))
+
+
+# ============================================
+# Blog
+# ============================================
+
+@router.post("/blog/posts")
+async def blog_posts(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """List blog posts."""
+    return await orm_call(list_blog_posts, params=params or {}, uid=_uid(user), context=_ctx(user))
+
+@router.get("/blog/posts/{post_id}")
+async def blog_post_detail(post_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Get a single blog post."""
+    result = await orm_call(get_blog_post, post_id=post_id, uid=_uid(user), context=_ctx(user))
+    if result is None:
+        raise HTTPException(status_code=404, detail="Blog post not found")
+    return result
+
+@router.get("/blog/categories")
+async def blog_categories(user: CurrentUser | None = Depends(get_optional_user)):
+    """List blog categories."""
+    return await orm_call(list_blogs, uid=_uid(user), context=_ctx(user))
+
+
+# ============================================
+# Publish actions
+# ============================================
+
+@router.post("/pages/{page_id}/publish")
+async def toggle_page_publish(page_id: int, publish: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
+    """Publish or unpublish a CMS page."""
+    return await orm_call(publish_page, page_id=page_id, publish=publish, uid=_uid(user), context=_ctx(user))
+
+@router.post("/products/{product_id}/publish")
+async def toggle_product_publish(product_id: int, publish: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
+    """Publish or unpublish a product."""
+    return await orm_call(publish_product, product_id=product_id, publish=publish, uid=_uid(user), context=_ctx(user))

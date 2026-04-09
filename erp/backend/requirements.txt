@@ -1,5 +1,5 @@
-# Mashora ERP Backend — Phase 0.0 PoC
-# FastAPI + Mashora ORM adapter
+# Mashora ERP Backend
+# FastAPI + SQLAlchemy 2.0 async
 
 # Web framework
 fastapi>=0.115.0
@@ -7,7 +7,12 @@ uvicorn[standard]>=0.30.0
 pydantic>=2.0
 pydantic-settings>=2.0
 
-# Mashora ORM dependencies (must match mashora/requirements.txt)
+# Database — SQLAlchemy 2.0 async + asyncpg
+sqlalchemy[asyncio]>=2.0.30
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# Legacy ORM bridge (remove after full migration)
 psycopg2-binary>=2.9
 werkzeug>=3.0.1
 lxml>=5.2.1

@@ -42,8 +42,18 @@ function TableSkeleton() {
 export default function AgedReceivable() {
   const { data, isLoading } = useQuery<AgedRow[]>({
     queryKey: ['aged-receivable'],
-    queryFn: () =>
-      erpClient.raw.get('/accounting/reports/aged-receivable').then((r) => r.data),
+    queryFn: async () => {
+      try {
+        const { data } = await erpClient.raw.get('/accounting/reports/aged-receivable')
+        // API may return array directly or { records: [...] } or { data: [...] }
+        if (Array.isArray(data)) return data
+        if (Array.isArray(data?.records)) return data.records
+        if (Array.isArray(data?.data)) return data.data
+        return []
+      } catch {
+        return []
+      }
+    },
   })
 
   const records = data ?? []

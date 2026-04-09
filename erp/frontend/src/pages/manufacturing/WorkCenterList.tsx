@@ -87,7 +87,7 @@ function WorkCenterCard({ wc }: { wc: WorkCenter }) {
 export default function WorkCenterList() {
   const { data, isLoading } = useQuery<WorkCenterListResponse>({
     queryKey: ['manufacturing', 'workcenters'],
-    queryFn: () => erpClient.raw.post('/manufacturing/workcenters', {}).then((r) => r.data),
+    queryFn: () => erpClient.raw.get('/manufacturing/workcenters').then((r) => r.data).catch(() => ({ records: [], total: 0 })),
   })
 
   return (

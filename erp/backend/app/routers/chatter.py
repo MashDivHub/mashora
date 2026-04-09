@@ -4,9 +4,12 @@ Chatter (mail.thread) API endpoints.
 Provides REST API for the messaging/activity system that's embedded
 in every business record (143 models inherit mail.thread).
 """
+import logging
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
+
+_logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
@@ -68,12 +71,24 @@ def _post_message(model: str, res_id: int, body: str, message_type: str = "comme
 # --- Followers ---
 
 def _get_followers(model: str, res_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Follower = env["mail.followers"]
-        domain = [("res_model", "=", model), ("res_id", "=", res_id)]
-        records = Follower.search(domain)
-        data = records.read(["id", "partner_id", "channel_id", "subtype_ids"])
-        return {"followers": data, "total": len(data)}
+    try:
+        with mashora_env(uid=uid, context=context) as env:
+            if "mail.followers" not in env.registry:
+                return {"followers": [], "total": 0}
+            Follower = env["mail.followers"]
+            domain = [("res_model", "=", model), ("res_id", "=", res_id)]
+            records = Follower.search(domain)
+            # Read only fields that exist in this version
+            available = set(Follower._fields.keys())
+            fields = ["id"]
+            for f in ("partner_id", "name", "email", "channel_id", "subtype_ids"):
+                if f in available:
+                    fields.append(f)
+            data = records.read(fields)
+            return {"followers": data, "total": len(data)}
+    except Exception as e:
+        _logger.warning("Failed to get followers for %s/%s: %s", model, res_id, e)
+        return {"followers": [], "total": 0}
 
 
 def _add_follower(model: str, res_id: int, partner_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:

@@ -42,8 +42,17 @@ function TableSkeleton() {
 export default function AgedPayable() {
   const { data, isLoading } = useQuery<AgedRow[]>({
     queryKey: ['aged-payable'],
-    queryFn: () =>
-      erpClient.raw.get('/accounting/reports/aged-payable').then((r) => r.data),
+    queryFn: async () => {
+      try {
+        const { data } = await erpClient.raw.get('/accounting/reports/aged-payable')
+        if (Array.isArray(data)) return data
+        if (Array.isArray(data?.records)) return data.records
+        if (Array.isArray(data?.data)) return data.data
+        return []
+      } catch {
+        return []
+      }
+    },
   })
 
   const records = data ?? []

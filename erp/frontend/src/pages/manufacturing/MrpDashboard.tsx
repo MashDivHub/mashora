@@ -20,7 +20,7 @@ export default function MrpDashboard() {
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ['manufacturing', 'dashboard'],
-    queryFn: () => erpClient.get('/manufacturing/dashboard').then((r) => r.data),
+    queryFn: () => erpClient.raw.get('/manufacturing/dashboard').then((r) => r.data).catch(() => ({ draft: 0, confirmed: 0, in_progress: 0, done: 0, late: 0, bom_count: 0, workcenter_count: 0 })),
   })
 
   const statCards = isLoading

@@ -47,26 +47,15 @@ export default function SalesOrderDetail() {
     queryKey: ['sale-order', recordId],
     queryFn: async () => {
       if (isNew) {
-        const { data } = await erpClient.raw.post('/model/sale.order/defaults', { fields: FORM_FIELDS })
-        return { ...data, id: null, state: 'draft', order_line: [] }
+        return { id: null, state: 'draft', name: '/', order_line: [], amount_untaxed: 0, amount_tax: 0, amount_total: 0 }
       }
-      const { data } = await erpClient.raw.get(`/model/sale.order/${recordId}`)
+      const { data } = await erpClient.raw.get(`/sales/orders/${recordId}`)
       return data
     },
   })
 
-  const { data: lineData } = useQuery({
-    queryKey: ['sale-order-lines', recordId],
-    queryFn: async () => {
-      if (!recordId) return []
-      const { data } = await erpClient.raw.post('/model/sale.order.line', {
-        domain: [['order_id', '=', recordId]],
-        fields: LINE_FIELDS, order: 'sequence asc, id asc', limit: 200,
-      })
-      return data.records || []
-    },
-    enabled: !!recordId,
-  })
+  // Lines come from the order detail response (data.lines)
+  const lineData = record?.lines || []
 
   useEffect(() => {
     if (record) { setForm({ ...record }); setLines(lineData || []) }
@@ -89,25 +78,41 @@ export default function SalesOrderDetail() {
     return true
   }, [form])
 
+  // Helper: extract M2O id
+  const m2oId = (v: any): number | null => Array.isArray(v) ? v[0] : (typeof v === 'number' ? v : null)
+
   // Save
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error('Validation failed')
-      const vals: Record<string, any> = {}
-      for (const f of ['client_order_ref', 'note', 'validity_date', 'picking_policy']) {
-        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+
+      // Build vals from all editable fields
+      const partnerId = m2oId(form.partner_id)
+      const body: Record<string, any> = {
+        partner_id: partnerId || undefined,
+        validity_date: form.validity_date || undefined,
+        client_order_ref: form.client_order_ref || undefined,
+        note: form.note || undefined,
+        payment_term_id: m2oId(form.payment_term_id) || undefined,
+        pricelist_id: m2oId(form.pricelist_id) || undefined,
+        fiscal_position_id: m2oId(form.fiscal_position_id) || undefined,
+        user_id: m2oId(form.user_id) || undefined,
+        team_id: m2oId(form.team_id) || undefined,
+        warehouse_id: m2oId(form.warehouse_id) || undefined,
+        commitment_date: form.commitment_date || undefined,
+        picking_policy: form.picking_policy || undefined,
       }
-      for (const f of ['partner_id', 'user_id', 'team_id', 'payment_term_id', 'pricelist_id', 'fiscal_position_id', 'warehouse_id']) {
-        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
-        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
-        if (nv !== ov) vals[f] = nv || false
+
+      // Remove undefined values
+      for (const k of Object.keys(body)) {
+        if (body[k] === undefined) delete body[k]
       }
+
       if (isNew) {
-        if (!vals.partner_id && form.partner_id) vals.partner_id = Array.isArray(form.partner_id) ? form.partner_id[0] : form.partner_id
-        const { data } = await erpClient.raw.post('/model/sale.order/create', { vals })
+        const { data } = await erpClient.raw.post('/sales/orders/create', body)
         return data
       }
-      const { data } = await erpClient.raw.put(`/model/sale.order/${recordId}`, { vals })
+      const { data } = await erpClient.raw.put(`/sales/orders/${recordId}`, body)
       return data
     },
     onSuccess: (data) => {
@@ -125,16 +130,18 @@ export default function SalesOrderDetail() {
     },
   })
 
-  // Workflow — validate, save first if new, then call method
-  const callMethod = useCallback(async (method: string) => {
-    if (!validate()) return
-
+  // Workflow — save first if new, then call dedicated endpoint
+  const callAction = useCallback(async (action: string, label: string) => {
     let rid = recordId
     if (!rid) {
+      if (!validate()) return
       try {
-        const partnerId = Array.isArray(form.partner_id) ? form.partner_id[0] : form.partner_id
-        const { data } = await erpClient.raw.post('/model/sale.order/create', {
-          vals: { partner_id: partnerId, validity_date: form.validity_date || false },
+        const partnerId = m2oId(form.partner_id)
+        const { data } = await erpClient.raw.post('/sales/orders/create', {
+          partner_id: partnerId,
+          validity_date: form.validity_date || undefined,
+          client_order_ref: form.client_order_ref || undefined,
+          payment_term_id: m2oId(form.payment_term_id) || undefined,
         })
         rid = data?.id
         if (rid) navigate(`/sales/orders/${rid}`, { replace: true })
@@ -145,8 +152,8 @@ export default function SalesOrderDetail() {
     }
     if (!rid) return
     try {
-      await erpClient.raw.post('/model/sale.order/call', { record_ids: [rid], method })
-      toast.success('Action Complete', `${method.replace('action_', '').replace(/_/g, ' ')} executed`)
+      await erpClient.raw.post(`/sales/orders/${rid}/${action}`)
+      toast.success('Action Complete', `${label} executed successfully`)
       queryClient.invalidateQueries({ queryKey: ['sale-order'] })
     } catch (e: any) {
       toast.error('Action Failed', e?.response?.data?.detail || e.message || 'Unknown error')
@@ -283,8 +290,8 @@ export default function SalesOrderDetail() {
       statusBar={<StatusBar steps={STATES} current={state} />}
       headerActions={
         <>
-          {isDraft && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('action_quotation_send')}><Send className="h-3.5 w-3.5" /> Send</Button>}
-          {(isDraft || isSent) && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => callMethod('action_confirm')}><CheckCircle className="h-3.5 w-3.5" /> Confirm</Button>}
+          {isDraft && <Button variant="default" size="sm" className="rounded-xl gap-1.5" onClick={() => callAction('confirm', 'Send Quotation')}><Send className="h-3.5 w-3.5" /> Send</Button>}
+          {(isDraft || isSent) && <Button variant="outline" size="sm" className="rounded-xl gap-1.5" onClick={() => callAction('confirm', 'Confirm Order')}><CheckCircle className="h-3.5 w-3.5" /> Confirm</Button>}
           {!isNew && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Printer className="h-3.5 w-3.5" /> Print</Button>}
           {isDraft && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-muted-foreground"><Eye className="h-3.5 w-3.5" /> Preview</Button>}
         </>

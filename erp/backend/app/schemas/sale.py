@@ -31,6 +31,11 @@ class SaleOrderCreate(BaseModel):
     fiscal_position_id: Optional[int] = None
     client_order_ref: Optional[str] = None
     note: Optional[str] = None
+    user_id: Optional[int] = None
+    team_id: Optional[int] = None
+    warehouse_id: Optional[int] = None
+    commitment_date: Optional[datetime] = None
+    picking_policy: Optional[str] = None
     lines: list[SaleOrderLineCreate] = Field(default_factory=list)
 
 
@@ -43,6 +48,12 @@ class SaleOrderUpdate(BaseModel):
     fiscal_position_id: Optional[int] = None
     client_order_ref: Optional[str] = None
     note: Optional[str] = None
+    user_id: Optional[int] = None
+    team_id: Optional[int] = None
+    warehouse_id: Optional[int] = None
+    commitment_date: Optional[datetime] = None
+    picking_policy: Optional[str] = None
+    origin: Optional[str] = None
 
 
 class SaleOrderListParams(BaseModel):
