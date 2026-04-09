@@ -10,7 +10,7 @@ services:
   mashora-erp-api:
     build:
       context: .
-      dockerfile: erp/backend/Dockerfile
+      dockerfile: app/backend/Dockerfile
     container_name: mashora-erp-api
     ports:
       - "8001:8001"
@@ -36,7 +36,7 @@ services:
   mashora-erp-web:
     build:
       context: .
-      dockerfile: erp/frontend/Dockerfile
+      dockerfile: app/frontend/Dockerfile
     container_name: mashora-erp-web
     ports:
       - "3000:3000"

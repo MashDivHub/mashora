@@ -1,4 +1,4 @@
 packages:
   - "portal/frontend"
-  - "erp/frontend"
+  - "app/frontend"
   - "packages/*"

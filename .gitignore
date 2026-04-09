@@ -1,56 +1,57 @@
-# sphinx build directories
-_build/
+# =============================================
+# Mashora Monorepo — .gitignore
+# =============================================
 
-# dotfiles
-.*
-!.gitignore
-!.gitkeep
-!.github
-!.mailmap
-!.weblate.json
-# compiled python files
+# Python
 *.py[co]
 __pycache__/
-# setup.py egg_info
 *.egg-info
-# emacs backup files
+*.egg
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+.turbo/
+
+# IDE
+.vscode/
+.idea/
+*.swp
 *~
-# hg stuff
-*.orig
-status
-# mashora filestore
-mashora/filestore
-# maintenance migration scripts
-mashora/addons/base/maintenance
-# windows installation config file
-/mashora.conf
 
-# generated for windows installer?
-install/win32/*.bat
-install/win32/meta.py
+# OS
+.DS_Store
+Thumbs.db
 
-# needed only when building for win32
-setup/win32/static/less/
-setup/win32/static/wkhtmltopdf/
-setup/win32/static/postgresql*.exe
+# Environment & secrets
+.env
+.env.*
+!.env.example
 
-# js tooling
-node_modules
-jsconfig.json
-tsconfig.json
-package-lock.json
-package.json
-.husky
-
-# various virtualenv
-/bin/
+# Build artifacts
 /build/
-/dist/
-/include/
+/bin/
 /lib/
-/man/
+/include/
 /share/
-/src/
-/portal/frontend/dist
-/tmp
-/erp/frontend/dist
+
+# App (ERP) build outputs
+/app/frontend/dist/
+/app/backend/__pycache__/
+
+# Portal build outputs
+/portal/frontend/dist/
+/portal/backend/__pycache__/
+
+# Packages build outputs
+/packages/*/dist/
+
+# Logs
+*.log
+*.err.log
+
+# omc internal
+.omc/

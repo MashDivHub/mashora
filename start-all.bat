@@ -6,8 +6,8 @@ echo  =============================================
 echo   Mashora - Full Stack Launcher
 echo  =============================================
 echo.
-echo  ERP Backend:     http://localhost:8001
-echo  ERP Frontend:    http://localhost:3000
+echo  App Backend:     http://localhost:8001
+echo  App Frontend:    http://localhost:3000
 echo  Portal Backend:  http://localhost:8000
 echo  Portal Frontend: http://localhost:8069
 echo.
