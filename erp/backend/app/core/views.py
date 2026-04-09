@@ -3,17 +3,20 @@ View architecture parser.
 
 Converts Mashora's XML view definitions (arch) into JSON structures
 that the React frontend can use to dynamically render forms, lists, and kanban views.
+
+Now uses SQLAlchemy async to read ir_ui_view directly.
 """
 import logging
 from typing import Any, Optional
 from xml.etree import ElementTree as ET
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import async_get, async_search_read, get_session
+from app.core.model_registry import get_model_class, get_fields_info
 
 _logger = logging.getLogger(__name__)
 
 
-def get_view_definition(
+async def get_view_definition(
     model: str,
     view_type: str = "form",
     view_id: Optional[int] = None,
@@ -22,80 +25,69 @@ def get_view_definition(
 ) -> dict:
     """
     Get a view definition for a model, parsed from XML arch to JSON.
-
-    Args:
-        model: Model name (e.g., 'res.partner')
-        view_type: View type ('form', 'list', 'kanban', 'search')
-        view_id: Specific view ID (optional, uses default if None)
-        uid: User ID
-        context: Optional context
-
-    Returns:
-        JSON structure describing the view layout and fields.
     """
-    with mashora_env(uid=uid, context=context) as env:
-        Model = env[model]
-
-        # Get the view using Mashora's built-in method
-        if view_id:
-            view = env["ir.ui.view"].browse(view_id)
-            arch = view.arch
-            view_data = {"id": view.id, "name": view.name, "type": view.type}
+    if view_id:
+        view_data = await async_get("ir.ui.view", view_id, ["id", "name", "type", "arch_db"])
+        if not view_data:
+            return {"model": model, "view": {}, "arch": {}, "fields": {}}
+        arch = view_data.get("arch_db", "")
+    else:
+        # Find the default view for this model/type
+        result = await async_search_read(
+            "ir.ui.view",
+            domain=[
+                ["model", "=", model],
+                ["type", "=", view_type],
+                ["inherit_id", "=", False],
+            ],
+            fields=["id", "name", "type", "arch_db"],
+            limit=1,
+            order="priority asc, id asc",
+        )
+        if result["records"]:
+            view_data = result["records"][0]
+            arch = view_data.get("arch_db", "")
         else:
-            result = Model.get_view(view_type=view_type)
-            arch = result.get("arch", "")
-            view_data = {
-                "id": result.get("view_id"),
-                "name": result.get("name", ""),
-                "type": view_type,
-            }
+            view_data = {"id": None, "name": "", "type": view_type}
+            arch = ""
 
-        # Parse the XML arch
-        try:
-            parsed = parse_arch(arch)
-        except Exception as e:
-            _logger.warning("Failed to parse arch for %s/%s: %s", model, view_type, e)
-            parsed = {"raw": arch}
+    # Parse the XML arch
+    try:
+        parsed = parse_arch(arch) if arch else {}
+    except Exception as e:
+        _logger.warning("Failed to parse arch for %s/%s: %s", model, view_type, e)
+        parsed = {"raw": arch}
 
-        # Get field metadata
-        fields_data = Model.fields_get(attributes=["string", "type", "required", "readonly", "help", "selection", "relation"])
+    # Get field metadata from SQLAlchemy model registry
+    fields_data = get_fields_info(model)
 
-        return {
-            "model": model,
-            "view": view_data,
-            "arch": parsed,
-            "fields": fields_data,
-        }
+    return {
+        "model": model,
+        "view": {
+            "id": view_data.get("id"),
+            "name": view_data.get("name", ""),
+            "type": view_data.get("type", view_type),
+        },
+        "arch": parsed,
+        "fields": fields_data,
+    }
 
 
 def parse_arch(arch_xml: str) -> dict:
-    """
-    Parse a Mashora XML arch string into a JSON-friendly structure.
-
-    Converts elements like:
-        <form><group><field name="name"/></group></form>
-    Into:
-        {"tag": "form", "children": [{"tag": "group", "children": [...]}]}
-    """
+    """Parse a Mashora XML arch string into a JSON-friendly structure."""
     if not arch_xml or not arch_xml.strip():
         return {}
-
     root = ET.fromstring(arch_xml)
     return _parse_element(root)
 
 
 def _parse_element(element: ET.Element) -> dict:
     """Recursively parse an XML element into a dict."""
-    result: dict[str, Any] = {
-        "tag": element.tag,
-    }
+    result: dict[str, Any] = {"tag": element.tag}
 
-    # Copy all attributes
     if element.attrib:
         attrs = dict(element.attrib)
         result["attrs"] = attrs
-
-        # Extract commonly used attributes to top level for convenience
         for attr in (
             "name", "string", "invisible", "readonly", "required",
             "widget", "colspan", "col", "nolabel", "class", "type",
@@ -103,39 +95,40 @@ def _parse_element(element: ET.Element) -> dict:
             "options", "placeholder", "groups", "data-hotkey",
         ):
             if attr in attrs:
-                # 'for' is a Python keyword, use 'for_' on the Python side
                 key = "for_" if attr == "for" else attr
                 result[key] = attrs[attr]
 
-    # Parse children
-    children = []
-    for child in element:
-        children.append(_parse_element(child))
-
+    children = [_parse_element(child) for child in element]
     if children:
         result["children"] = children
 
-    # Text content
     if element.text and element.text.strip():
         result["text"] = element.text.strip()
-
-    # Tail text (text after closing tag, belongs to parent)
     if element.tail and element.tail.strip():
         result["tail"] = element.tail.strip()
 
     return result
 
 
-def get_search_view(model: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_search_view(model: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Get the search view filters and group-by options for a model."""
-    with mashora_env(uid=uid, context=context) as env:
-        Model = env[model]
-        result = Model.get_view(view_type="search")
-        arch = result.get("arch", "")
+    result = await async_search_read(
+        "ir.ui.view",
+        domain=[
+            ["model", "=", model],
+            ["type", "=", "search"],
+            ["inherit_id", "=", False],
+        ],
+        fields=["id", "arch_db"],
+        limit=1,
+        order="priority asc, id asc",
+    )
 
-        filters = []
-        group_bys = []
+    filters = []
+    group_bys = []
 
+    if result["records"]:
+        arch = result["records"][0].get("arch_db", "")
         try:
             root = ET.fromstring(arch)
             for elem in root.iter():
@@ -157,8 +150,4 @@ def get_search_view(model: str, uid: int = 1, context: Optional[dict] = None) ->
         except Exception as e:
             _logger.warning("Failed to parse search view for %s: %s", model, e)
 
-        return {
-            "model": model,
-            "filters": filters,
-            "group_bys": group_bys,
-        }
+    return {"model": model, "filters": filters, "group_bys": group_bys}

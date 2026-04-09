@@ -13,16 +13,13 @@ _logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
-from app.core.orm_adapter import orm_call, mashora_env
+from app.services.base import async_search_read, async_create, async_update, async_delete, async_get
 
 router = APIRouter(prefix="/chatter", tags=["chatter"])
 
 
 def _uid(user: CurrentUser | None) -> int:
     return user.uid if user else 1
-
-def _ctx(user: CurrentUser | None) -> dict | None:
-    return user.get_context() if user else None
 
 
 class MessagePost(BaseModel):
@@ -41,131 +38,111 @@ class ActivityCreate(BaseModel):
 
 # --- Messages ---
 
-def _get_messages(model: str, res_id: int, limit: int = 30, offset: int = 0, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Message = env["mail.message"]
-        domain = [("model", "=", model), ("res_id", "=", res_id)]
-        total = Message.search_count(domain)
-        records = Message.search(domain, limit=limit, offset=offset, order="date desc")
-        data = records.read([
-            "id", "body", "date", "author_id", "message_type",
-            "subtype_id", "email_from", "subject",
-            "tracking_value_ids", "attachment_ids",
-            "starred", "needaction",
-        ])
-        return {"messages": data, "total": total}
+async def _get_messages(model: str, res_id: int, limit: int = 30, offset: int = 0) -> dict:
+    result = await async_search_read(
+        "mail.message",
+        domain=[["model", "=", model], ["res_id", "=", res_id]],
+        fields=["id", "body", "date", "author_id", "message_type",
+                "subtype_id", "email_from", "subject", "attachment_ids"],
+        offset=offset,
+        limit=limit,
+        order="date desc",
+    )
+    return {"messages": result["records"], "total": result["total"]}
 
 
-def _post_message(model: str, res_id: int, body: str, message_type: str = "comment",
-                   subtype_xmlid: str = "mail.mt_comment", uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        record = env[model].browse(res_id)
-        msg = record.message_post(
-            body=body,
-            message_type=message_type,
-            subtype_xmlid=subtype_xmlid,
-        )
-        return msg.read(["id", "body", "date", "author_id", "message_type"])[0]
+async def _post_message(model: str, res_id: int, body: str, message_type: str = "comment",
+                        subtype_xmlid: str = "mail.mt_comment", uid: int = 1) -> dict:
+    vals = {
+        "model": model,
+        "res_id": res_id,
+        "body": body,
+        "message_type": message_type,
+        "author_id": uid,
+    }
+    result = await async_create("mail.message", vals=vals, uid=uid)
+    return result
 
 
 # --- Followers ---
 
-def _get_followers(model: str, res_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def _get_followers(model: str, res_id: int) -> dict:
     try:
-        with mashora_env(uid=uid, context=context) as env:
-            if "mail.followers" not in env.registry:
-                return {"followers": [], "total": 0}
-            Follower = env["mail.followers"]
-            domain = [("res_model", "=", model), ("res_id", "=", res_id)]
-            records = Follower.search(domain)
-            # Read only fields that exist in this version
-            available = set(Follower._fields.keys())
-            fields = ["id"]
-            for f in ("partner_id", "name", "email", "channel_id", "subtype_ids"):
-                if f in available:
-                    fields.append(f)
-            data = records.read(fields)
-            return {"followers": data, "total": len(data)}
+        result = await async_search_read(
+            "mail.followers",
+            domain=[["res_model", "=", model], ["res_id", "=", res_id]],
+            fields=["id", "partner_id"],
+        )
+        return {"followers": result["records"], "total": result["total"]}
     except Exception as e:
         _logger.warning("Failed to get followers for %s/%s: %s", model, res_id, e)
         return {"followers": [], "total": 0}
 
 
-def _add_follower(model: str, res_id: int, partner_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        record = env[model].browse(res_id)
-        record.message_subscribe(partner_ids=[partner_id])
-        return {"subscribed": True, "partner_id": partner_id}
+async def _add_follower(model: str, res_id: int, partner_id: int, uid: int = 1) -> dict:
+    vals = {"res_model": model, "res_id": res_id, "partner_id": partner_id}
+    await async_create("mail.followers", vals=vals, uid=uid)
+    return {"subscribed": True, "partner_id": partner_id}
 
 
-def _remove_follower(model: str, res_id: int, partner_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        record = env[model].browse(res_id)
-        record.message_unsubscribe(partner_ids=[partner_id])
-        return {"unsubscribed": True, "partner_id": partner_id}
+async def _remove_follower(model: str, res_id: int, partner_id: int) -> dict:
+    result = await async_search_read(
+        "mail.followers",
+        domain=[["res_model", "=", model], ["res_id", "=", res_id], ["partner_id", "=", partner_id]],
+        fields=["id"],
+        limit=1,
+    )
+    if result["records"]:
+        await async_delete("mail.followers", result["records"][0]["id"])
+    return {"unsubscribed": True, "partner_id": partner_id}
 
 
 # --- Activities ---
 
-def _get_activities(model: str, res_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Activity = env["mail.activity"]
-        domain = [("res_model", "=", model), ("res_id", "=", res_id)]
-        records = Activity.search(domain, order="date_deadline asc")
-        data = records.read([
-            "id", "activity_type_id", "summary", "note",
-            "date_deadline", "user_id", "state",
-            "create_date",
-        ])
-        return {"activities": data, "total": len(data)}
+async def _get_activities(model: str, res_id: int) -> dict:
+    result = await async_search_read(
+        "mail.activity",
+        domain=[["res_model", "=", model], ["res_id", "=", res_id]],
+        fields=["id", "activity_type_id", "summary", "note",
+                "date_deadline", "user_id", "state", "create_date"],
+        order="date_deadline asc",
+    )
+    return {"activities": result["records"], "total": result["total"]}
 
 
-def _create_activity(model: str, res_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        vals["res_model_id"] = env["ir.model"]._get_id(model)
-        vals["res_id"] = res_id
-        activity = env["mail.activity"].create(vals)
-        return activity.read(["id", "activity_type_id", "summary", "date_deadline", "user_id", "state"])[0]
+async def _create_activity(model: str, res_id: int, vals: dict, uid: int = 1) -> dict:
+    vals["res_model"] = model
+    vals["res_id"] = res_id
+    result = await async_create("mail.activity", vals=vals, uid=uid,
+                                fields=["id", "activity_type_id", "summary", "date_deadline", "user_id", "state"])
+    return result
 
 
-def _mark_activity_done(activity_id: int, feedback: str | None = None, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        activity = env["mail.activity"].browse(activity_id)
-        activity.action_feedback(feedback=feedback or "")
-        return {"done": True, "activity_id": activity_id}
+async def _mark_activity_done(activity_id: int, uid: int = 1) -> dict:
+    await async_update("mail.activity", activity_id, {"state": "done"}, uid=uid)
+    return {"done": True, "activity_id": activity_id}
 
 
-def _get_activity_types(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        types = env["mail.activity.type"].search([])
-        return {"types": types.read(["id", "name", "summary", "delay_count", "delay_unit", "icon"])}
+async def _get_activity_types() -> dict:
+    result = await async_search_read(
+        "mail.activity.type",
+        domain=[],
+        fields=["id", "name", "summary", "icon"],
+    )
+    return {"types": result["records"]}
 
 
-# --- Tracking Values (field change log) ---
+# --- Tracking Values ---
 
-def _get_tracking(model: str, res_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Message = env["mail.message"]
-        domain = [
-            ("model", "=", model),
-            ("res_id", "=", res_id),
-            ("tracking_value_ids", "!=", False),
-        ]
-        messages = Message.search(domain, order="date desc", limit=50)
-        result = []
-        for msg in messages:
-            tracking = msg.tracking_value_ids.read([
-                "id", "field_id", "field_desc", "field_type",
-                "old_value_char", "new_value_char",
-                "old_value_integer", "new_value_integer",
-                "old_value_float", "new_value_float",
-                "old_value_datetime", "new_value_datetime",
-            ])
-            if tracking:
-                msg_data = msg.read(["id", "date", "author_id"])[0]
-                msg_data["tracking"] = tracking
-                result.append(msg_data)
-        return {"tracking": result}
+async def _get_tracking(model: str, res_id: int) -> dict:
+    result = await async_search_read(
+        "mail.message",
+        domain=[["model", "=", model], ["res_id", "=", res_id]],
+        fields=["id", "date", "author_id"],
+        order="date desc",
+        limit=50,
+    )
+    return {"tracking": result["records"]}
 
 
 # --- Endpoints ---
@@ -178,62 +155,62 @@ async def get_messages(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get messages/chatter for a record."""
-    return await orm_call(_get_messages, model=model_name, res_id=res_id, limit=limit, offset=offset, uid=_uid(user), context=_ctx(user))
+    return await _get_messages(model=model_name, res_id=res_id, limit=limit, offset=offset)
 
 
 @router.post("/{model_name}/{res_id}/messages")
 async def post_message(model_name: str, res_id: int, body: MessagePost, user: CurrentUser | None = Depends(get_optional_user)):
     """Post a message on a record's chatter."""
-    return await orm_call(
-        _post_message, model=model_name, res_id=res_id,
+    return await _post_message(
+        model=model_name, res_id=res_id,
         body=body.body, message_type=body.message_type, subtype_xmlid=body.subtype_xmlid,
-        uid=_uid(user), context=_ctx(user),
+        uid=_uid(user),
     )
 
 
 @router.get("/{model_name}/{res_id}/followers")
 async def get_followers(model_name: str, res_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get followers of a record."""
-    return await orm_call(_get_followers, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))
+    return await _get_followers(model=model_name, res_id=res_id)
 
 
 @router.post("/{model_name}/{res_id}/followers/{partner_id}")
 async def add_follower(model_name: str, res_id: int, partner_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Subscribe a partner to a record."""
-    return await orm_call(_add_follower, model=model_name, res_id=res_id, partner_id=partner_id, uid=_uid(user), context=_ctx(user))
+    return await _add_follower(model=model_name, res_id=res_id, partner_id=partner_id, uid=_uid(user))
 
 
 @router.delete("/{model_name}/{res_id}/followers/{partner_id}")
 async def remove_follower(model_name: str, res_id: int, partner_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Unsubscribe a partner from a record."""
-    return await orm_call(_remove_follower, model=model_name, res_id=res_id, partner_id=partner_id, uid=_uid(user), context=_ctx(user))
+    return await _remove_follower(model=model_name, res_id=res_id, partner_id=partner_id)
 
 
 @router.get("/{model_name}/{res_id}/activities")
 async def get_activities(model_name: str, res_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get activities for a record."""
-    return await orm_call(_get_activities, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))
+    return await _get_activities(model=model_name, res_id=res_id)
 
 
 @router.post("/{model_name}/{res_id}/activities")
 async def create_activity(model_name: str, res_id: int, body: ActivityCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create an activity on a record."""
-    return await orm_call(_create_activity, model=model_name, res_id=res_id, vals=body.model_dump(exclude_none=True), uid=_uid(user), context=_ctx(user))
+    return await _create_activity(model=model_name, res_id=res_id, vals=body.model_dump(exclude_none=True), uid=_uid(user))
 
 
 @router.post("/activities/{activity_id}/done")
 async def complete_activity(activity_id: int, feedback: str | None = Query(default=None), user: CurrentUser | None = Depends(get_optional_user)):
     """Mark an activity as done."""
-    return await orm_call(_mark_activity_done, activity_id=activity_id, feedback=feedback, uid=_uid(user), context=_ctx(user))
+    return await _mark_activity_done(activity_id=activity_id, uid=_uid(user))
 
 
 @router.get("/activity-types")
 async def get_activity_types(user: CurrentUser | None = Depends(get_optional_user)):
     """List available activity types."""
-    return await orm_call(_get_activity_types, uid=_uid(user), context=_ctx(user))
+    return await _get_activity_types()
 
 
 @router.get("/{model_name}/{res_id}/tracking")
 async def get_tracking(model_name: str, res_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get field change tracking history for a record."""
-    return await orm_call(_get_tracking, model=model_name, res_id=res_id, uid=_uid(user), context=_ctx(user))
+    return await _get_tracking(model=model_name, res_id=res_id)

@@ -28,7 +28,8 @@ class HrDepartment(Base, TimestampMixin, CompanyMixin, ActiveMixin):
     )
     note: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
     color: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    complete_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    master_department_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    parent_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Relationships
     parent: Mapped[Optional["HrDepartment"]] = relationship(
@@ -74,63 +75,27 @@ class HrEmployee(Base, TimestampMixin, CompanyMixin, ActiveMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    job_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("hr_job.id", ondelete="SET NULL"), nullable=True
-    )
-    job_title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    department_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("hr_department.id", ondelete="SET NULL"), nullable=True
-    )
     parent_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("hr_employee.id", ondelete="SET NULL"), nullable=True
     )
-    coach_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("hr_employee.id", ondelete="SET NULL"), nullable=True
-    )
-    user_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("res_users.id", ondelete="SET NULL"), nullable=True
-    )
-    resource_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("resource_resource.id", ondelete="SET NULL"), nullable=True
-    )
-    resource_calendar_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("resource_calendar.id", ondelete="SET NULL"), nullable=True
-    )
-    work_location_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("hr_work_location.id", ondelete="SET NULL"), nullable=True
-    )
+    coach_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    resource_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     work_email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     work_phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     mobile_phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     private_phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     private_email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    gender: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
-    marital: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     birthday: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     place_of_birth: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    country_of_birth: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("res_country.id", ondelete="SET NULL"), nullable=True
-    )
-    identification_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    passport_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     permit_no: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     visa_no: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     visa_expire: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    permit_expire: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    km_home_work: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    notes: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
     barcode: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     pin: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     color: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    last_activity: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    last_activity_time: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    employee_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
 
     # Relationships
-    job: Mapped[Optional["HrJob"]] = relationship("HrJob", foreign_keys=[job_id])
-    department: Mapped[Optional["HrDepartment"]] = relationship(
-        "HrDepartment", foreign_keys=[department_id]
-    )
     manager: Mapped[Optional["HrEmployee"]] = relationship(
         "HrEmployee", remote_side="HrEmployee.id", foreign_keys=[parent_id]
     )

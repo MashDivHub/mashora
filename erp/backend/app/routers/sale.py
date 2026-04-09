@@ -10,7 +10,6 @@ Provides REST API for:
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
-from app.core.orm_adapter import orm_call
 from app.schemas.sale import (
     SaleOrderCreate,
     SaleOrderListParams,
@@ -58,13 +57,13 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 async def get_orders(params: SaleOrderListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List quotations/sales orders with filters."""
     p = params or SaleOrderListParams()
-    return await orm_call(list_orders, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    return await list_orders(params=p.model_dump())
 
 
 @router.get("/orders/{order_id}")
 async def get_order_detail(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get full order details including lines."""
-    result = await orm_call(get_order, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    result = await get_order(order_id=order_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Sale order {order_id} not found")
     return result
@@ -75,44 +74,44 @@ async def create_new_order(body: SaleOrderCreate, user: CurrentUser | None = Dep
     """Create a new quotation."""
     vals = body.model_dump(exclude={"lines"}, exclude_none=True)
     lines = [l.model_dump(exclude_none=True) for l in body.lines] if body.lines else None
-    return await orm_call(create_order, vals=vals, lines=lines, uid=_uid(user), context=_ctx(user))
+    return await create_order(vals=vals, lines=lines)
 
 
 @router.put("/orders/{order_id}")
 async def update_existing_order(order_id: int, body: SaleOrderUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a draft quotation."""
     vals = body.model_dump(exclude_none=True)
-    return await orm_call(update_order, order_id=order_id, vals=vals, uid=_uid(user), context=_ctx(user))
+    return await update_order(order_id=order_id, vals=vals)
 
 
 @router.post("/orders/{order_id}/confirm")
 async def confirm_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Confirm quotation → sales order. State changes from draft/sent to sale."""
-    return await orm_call(confirm_order, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await confirm_order(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/cancel")
 async def cancel_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Cancel a quotation/order."""
-    return await orm_call(cancel_order, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await cancel_order(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/draft")
 async def reset_order_to_draft(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Reset a cancelled order back to draft."""
-    return await orm_call(reset_to_draft, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await reset_to_draft(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/lock")
 async def lock_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Lock a confirmed order to prevent modifications."""
-    return await orm_call(lock_order, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await lock_order(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/unlock")
 async def unlock_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Unlock a locked order."""
-    return await orm_call(unlock_order, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await unlock_order(order_id=order_id)
 
 
 @router.post("/orders/{order_id}/create-invoice")
@@ -125,13 +124,7 @@ async def create_invoice(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create invoice(s) from a confirmed sales order."""
-    return await orm_call(
-        create_invoice_from_order,
-        order_id=order_id,
-        advance_payment_method=method,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    return await create_invoice_from_order(order_id=order_id, advance_payment_method=method, )
 
 
 # ============================================
@@ -141,26 +134,20 @@ async def create_invoice(
 @router.post("/orders/{order_id}/lines")
 async def add_line(order_id: int, body: SaleOrderLineCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Add a line to a quotation."""
-    return await orm_call(
-        add_order_line,
-        order_id=order_id,
-        line_vals=body.model_dump(exclude_none=True),
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    return await add_order_line(order_id=order_id, line_vals=body.model_dump(exclude_none=True), )
 
 
 @router.put("/orders/lines/{line_id}")
 async def update_line(line_id: int, body: SaleOrderLineUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a specific order line."""
     vals = body.model_dump(exclude={"line_id"}, exclude_none=True)
-    return await orm_call(update_order_line, line_id=line_id, vals=vals, uid=_uid(user), context=_ctx(user))
+    return await update_order_line(line_id=line_id, vals=vals)
 
 
 @router.delete("/orders/{order_id}/lines/{line_id}")
 async def remove_line(order_id: int, line_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Remove a line from a quotation."""
-    return await orm_call(delete_order_line, order_id=order_id, line_id=line_id, uid=_uid(user), context=_ctx(user))
+    return await delete_order_line(order_id=order_id, line_id=line_id)
 
 
 # ============================================
@@ -170,7 +157,7 @@ async def remove_line(order_id: int, line_id: int, user: CurrentUser | None = De
 @router.get("/dashboard")
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get sales dashboard summary metrics."""
-    return await orm_call(get_sales_dashboard, uid=_uid(user), context=_ctx(user))
+    return await get_sales_dashboard()
 
 
 # ============================================
@@ -180,12 +167,12 @@ async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
 @router.post("/loyalty/programs")
 async def loyalty_programs(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List loyalty/promotion programs."""
-    return await orm_call(list_loyalty_programs, params=params or {}, uid=_uid(user), context=_ctx(user))
+    return await list_loyalty_programs(params=params or {})
 
 @router.get("/loyalty/programs/{program_id}")
 async def loyalty_program_detail(program_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get loyalty program with rules and rewards."""
-    result = await orm_call(get_loyalty_program, program_id=program_id, uid=_uid(user), context=_ctx(user))
+    result = await get_loyalty_program(program_id=program_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Loyalty program not found")
     return result
@@ -193,7 +180,7 @@ async def loyalty_program_detail(program_id: int, user: CurrentUser | None = Dep
 @router.post("/loyalty/cards")
 async def loyalty_cards(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List loyalty cards/coupons."""
-    return await orm_call(list_loyalty_cards, params=params or {}, uid=_uid(user), context=_ctx(user))
+    return await list_loyalty_cards(params=params or {})
 
 
 # ============================================
@@ -203,7 +190,7 @@ async def loyalty_cards(params: dict | None = None, user: CurrentUser | None = D
 @router.get("/orders/{order_id}/margins")
 async def order_margins(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get margin analysis for a sales order."""
-    result = await orm_call(get_order_margins, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    result = await get_order_margins(order_id=order_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Order not found")
     return result
@@ -211,4 +198,4 @@ async def order_margins(order_id: int, user: CurrentUser | None = Depends(get_op
 @router.get("/teams")
 async def sales_teams(user: CurrentUser | None = Depends(get_optional_user)):
     """List sales teams."""
-    return await orm_call(get_sales_teams, uid=_uid(user), context=_ctx(user))
+    return await get_sales_teams()

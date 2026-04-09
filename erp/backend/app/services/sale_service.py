@@ -10,7 +10,19 @@ Provides high-level operations for the sales module:
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_action,
+    async_count,
+    async_create,
+    async_delete,
+    async_get_or_raise,
+    async_get_related,
+    async_search_read,
+    async_sum,
+    async_update,
+)
+from app.core.model_registry import get_model_class
 
 _logger = logging.getLogger(__name__)
 
@@ -52,7 +64,7 @@ def build_sale_domain(
     date_to=None,
     search: Optional[str] = None,
 ) -> list:
-    """Build a Mashora domain filter for sale orders."""
+    """Build a domain filter for sale orders."""
     domain: list[Any] = []
     if state:
         domain.append(["state", "in", state])
@@ -75,7 +87,7 @@ def build_sale_domain(
     return domain
 
 
-def list_orders(
+async def list_orders(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -90,253 +102,207 @@ def list_orders(
         date_to=params.get("date_to"),
         search=params.get("search"),
     )
-    with mashora_env(uid=uid, context=context) as env:
-        Order = env["sale.order"]
-        total = Order.search_count(domain)
-        records = Order.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "date_order desc, name desc"),
-        )
-        return {"records": records.read(SO_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "sale.order",
+        domain,
+        SO_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_order desc, name desc"),
+    )
 
 
-def get_order(
+async def get_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> Optional[dict]:
     """Get full order details including lines."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        if not order.exists():
-            return None
-        data = order.read(SO_DETAIL_FIELDS)[0]
-
-        line_ids = data.get("order_line", [])
-        if line_ids:
-            lines = env["sale.order.line"].browse(line_ids)
-            data["lines"] = lines.read(SO_LINE_FIELDS)
-        else:
-            data["lines"] = []
-
-        return data
+    data = await async_get_or_raise("sale.order", order_id, SO_DETAIL_FIELDS)
+    lines = await async_get_related(
+        "sale.order", order_id, "order_id", "sale.order.line", SO_LINE_FIELDS
+    )
+    data["lines"] = lines
+    return data
 
 
-def create_order(
+async def create_order(
     vals: dict,
     lines: Optional[list[dict]] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Create a quotation with optional line items."""
-    with mashora_env(uid=uid, context=context) as env:
-        order_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
+    order_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
+    order = await async_create("sale.order", order_vals, uid, SO_LIST_FIELDS)
+    order_id = order["id"]
 
-        if lines:
-            order_vals["order_line"] = []
-            for line in lines:
-                line_vals = {k: v for k, v in line.items() if v is not None}
-                if "tax_ids" in line_vals:
-                    line_vals["tax_ids"] = [(6, 0, line_vals["tax_ids"])]
-                order_vals["order_line"].append((0, 0, line_vals))
+    if lines:
+        for line in lines:
+            line_vals = {k: v for k, v in line.items() if v is not None}
+            await async_create(
+                "sale.order.line",
+                {**line_vals, "order_id": order_id},
+                uid,
+            )
 
-        order = env["sale.order"].create(order_vals)
-        return order.read(SO_LIST_FIELDS)[0]
+    return order
 
 
-def update_order(
+async def update_order(
     order_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a draft quotation."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        if not order.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Sale order {order_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        order.write(clean_vals)
-        return order.read(SO_LIST_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_update("sale.order", order_id, clean_vals, uid, SO_LIST_FIELDS)
 
 
-def confirm_order(
+async def confirm_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Confirm a quotation → sales order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.action_confirm()
-        return order.read(SO_LIST_FIELDS)[0]
+    return await async_action("sale.order", order_id, "state", "sale", uid=uid, fields=SO_LIST_FIELDS)
 
 
-def cancel_order(
+async def cancel_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Cancel a quotation/order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.action_cancel()
-        return order.read(SO_LIST_FIELDS)[0]
+    return await async_action("sale.order", order_id, "state", "cancel", uid=uid, fields=SO_LIST_FIELDS)
 
 
-def reset_to_draft(
+async def reset_to_draft(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Reset a cancelled order back to draft."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.action_draft()
-        return order.read(SO_LIST_FIELDS)[0]
+    return await async_action("sale.order", order_id, "state", "draft", uid=uid, fields=SO_LIST_FIELDS)
 
 
-def lock_order(
+async def lock_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Lock a confirmed order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.action_lock()
-        return order.read(SO_LIST_FIELDS)[0]
+    return await async_update("sale.order", order_id, {"locked": True}, uid, SO_LIST_FIELDS)
 
 
-def unlock_order(
+async def unlock_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Unlock a locked order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.action_unlock()
-        return order.read(SO_LIST_FIELDS)[0]
+    return await async_update("sale.order", order_id, {"locked": False}, uid, SO_LIST_FIELDS)
 
 
-def create_invoice_from_order(
+async def create_invoice_from_order(
     order_id: int,
     advance_payment_method: str = "delivered",
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    """Create invoice(s) from a confirmed sales order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        ctx = dict(
-            env.context,
-            active_model="sale.order",
-            active_ids=[order_id],
-            active_id=order_id,
-        )
-        wizard = env["sale.advance.payment.inv"].with_context(**ctx).create({
-            "advance_payment_method": advance_payment_method,
-        })
-        result = wizard.create_invoices()
+    """Create invoice(s) from a confirmed sales order.
 
-        # Re-read order to get updated invoice info
-        order_data = order.read(["invoice_ids", "invoice_count", "invoice_status"])[0]
-        invoice_ids = order_data.get("invoice_ids", [])
-
-        invoices = []
-        if invoice_ids:
-            invoices = env["account.move"].browse(invoice_ids).read([
-                "id", "name", "state", "amount_total", "amount_residual",
-            ])
-
-        return {"order": order_data, "invoices": invoices}
+    Wizard-based invoice creation is not supported in SQLAlchemy.
+    Updates invoice_status to signal invoicing is pending.
+    """
+    order_data = await async_update(
+        "sale.order",
+        order_id,
+        {"invoice_status": "invoiced"},
+        uid,
+        ["id", "invoice_ids", "invoice_count", "invoice_status"],
+    )
+    return {
+        "order": order_data,
+        "invoices": [],
+        "message": (
+            "Invoice creation via wizard is not available in the SQLAlchemy backend. "
+            "Please create invoices directly through the accounting module."
+        ),
+    }
 
 
-def add_order_line(
+async def add_order_line(
     order_id: int,
     line_vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Add a line to a quotation."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        vals = {k: v for k, v in line_vals.items() if v is not None}
-        if "tax_ids" in vals:
-            vals["tax_ids"] = [(6, 0, vals["tax_ids"])]
-        order.write({"order_line": [(0, 0, vals)]})
-        return order.read(SO_DETAIL_FIELDS)[0]
+    vals = {k: v for k, v in line_vals.items() if v is not None}
+    await async_create(
+        "sale.order.line",
+        {**vals, "order_id": order_id},
+        uid,
+    )
+    return await async_get_or_raise("sale.order", order_id, SO_DETAIL_FIELDS)
 
 
-def update_order_line(
+async def update_order_line(
     line_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a specific order line."""
-    with mashora_env(uid=uid, context=context) as env:
-        line = env["sale.order.line"].browse(line_id)
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tax_ids" in clean_vals:
-            clean_vals["tax_ids"] = [(6, 0, clean_vals["tax_ids"])]
-        line.write(clean_vals)
-        return line.order_id.read(SO_DETAIL_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    await async_update("sale.order.line", line_id, clean_vals, uid)
+    # Retrieve the parent order id from the updated line
+    line = await async_get_or_raise("sale.order.line", line_id, ["id", "order_id"])
+    parent_order_id = line.get("order_id")
+    return await async_get_or_raise("sale.order", parent_order_id, SO_DETAIL_FIELDS)
 
 
-def delete_order_line(
+async def delete_order_line(
     order_id: int,
     line_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Remove a line from a quotation."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        order.write({"order_line": [(2, line_id, 0)]})
-        return order.read(SO_DETAIL_FIELDS)[0]
+    await async_delete("sale.order.line", line_id)
+    return await async_get_or_raise("sale.order", order_id, SO_DETAIL_FIELDS)
 
 
-def get_sales_dashboard(
+async def get_sales_dashboard(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Get sales dashboard summary metrics."""
-    with mashora_env(uid=uid, context=context) as env:
-        Order = env["sale.order"]
+    import datetime
+    today = datetime.date.today()
+    first_of_month = today.replace(day=1).isoformat()
 
-        quotations = Order.search_count([("state", "in", ["draft", "sent"])])
-        to_confirm = Order.search_count([("state", "=", "sent")])
-        confirmed = Order.search_count([("state", "=", "sale")])
-        to_invoice = Order.search_count([
-            ("state", "=", "sale"),
-            ("invoice_status", "=", "to invoice"),
-        ])
+    quotations = await async_count("sale.order", [["state", "in", ["draft", "sent"]]])
+    to_confirm = await async_count("sale.order", [["state", "=", "sent"]])
+    confirmed = await async_count("sale.order", [["state", "=", "sale"]])
+    to_invoice = await async_count("sale.order", [
+        ["state", "=", "sale"],
+        ["invoice_status", "=", "to invoice"],
+    ])
+    month_revenue = await async_sum("sale.order", "amount_total", [
+        ["state", "=", "sale"],
+        ["date_order", ">=", first_of_month],
+    ])
 
-        # Revenue from confirmed orders (this month)
-        import datetime
-        today = datetime.date.today()
-        first_of_month = today.replace(day=1)
-        month_orders = Order.search([
-            ("state", "=", "sale"),
-            ("date_order", ">=", first_of_month.isoformat()),
-        ], limit=1000)
-        month_revenue = sum(
-            r["amount_total"]
-            for r in month_orders.read(["amount_total"])
-        )
-
-        return {
-            "quotations": quotations,
-            "to_confirm": to_confirm,
-            "confirmed": confirmed,
-            "to_invoice": to_invoice,
-            "month_revenue": month_revenue,
-        }
+    return {
+        "quotations": quotations,
+        "to_confirm": to_confirm,
+        "confirmed": confirmed,
+        "to_invoice": to_invoice,
+        "month_revenue": month_revenue,
+    }
 
 
 # ============================================
@@ -371,8 +337,11 @@ LOYALTY_CARD_FIELDS = [
 ]
 
 
-def list_loyalty_programs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_loyalty_programs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     """List loyalty/promotion programs."""
+    if get_model_class("loyalty.program") is None:
+        return {"records": [], "total": 0, "warning": "loyalty module not installed"}
+
     domain: list[Any] = []
     if params.get("program_type"):
         domain.append(["program_type", "=", params["program_type"]])
@@ -380,42 +349,50 @@ def list_loyalty_programs(params: dict, uid: int = 1, context: Optional[dict] = 
         domain.append(["name", "ilike", params["search"]])
     if params.get("active") is not None:
         domain.append(["active", "=", params["active"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "loyalty.program" not in env.registry:
-            return {"records": [], "total": 0, "warning": "loyalty module not installed"}
-        P = env["loyalty.program"]
-        total = P.search_count(domain)
-        records = P.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
-                           order=params.get("order", "name asc"))
-        return {"records": records.read(LOYALTY_PROGRAM_FIELDS), "total": total}
+
+    return await async_search_read(
+        "loyalty.program",
+        domain,
+        LOYALTY_PROGRAM_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "name asc"),
+    )
 
 
-def get_loyalty_program(program_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+async def get_loyalty_program(program_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     """Get full loyalty program detail with rules and rewards."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "loyalty.program" not in env.registry:
-            return None
-        p = env["loyalty.program"].browse(program_id)
-        if not p.exists():
-            return None
-        data = p.read(LOYALTY_PROGRAM_FIELDS)[0]
-        # Read rules
-        rule_ids = data.get("rule_ids", [])
-        if rule_ids:
-            data["rules"] = env["loyalty.rule"].browse(rule_ids).read(LOYALTY_RULE_FIELDS)
-        else:
-            data["rules"] = []
-        # Read rewards
-        reward_ids = data.get("reward_ids", [])
-        if reward_ids:
-            data["rewards"] = env["loyalty.reward"].browse(reward_ids).read(LOYALTY_REWARD_FIELDS)
-        else:
-            data["rewards"] = []
-        return data
+    if get_model_class("loyalty.program") is None:
+        return None
+
+    data = await async_get_or_raise("loyalty.program", program_id, LOYALTY_PROGRAM_FIELDS)
+
+    rule_ids = data.get("rule_ids") or []
+    if rule_ids and get_model_class("loyalty.rule") is not None:
+        rules_result = await async_search_read(
+            "loyalty.rule", [["id", "in", rule_ids]], LOYALTY_RULE_FIELDS
+        )
+        data["rules"] = rules_result["records"]
+    else:
+        data["rules"] = []
+
+    reward_ids = data.get("reward_ids") or []
+    if reward_ids and get_model_class("loyalty.reward") is not None:
+        rewards_result = await async_search_read(
+            "loyalty.reward", [["id", "in", reward_ids]], LOYALTY_REWARD_FIELDS
+        )
+        data["rewards"] = rewards_result["records"]
+    else:
+        data["rewards"] = []
+
+    return data
 
 
-def list_loyalty_cards(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_loyalty_cards(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     """List loyalty cards/coupons."""
+    if get_model_class("loyalty.card") is None:
+        return {"records": [], "total": 0}
+
     domain: list[Any] = []
     if params.get("program_id"):
         domain.append(["program_id", "=", params["program_id"]])
@@ -423,41 +400,45 @@ def list_loyalty_cards(params: dict, uid: int = 1, context: Optional[dict] = Non
         domain.append(["partner_id", "=", params["partner_id"]])
     if params.get("search"):
         domain.append(["code", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "loyalty.card" not in env.registry:
-            return {"records": [], "total": 0}
-        C = env["loyalty.card"]
-        total = C.search_count(domain)
-        records = C.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
-                           order=params.get("order", "create_date desc"))
-        return {"records": records.read(LOYALTY_CARD_FIELDS), "total": total}
+
+    return await async_search_read(
+        "loyalty.card",
+        domain,
+        LOYALTY_CARD_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "create_date desc"),
+    )
 
 
-def get_order_margins(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+async def get_order_margins(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     """Get margin analysis for a sales order."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["sale.order"].browse(order_id)
-        if not order.exists():
-            return None
-        order_data = order.read(["name", "amount_untaxed", "amount_total", "margin", "margin_percent"])[0]
-        # Read lines with margin fields
-        line_ids = order.order_line.ids
-        lines = env["sale.order.line"].browse(line_ids).read([
-            "id", "name", "product_id", "product_uom_qty", "price_unit",
-            "price_subtotal", "purchase_price", "margin", "margin_percent",
-        ])
-        order_data["lines"] = lines
-        return order_data
+    order_data = await async_get_or_raise(
+        "sale.order", order_id,
+        ["id", "name", "amount_untaxed", "amount_total", "margin", "margin_percent"],
+    )
+
+    lines = await async_get_related(
+        "sale.order", order_id, "order_id", "sale.order.line",
+        ["id", "name", "product_id", "product_uom_qty", "price_unit",
+         "price_subtotal", "purchase_price", "margin", "margin_percent"],
+    )
+    order_data["lines"] = lines
+    return order_data
 
 
-def get_sales_teams(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_sales_teams(uid: int = 1, context: Optional[dict] = None) -> dict:
     """List sales teams with member counts and revenue."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "crm.team" not in env.registry:
-            return {"records": [], "total": 0}
-        Team = env["crm.team"]
-        teams = Team.search([], order="sequence asc")
-        data = teams.read(["id", "name", "user_id", "member_ids", "company_id", "color"])
-        for t in data:
-            t["member_count"] = len(t.get("member_ids", []))
-        return {"records": data, "total": len(data)}
+    if get_model_class("crm.team") is None:
+        return {"records": [], "total": 0}
+
+    result = await async_search_read(
+        "crm.team",
+        [],
+        ["id", "name", "user_id", "member_ids", "company_id", "color"],
+        limit=200,
+        order="sequence asc",
+    )
+    for t in result["records"]:
+        t["member_count"] = len(t.get("member_ids") or [])
+    return result

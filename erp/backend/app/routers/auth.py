@@ -4,7 +4,6 @@ Authentication endpoints for the ERP API.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from app.core.orm_adapter import orm_call
 from app.middleware.auth import (
     authenticate_user,
     create_access_token,
@@ -32,7 +31,7 @@ class TokenResponse(BaseModel):
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest):
     """Authenticate user and return JWT tokens."""
-    user_data = await orm_call(authenticate_user, body.login, body.password)
+    user_data = await authenticate_user(body.login, body.password)
     if not user_data:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -78,13 +77,10 @@ async def refresh_token(refresh_token: str):
 @router.get("/me")
 async def get_me(user: CurrentUser = Depends(get_current_user)):
     """Get current user info."""
-    from app.core.orm_adapter import read_record
-    user_data = await orm_call(
-        read_record,
-        model="res.users",
-        record_id=user.uid,
+    from app.services.base import async_get
+    user_data = await async_get(
+        "res.users",
+        user.uid,
         fields=["name", "login", "email", "lang", "tz", "company_id", "company_ids", "image_128"],
-        uid=user.uid,
-        context=user.get_context(),
     )
     return user_data

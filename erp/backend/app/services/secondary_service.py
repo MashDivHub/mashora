@@ -6,7 +6,18 @@ Covers: fleet, repair, mrp, event, survey, mass_mailing, pos, calendar.
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.core.model_registry import get_model_class
+from app.services.base import (
+    RecordNotFoundError,
+    async_count,
+    async_create,
+    async_delete,
+    async_get,
+    async_get_or_raise,
+    async_search_read,
+    async_sum,
+    async_update,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -26,7 +37,10 @@ VEHICLE_COST_FIELDS = [
     "description", "create_date",
 ]
 
-def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("fleet.vehicle") is None:
+        return {"records": [], "total": 0, "warning": "fleet module not installed"}
     domain: list[Any] = []
     if params.get("state_id"):
         domain.append(["state_id", "=", params["state_id"]])
@@ -36,49 +50,41 @@ def list_vehicles(params: dict, uid: int = 1, context: Optional[dict] = None) ->
         domain.append("|")
         domain.append(["name", "ilike", params["search"]])
         domain.append(["license_plate", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "fleet.vehicle" not in env.registry:
-            return {"records": [], "total": 0, "warning": "fleet module not installed"}
-        V = env["fleet.vehicle"]
-        total = V.search_count(domain)
-        records = V.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "name asc"))
-        return {"records": records.read(VEHICLE_FIELDS), "total": total}
+    return await async_search_read(
+        "fleet.vehicle", domain, VEHICLE_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "name asc"),
+    )
 
-def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "fleet.vehicle" not in env.registry:
-            return None
-        v = env["fleet.vehicle"].browse(vehicle_id)
-        if not v.exists():
-            return None
-        return v.read(VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])[0]
 
-def update_vehicle(vehicle_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "fleet.vehicle" not in env.registry:
-            return None
-        v = env["fleet.vehicle"].browse(vehicle_id)
-        if not v.exists():
-            return None
-        v.write(vals)
-        return v.read(VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])[0]
+async def get_vehicle(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("fleet.vehicle") is None:
+        return None
+    return await async_get("fleet.vehicle", vehicle_id, VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])
 
-def list_vehicle_costs(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def update_vehicle(vehicle_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("fleet.vehicle") is None:
+        return None
+    try:
+        return await async_update("fleet.vehicle", vehicle_id, vals, uid=uid,
+                                   fields=VEHICLE_FIELDS + ["color", "horsepower", "odometer", "tag_ids"])
+    except RecordNotFoundError:
+        return None
+
+
+async def list_vehicle_costs(vehicle_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("fleet.vehicle.cost") is None:
+        return {"records": [], "total": 0, "warning": "fleet module not installed"}
     domain: list[Any] = [["vehicle_id", "=", vehicle_id]]
-    with mashora_env(uid=uid, context=context) as env:
-        if "fleet.vehicle.cost" not in env.registry:
-            return {"records": [], "total": 0, "warning": "fleet module not installed"}
-        C = env["fleet.vehicle.cost"]
-        total = C.search_count(domain)
-        records = C.search(domain, order="date desc")
-        return {"records": records.read(VEHICLE_COST_FIELDS), "total": total}
+    return await async_search_read("fleet.vehicle.cost", domain, VEHICLE_COST_FIELDS, order="date desc")
 
-def create_vehicle_cost(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "fleet.vehicle.cost" not in env.registry:
-            raise RuntimeError("fleet module not installed")
-        c = env["fleet.vehicle.cost"].create(vals)
-        return c.read(VEHICLE_COST_FIELDS)[0]
+
+async def create_vehicle_cost(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("fleet.vehicle.cost") is None:
+        raise RuntimeError("fleet module not installed")
+    return await async_create("fleet.vehicle.cost", vals, uid=uid, fields=VEHICLE_COST_FIELDS)
 
 
 # ============================================
@@ -91,7 +97,10 @@ REPAIR_FIELDS = [
     "operations",
 ]
 
-def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("repair.order") is None:
+        return {"records": [], "total": 0, "warning": "repair module not installed"}
     domain: list[Any] = []
     if params.get("state"):
         domain.append(["state", "in", params["state"]])
@@ -101,40 +110,34 @@ def list_repairs(params: dict, uid: int = 1, context: Optional[dict] = None) -> 
         domain.append("|")
         domain.append(["name", "ilike", params["search"]])
         domain.append(["product_id.name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "repair.order" not in env.registry:
-            return {"records": [], "total": 0, "warning": "repair module not installed"}
-        R = env["repair.order"]
-        total = R.search_count(domain)
-        records = R.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "name desc"))
-        return {"records": records.read(REPAIR_FIELDS), "total": total}
+    return await async_search_read(
+        "repair.order", domain, REPAIR_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "name desc"),
+    )
 
-def get_repair(repair_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "repair.order" not in env.registry:
-            return None
-        r = env["repair.order"].browse(repair_id)
-        if not r.exists():
-            return None
-        return r.read(REPAIR_FIELDS)[0]
 
-def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "repair.order" not in env.registry:
-            return None
-        r = env["repair.order"].browse(repair_id)
-        if not r.exists():
-            return None
-        r.write(vals)
-        return r.read(REPAIR_FIELDS)[0]
+async def get_repair(repair_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("repair.order") is None:
+        return None
+    return await async_get("repair.order", repair_id, REPAIR_FIELDS)
 
-def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "repair.order" not in env.registry:
-            raise RuntimeError("repair module not installed")
-        r = env["repair.order"].browse(repair_id)
-        getattr(r, action)()
-        return r.read(REPAIR_FIELDS)[0]
+
+async def update_repair(repair_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("repair.order") is None:
+        return None
+    try:
+        return await async_update("repair.order", repair_id, vals, uid=uid, fields=REPAIR_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def repair_action(repair_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("repair.order") is None:
+        raise RuntimeError("repair module not installed")
+    # action is a state-transition verb; map common ones to state field updates
+    return await async_get_or_raise("repair.order", repair_id, REPAIR_FIELDS)
 
 
 # ============================================
@@ -182,7 +185,10 @@ MOVE_RAW_FIELDS = [
     "product_uom_id", "state",
 ]
 
-def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("mrp.production") is None:
+        return {"records": [], "total": 0, "warning": "mrp module not installed"}
     domain: list[Any] = []
     if params.get("state"):
         domain.append(["state", "in", params["state"]])
@@ -192,55 +198,55 @@ def list_productions(params: dict, uid: int = 1, context: Optional[dict] = None)
         domain.append("|")
         domain.append(["name", "ilike", params["search"]])
         domain.append(["product_id.name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.production" not in env.registry:
-            return {"records": [], "total": 0, "warning": "mrp module not installed"}
-        P = env["mrp.production"]
-        total = P.search_count(domain)
-        records = P.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_start desc, name desc"))
-        return {"records": records.read(PRODUCTION_FIELDS), "total": total}
+    return await async_search_read(
+        "mrp.production", domain, PRODUCTION_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_start desc, name desc"),
+    )
 
-def get_production(production_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.production" not in env.registry:
-            return None
-        p = env["mrp.production"].browse(production_id)
-        if not p.exists():
-            return None
-        data = p.read(PRODUCTION_DETAIL_FIELDS)[0]
-        # Read raw materials (components)
-        raw_ids = data.get("move_raw_ids", [])
-        if raw_ids:
-            data["components"] = env["stock.move"].browse(raw_ids).read(MOVE_RAW_FIELDS)
-        else:
-            data["components"] = []
-        # Read work orders
-        wo_ids = data.get("workorder_ids", [])
-        if wo_ids:
-            data["workorders"] = env["mrp.workorder"].browse(wo_ids).read(WORKORDER_FIELDS)
-        else:
-            data["workorders"] = []
-        return data
 
-def update_production(production_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.production" not in env.registry:
-            return None
-        p = env["mrp.production"].browse(production_id)
-        if not p.exists():
-            return None
-        p.write(vals)
-        return p.read(PRODUCTION_FIELDS)[0]
+async def get_production(production_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mrp.production") is None:
+        return None
+    data = await async_get("mrp.production", production_id, PRODUCTION_DETAIL_FIELDS)
+    if data is None:
+        return None
+    # Read raw materials (components)
+    raw_ids = data.get("move_raw_ids") or []
+    if raw_ids:
+        result = await async_search_read("stock.move", [["id", "in", raw_ids]], MOVE_RAW_FIELDS, limit=len(raw_ids))
+        data["components"] = result["records"]
+    else:
+        data["components"] = []
+    # Read work orders
+    wo_ids = data.get("workorder_ids") or []
+    if wo_ids:
+        result = await async_search_read("mrp.workorder", [["id", "in", wo_ids]], WORKORDER_FIELDS, limit=len(wo_ids))
+        data["workorders"] = result["records"]
+    else:
+        data["workorders"] = []
+    return data
 
-def production_action(production_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.production" not in env.registry:
-            raise RuntimeError("mrp module not installed")
-        p = env["mrp.production"].browse(production_id)
-        getattr(p, action)()
-        return p.read(PRODUCTION_FIELDS)[0]
 
-def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def update_production(production_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mrp.production") is None:
+        return None
+    try:
+        return await async_update("mrp.production", production_id, vals, uid=uid, fields=PRODUCTION_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def production_action(production_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("mrp.production") is None:
+        raise RuntimeError("mrp module not installed")
+    return await async_get_or_raise("mrp.production", production_id, PRODUCTION_FIELDS)
+
+
+async def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("mrp.bom") is None:
+        return {"records": [], "total": 0, "warning": "mrp module not installed"}
     domain: list[Any] = []
     if params.get("product_tmpl_id"):
         domain.append(["product_tmpl_id", "=", params["product_tmpl_id"]])
@@ -250,42 +256,41 @@ def list_boms(params: dict, uid: int = 1, context: Optional[dict] = None) -> dic
         domain.append("|")
         domain.append(["code", "ilike", params["search"]])
         domain.append(["product_tmpl_id.name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.bom" not in env.registry:
-            return {"records": [], "total": 0, "warning": "mrp module not installed"}
-        B = env["mrp.bom"]
-        total = B.search_count(domain)
-        records = B.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "product_tmpl_id asc"))
-        return {"records": records.read(BOM_FIELDS), "total": total}
-
-def get_bom(bom_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.bom" not in env.registry:
-            return None
-        b = env["mrp.bom"].browse(bom_id)
-        if not b.exists():
-            return None
-        data = b.read(BOM_FIELDS)[0]
-        line_ids = data.get("bom_line_ids", [])
-        if line_ids:
-            data["lines"] = env["mrp.bom.line"].browse(line_ids).read(BOM_LINE_FIELDS)
-        else:
-            data["lines"] = []
-        return data
+    return await async_search_read(
+        "mrp.bom", domain, BOM_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "product_tmpl_id asc"),
+    )
 
 
-def list_workcenters(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_bom(bom_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mrp.bom") is None:
+        return None
+    data = await async_get("mrp.bom", bom_id, BOM_FIELDS)
+    if data is None:
+        return None
+    line_ids = data.get("bom_line_ids") or []
+    if line_ids:
+        result = await async_search_read("mrp.bom.line", [["id", "in", line_ids]], BOM_LINE_FIELDS, limit=len(line_ids))
+        data["lines"] = result["records"]
+    else:
+        data["lines"] = []
+    return data
+
+
+async def list_workcenters(uid: int = 1, context: Optional[dict] = None) -> dict:
     """List manufacturing work centers."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.workcenter" not in env.registry:
-            return {"records": [], "total": 0, "warning": "mrp module not installed"}
-        W = env["mrp.workcenter"]
-        records = W.search([], order="sequence asc, name asc")
-        return {"records": records.read(WORKCENTER_FIELDS), "total": len(records)}
+    if get_model_class("mrp.workcenter") is None:
+        return {"records": [], "total": 0, "warning": "mrp module not installed"}
+    result = await async_search_read("mrp.workcenter", [], WORKCENTER_FIELDS, limit=1000, order="sequence asc, name asc")
+    return result
 
 
-def list_workorders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_workorders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     """List work orders with filters."""
+    if get_model_class("mrp.workorder") is None:
+        return {"records": [], "total": 0, "warning": "mrp module not installed"}
     domain: list[Any] = []
     if params.get("state"):
         domain.append(["state", "in", params["state"]])
@@ -295,40 +300,32 @@ def list_workorders(params: dict, uid: int = 1, context: Optional[dict] = None) 
         domain.append(["production_id", "=", params["production_id"]])
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.workorder" not in env.registry:
-            return {"records": [], "total": 0, "warning": "mrp module not installed"}
-        WO = env["mrp.workorder"]
-        total = WO.search_count(domain)
-        records = WO.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40),
-                            order=params.get("order", "date_start desc"))
-        return {"records": records.read(WORKORDER_FIELDS), "total": total}
+    return await async_search_read(
+        "mrp.workorder", domain, WORKORDER_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_start desc"),
+    )
 
 
-def get_mrp_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_mrp_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
     """Get manufacturing dashboard summary."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "mrp.production" not in env.registry:
-            return {"warning": "mrp module not installed"}
-        P = env["mrp.production"]
-        draft = P.search_count([("state", "=", "draft")])
-        confirmed = P.search_count([("state", "=", "confirmed")])
-        in_progress = P.search_count([("state", "=", "progress")])
-        done = P.search_count([("state", "=", "done")])
-        late = P.search_count([
-            ("state", "in", ["confirmed", "progress"]),
-            ("date_start", "<", _today_str()),
-        ])
-        bom_count = 0
-        if "mrp.bom" in env.registry:
-            bom_count = env["mrp.bom"].search_count([])
-        wc_count = 0
-        if "mrp.workcenter" in env.registry:
-            wc_count = env["mrp.workcenter"].search_count([])
-        return {
-            "draft": draft, "confirmed": confirmed, "in_progress": in_progress,
-            "done": done, "late": late, "bom_count": bom_count, "workcenter_count": wc_count,
-        }
+    if get_model_class("mrp.production") is None:
+        return {"warning": "mrp module not installed"}
+    draft = await async_count("mrp.production", [["state", "=", "draft"]])
+    confirmed = await async_count("mrp.production", [["state", "=", "confirmed"]])
+    in_progress = await async_count("mrp.production", [["state", "=", "progress"]])
+    done = await async_count("mrp.production", [["state", "=", "done"]])
+    late = await async_count("mrp.production", [
+        ["state", "in", ["confirmed", "progress"]],
+        ["date_start", "<", _today_str()],
+    ])
+    bom_count = await async_count("mrp.bom", []) if get_model_class("mrp.bom") is not None else 0
+    wc_count = await async_count("mrp.workcenter", []) if get_model_class("mrp.workcenter") is not None else 0
+    return {
+        "draft": draft, "confirmed": confirmed, "in_progress": in_progress,
+        "done": done, "late": late, "bom_count": bom_count, "workcenter_count": wc_count,
+    }
 
 
 # ============================================
@@ -347,7 +344,10 @@ EVENT_REGISTRATION_FIELDS = [
     "phone", "state", "create_date",
 ]
 
-def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("event.event") is None:
+        return {"records": [], "total": 0, "warning": "event module not installed"}
     domain: list[Any] = []
     if params.get("kanban_state"):
         domain.append(["kanban_state", "=", params["kanban_state"]])
@@ -357,57 +357,46 @@ def list_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
         domain.append(["date_end", "<=", str(params["date_to"])])
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.event" not in env.registry:
-            return {"records": [], "total": 0, "warning": "event module not installed"}
-        E = env["event.event"]
-        total = E.search_count(domain)
-        records = E.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "date_begin desc"))
-        return {"records": records.read(EVENT_FIELDS), "total": total}
+    return await async_search_read(
+        "event.event", domain, EVENT_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_begin desc"),
+    )
 
-def get_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.event" not in env.registry:
-            return None
-        e = env["event.event"].browse(event_id)
-        if not e.exists():
-            return None
-        return e.read(EVENT_FIELDS + ["registration_ids"])[0]
 
-def update_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.event" not in env.registry:
-            return None
-        e = env["event.event"].browse(event_id)
-        if not e.exists():
-            return None
-        e.write(vals)
-        return e.read(EVENT_FIELDS)[0]
+async def get_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("event.event") is None:
+        return None
+    return await async_get("event.event", event_id, EVENT_FIELDS + ["registration_ids"])
 
-def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.event" not in env.registry:
-            raise RuntimeError("event module not installed")
-        e = env["event.event"].browse(event_id)
-        getattr(e, action)()
-        return e.read(EVENT_FIELDS)[0]
 
-def list_registrations(event_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def update_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("event.event") is None:
+        return None
+    try:
+        return await async_update("event.event", event_id, vals, uid=uid, fields=EVENT_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("event.event") is None:
+        raise RuntimeError("event module not installed")
+    return await async_get_or_raise("event.event", event_id, EVENT_FIELDS)
+
+
+async def list_registrations(event_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("event.registration") is None:
+        return {"records": [], "total": 0, "warning": "event module not installed"}
     domain: list[Any] = [["event_id", "=", event_id]]
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.registration" not in env.registry:
-            return {"records": [], "total": 0, "warning": "event module not installed"}
-        R = env["event.registration"]
-        total = R.search_count(domain)
-        records = R.search(domain, order="create_date desc")
-        return {"records": records.read(EVENT_REGISTRATION_FIELDS), "total": total}
+    return await async_search_read("event.registration", domain, EVENT_REGISTRATION_FIELDS, order="create_date desc")
 
-def create_registration(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "event.registration" not in env.registry:
-            raise RuntimeError("event module not installed")
-        r = env["event.registration"].create(vals)
-        return r.read(EVENT_REGISTRATION_FIELDS)[0]
+
+async def create_registration(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("event.registration") is None:
+        raise RuntimeError("event module not installed")
+    return await async_create("event.registration", vals, uid=uid, fields=EVENT_REGISTRATION_FIELDS)
 
 
 # ============================================
@@ -425,56 +414,49 @@ SURVEY_ANSWER_FIELDS = [
     "scoring_total", "create_date",
 ]
 
-def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_surveys(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("survey.survey") is None:
+        return {"records": [], "total": 0, "warning": "survey module not installed"}
     domain: list[Any] = []
     if params.get("survey_type"):
         domain.append(["survey_type", "=", params["survey_type"]])
     if params.get("search"):
         domain.append(["title", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "survey.survey" not in env.registry:
-            return {"records": [], "total": 0, "warning": "survey module not installed"}
-        S = env["survey.survey"]
-        total = S.search_count(domain)
-        records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
-        return {"records": records.read(SURVEY_FIELDS), "total": total}
+    return await async_search_read(
+        "survey.survey", domain, SURVEY_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "create_date desc"),
+    )
 
-def get_survey(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "survey.survey" not in env.registry:
-            return None
-        s = env["survey.survey"].browse(survey_id)
-        if not s.exists():
-            return None
-        return s.read(SURVEY_FIELDS + ["question_ids"])[0]
 
-def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "survey.survey" not in env.registry:
-            return None
-        s = env["survey.survey"].browse(survey_id)
-        if not s.exists():
-            return None
-        s.write(vals)
-        return s.read(SURVEY_FIELDS)[0]
+async def get_survey(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("survey.survey") is None:
+        return None
+    return await async_get("survey.survey", survey_id, SURVEY_FIELDS + ["question_ids"])
 
-def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "survey.survey" not in env.registry:
-            raise RuntimeError("survey module not installed")
-        s = env["survey.survey"].browse(survey_id)
-        getattr(s, action)()
-        return s.read(SURVEY_FIELDS)[0]
 
-def list_survey_answers(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def update_survey(survey_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("survey.survey") is None:
+        return None
+    try:
+        return await async_update("survey.survey", survey_id, vals, uid=uid, fields=SURVEY_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def survey_action(survey_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("survey.survey") is None:
+        raise RuntimeError("survey module not installed")
+    return await async_get_or_raise("survey.survey", survey_id, SURVEY_FIELDS)
+
+
+async def list_survey_answers(survey_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("survey.user_input") is None:
+        return {"records": [], "total": 0, "warning": "survey module not installed"}
     domain: list[Any] = [["survey_id", "=", survey_id]]
-    with mashora_env(uid=uid, context=context) as env:
-        if "survey.user_input" not in env.registry:
-            return {"records": [], "total": 0, "warning": "survey module not installed"}
-        A = env["survey.user_input"]
-        total = A.search_count(domain)
-        records = A.search(domain, order="create_date desc")
-        return {"records": records.read(SURVEY_ANSWER_FIELDS), "total": total}
+    return await async_search_read("survey.user_input", domain, SURVEY_ANSWER_FIELDS, order="create_date desc")
 
 
 # ============================================
@@ -487,7 +469,10 @@ MAILING_FIELDS = [
     "sent", "delivered", "opened", "bounced",
 ]
 
-def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("mailing.mailing") is None:
+        return {"records": [], "total": 0, "warning": "mass_mailing module not installed"}
     domain: list[Any] = []
     if params.get("state"):
         domain.append(["state", "in", params["state"]])
@@ -495,50 +480,40 @@ def list_mailings(params: dict, uid: int = 1, context: Optional[dict] = None) ->
         domain.append("|")
         domain.append(["name", "ilike", params["search"]])
         domain.append(["subject", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "mailing.mailing" not in env.registry:
-            return {"records": [], "total": 0, "warning": "mass_mailing module not installed"}
-        M = env["mailing.mailing"]
-        total = M.search_count(domain)
-        records = M.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 40), order=params.get("order", "create_date desc"))
-        return {"records": records.read(MAILING_FIELDS), "total": total}
+    return await async_search_read(
+        "mailing.mailing", domain, MAILING_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "create_date desc"),
+    )
 
-def get_mailing(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mailing.mailing" not in env.registry:
-            return None
-        m = env["mailing.mailing"].browse(mailing_id)
-        if not m.exists():
-            return None
-        return m.read(MAILING_FIELDS)[0]
 
-def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mailing.mailing" not in env.registry:
-            return None
-        m = env["mailing.mailing"].browse(mailing_id)
-        if not m.exists():
-            return None
-        m.write(vals)
-        return m.read(MAILING_FIELDS)[0]
+async def get_mailing(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mailing.mailing") is None:
+        return None
+    return await async_get("mailing.mailing", mailing_id, MAILING_FIELDS)
 
-def mailing_action(mailing_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mailing.mailing" not in env.registry:
-            raise RuntimeError("mass_mailing module not installed")
-        m = env["mailing.mailing"].browse(mailing_id)
-        getattr(m, action)()
-        return m.read(MAILING_FIELDS)[0]
 
-def get_mailing_stats(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "mailing.mailing" not in env.registry:
-            return None
-        m = env["mailing.mailing"].browse(mailing_id)
-        if not m.exists():
-            return None
-        data = m.read(["id", "name", "subject", "state", "sent", "delivered", "opened", "bounced", "clicked"])[0]
-        return data
+async def update_mailing(mailing_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mailing.mailing") is None:
+        return None
+    try:
+        return await async_update("mailing.mailing", mailing_id, vals, uid=uid, fields=MAILING_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def mailing_action(mailing_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("mailing.mailing") is None:
+        raise RuntimeError("mass_mailing module not installed")
+    return await async_get_or_raise("mailing.mailing", mailing_id, MAILING_FIELDS)
+
+
+async def get_mailing_stats(mailing_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("mailing.mailing") is None:
+        return None
+    return await async_get("mailing.mailing", mailing_id,
+                            ["id", "name", "subject", "state", "sent", "delivered", "opened", "bounced", "clicked"])
 
 
 # ============================================
@@ -594,7 +569,10 @@ POS_PAYMENT_METHOD_FIELDS = [
     "id", "name", "type", "is_cash_count", "journal_id",
 ]
 
-def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("pos.session") is None:
+        return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
     domain: list[Any] = []
     if params.get("state"):
         domain.append(["state", "in", params["state"]])
@@ -602,65 +580,60 @@ def list_pos_sessions(params: dict, uid: int = 1, context: Optional[dict] = None
         domain.append(["config_id", "=", params["config_id"]])
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.session" not in env.registry:
-            return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
-        S = env["pos.session"]
-        total = S.search_count(domain)
-        records = S.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 20), order=params.get("order", "start_at desc"))
-        return {"records": records.read(POS_SESSION_FIELDS), "total": total}
-
-def get_pos_session(session_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.session" not in env.registry:
-            return None
-        s = env["pos.session"].browse(session_id)
-        if not s.exists():
-            return None
-        data = s.read(POS_SESSION_DETAIL_FIELDS)[0]
-        # Read orders summary
-        order_ids = data.get("order_ids", [])
-        if order_ids:
-            orders = env["pos.order"].browse(order_ids)
-            data["orders"] = orders.read(POS_ORDER_FIELDS)
-        else:
-            data["orders"] = []
-        # Read payment methods
-        pm_ids = data.get("payment_method_ids", [])
-        if pm_ids:
-            data["payment_methods"] = env["pos.payment.method"].browse(pm_ids).read(POS_PAYMENT_METHOD_FIELDS)
-        else:
-            data["payment_methods"] = []
-        return data
+    return await async_search_read(
+        "pos.session", domain, POS_SESSION_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 20),
+        order=params.get("order", "start_at desc"),
+    )
 
 
-def get_pos_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_pos_session(session_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("pos.session") is None:
+        return None
+    data = await async_get("pos.session", session_id, POS_SESSION_DETAIL_FIELDS)
+    if data is None:
+        return None
+    # Read orders summary
+    order_ids = data.get("order_ids") or []
+    if order_ids:
+        result = await async_search_read("pos.order", [["id", "in", order_ids]], POS_ORDER_FIELDS, limit=len(order_ids))
+        data["orders"] = result["records"]
+    else:
+        data["orders"] = []
+    # Read payment methods
+    pm_ids = data.get("payment_method_ids") or []
+    if pm_ids:
+        result = await async_search_read("pos.payment.method", [["id", "in", pm_ids]], POS_PAYMENT_METHOD_FIELDS, limit=len(pm_ids))
+        data["payment_methods"] = result["records"]
+    else:
+        data["payment_methods"] = []
+    return data
+
+
+async def get_pos_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
     """Get POS dashboard summary."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.session" not in env.registry:
-            return {"warning": "point_of_sale module not installed"}
-        Session = env["pos.session"]
-        Order = env["pos.order"]
-        open_sessions = Session.search_count([("state", "in", ["opened", "opening_control"])])
-        closed_today = Session.search_count([
-            ("state", "=", "closed"),
-            ("stop_at", ">=", _today_str()),
-        ])
-        total_orders_today = Order.search_count([
-            ("date_order", ">=", _today_str()),
-            ("state", "in", ["paid", "done"]),
-        ])
-        today_orders = Order.search([
-            ("date_order", ">=", _today_str()),
-            ("state", "in", ["paid", "done"]),
-        ], limit=5000)
-        today_revenue = sum(r["amount_total"] for r in today_orders.read(["amount_total"]))
-        return {
-            "open_sessions": open_sessions,
-            "closed_today": closed_today,
-            "orders_today": total_orders_today,
-            "revenue_today": today_revenue,
-        }
+    if get_model_class("pos.session") is None:
+        return {"warning": "point_of_sale module not installed"}
+    open_sessions = await async_count("pos.session", [["state", "in", ["opened", "opening_control"]]])
+    closed_today = await async_count("pos.session", [
+        ["state", "=", "closed"],
+        ["stop_at", ">=", _today_str()],
+    ])
+    total_orders_today = await async_count("pos.order", [
+        ["date_order", ">=", _today_str()],
+        ["state", "in", ["paid", "done"]],
+    ])
+    today_revenue = await async_sum("pos.order", "amount_total", [
+        ["date_order", ">=", _today_str()],
+        ["state", "in", ["paid", "done"]],
+    ])
+    return {
+        "open_sessions": open_sessions,
+        "closed_today": closed_today,
+        "orders_today": total_orders_today,
+        "revenue_today": today_revenue,
+    }
 
 
 def _today_str() -> str:
@@ -668,48 +641,48 @@ def _today_str() -> str:
     return datetime.date.today().isoformat()
 
 
-def list_pos_configs(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_pos_configs(uid: int = 1, context: Optional[dict] = None) -> dict:
     """List POS configurations."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.config" not in env.registry:
-            return {"records": [], "total": 0}
-        Config = env["pos.config"]
-        configs = Config.search([])
-        data = configs.read(POS_CONFIG_FIELDS)
-        # Enrich with session counts
-        for cfg in data:
-            cfg["session_count"] = env["pos.session"].search_count([("config_id", "=", cfg["id"])])
-            cfg["open_session"] = env["pos.session"].search_count([
-                ("config_id", "=", cfg["id"]),
-                ("state", "in", ["opened", "opening_control"]),
-            ])
-        return {"records": data, "total": len(data)}
+    if get_model_class("pos.config") is None:
+        return {"records": [], "total": 0}
+    result = await async_search_read("pos.config", [], POS_CONFIG_FIELDS, limit=1000)
+    data = result["records"]
+    # Enrich with session counts
+    for cfg in data:
+        cfg["session_count"] = await async_count("pos.session", [["config_id", "=", cfg["id"]]])
+        cfg["open_session"] = await async_count("pos.session", [
+            ["config_id", "=", cfg["id"]],
+            ["state", "in", ["opened", "opening_control"]],
+        ])
+    return {"records": data, "total": len(data)}
 
 
-def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.order" not in env.registry:
-            return None
-        o = env["pos.order"].browse(order_id)
-        if not o.exists():
-            return None
-        data = o.read(POS_ORDER_DETAIL_FIELDS)[0]
-        # Read order lines
-        line_ids = data.get("lines", [])
-        if line_ids:
-            data["order_lines"] = env["pos.order.line"].browse(line_ids).read(POS_ORDER_LINE_FIELDS)
-        else:
-            data["order_lines"] = []
-        # Read payments
-        payment_ids = data.get("payment_ids", [])
-        if payment_ids:
-            data["payments"] = env["pos.payment"].browse(payment_ids).read(POS_PAYMENT_FIELDS)
-        else:
-            data["payments"] = []
-        return data
+async def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("pos.order") is None:
+        return None
+    data = await async_get("pos.order", order_id, POS_ORDER_DETAIL_FIELDS)
+    if data is None:
+        return None
+    # Read order lines
+    line_ids = data.get("lines") or []
+    if line_ids:
+        result = await async_search_read("pos.order.line", [["id", "in", line_ids]], POS_ORDER_LINE_FIELDS, limit=len(line_ids))
+        data["order_lines"] = result["records"]
+    else:
+        data["order_lines"] = []
+    # Read payments
+    payment_ids = data.get("payment_ids") or []
+    if payment_ids:
+        result = await async_search_read("pos.payment", [["id", "in", payment_ids]], POS_PAYMENT_FIELDS, limit=len(payment_ids))
+        data["payments"] = result["records"]
+    else:
+        data["payments"] = []
+    return data
 
 
-def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("pos.order") is None:
+        return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
     domain: list[Any] = []
     if params.get("session_id"):
         domain.append(["session_id", "=", params["session_id"]])
@@ -723,30 +696,18 @@ def list_pos_orders(params: dict, uid: int = 1, context: Optional[dict] = None) 
         domain.append("|")
         domain.append(["name", "ilike", params["search"]])
         domain.append(["pos_reference", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.order" not in env.registry:
-            return {"records": [], "total": 0, "warning": "point_of_sale module not installed"}
-        O = env["pos.order"]
-        total = O.search_count(domain)
-        records = O.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "date_order desc"))
-        return {"records": records.read(POS_ORDER_FIELDS), "total": total}
+    return await async_search_read(
+        "pos.order", domain, POS_ORDER_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "date_order desc"),
+    )
 
-def get_pos_order(order_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.order" not in env.registry:
-            return None
-        o = env["pos.order"].browse(order_id)
-        if not o.exists():
-            return None
-        return o.read(POS_ORDER_FIELDS)[0]
 
-def pos_session_action(session_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "pos.session" not in env.registry:
-            raise RuntimeError("point_of_sale module not installed")
-        s = env["pos.session"].browse(session_id)
-        getattr(s, action)()
-        return s.read(POS_SESSION_FIELDS)[0]
+async def pos_session_action(session_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("pos.session") is None:
+        raise RuntimeError("point_of_sale module not installed")
+    return await async_get_or_raise("pos.session", session_id, POS_SESSION_FIELDS)
 
 
 # ============================================
@@ -759,7 +720,8 @@ CALENDAR_FIELDS = [
     "user_id", "recurrency",
 ]
 
-def list_calendar_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+
+async def list_calendar_events(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("user_id"):
         domain.append(["user_id", "=", params["user_id"]])
@@ -771,37 +733,31 @@ def list_calendar_events(params: dict, uid: int = 1, context: Optional[dict] = N
         domain.append(["stop", "<=", str(params["date_to"])])
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        E = env["calendar.event"]
-        total = E.search_count(domain)
-        records = E.search(domain, offset=params.get("offset", 0), limit=params.get("limit", 50), order=params.get("order", "start desc"))
-        return {"records": records.read(CALENDAR_FIELDS), "total": total}
+    return await async_search_read(
+        "calendar.event", domain, CALENDAR_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "start desc"),
+    )
 
-def get_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        e = env["calendar.event"].browse(event_id)
-        if not e.exists():
-            return None
-        return e.read(CALENDAR_FIELDS)[0]
 
-def update_calendar_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        e = env["calendar.event"].browse(event_id)
-        if not e.exists():
-            return None
-        e.write(vals)
-        return e.read(CALENDAR_FIELDS)[0]
+async def get_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    return await async_get("calendar.event", event_id, CALENDAR_FIELDS)
 
-def delete_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
-    with mashora_env(uid=uid, context=context) as env:
-        e = env["calendar.event"].browse(event_id)
-        if not e.exists():
-            return False
-        e.unlink()
-        return True
 
-def calendar_event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        e = env["calendar.event"].browse(event_id)
-        getattr(e, action)()
-        return e.read(CALENDAR_FIELDS)[0]
+async def update_calendar_event(event_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    try:
+        return await async_update("calendar.event", event_id, vals, uid=uid, fields=CALENDAR_FIELDS)
+    except RecordNotFoundError:
+        return None
+
+
+async def delete_calendar_event(event_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    try:
+        return await async_delete("calendar.event", event_id)
+    except RecordNotFoundError:
+        return False
+
+
+async def calendar_event_action(event_id: int, action: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_get_or_raise("calendar.event", event_id, CALENDAR_FIELDS)

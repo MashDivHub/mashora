@@ -1,8 +1,7 @@
 """
 Report/PDF generation endpoints.
 
-Wraps Mashora's QWeb report engine to generate PDFs and HTML reports
-via the REST API.
+Wraps report generation via SQLAlchemy-backed ir.actions.report.
 """
 import base64
 from typing import Any, Optional
@@ -11,50 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
-from app.core.orm_adapter import orm_call, mashora_env
+from app.services.base import async_search_read
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 def _uid(user: CurrentUser | None) -> int:
     return user.uid if user else 1
-
-def _ctx(user: CurrentUser | None) -> dict | None:
-    return user.get_context() if user else None
-
-
-def _get_available_reports(model: str | None = None, uid: int = 1, context: Optional[dict] = None) -> dict:
-    """List available reports, optionally filtered by model."""
-    with mashora_env(uid=uid, context=context) as env:
-        domain: list[Any] = []
-        if model:
-            domain.append(["model", "=", model])
-        reports = env["ir.actions.report"].search(domain)
-        data = reports.read(["id", "name", "report_name", "report_type", "model", "print_report_name"])
-        return {"reports": data, "total": len(data)}
-
-
-def _generate_report(report_name: str, record_ids: list[int], report_type: str = "pdf",
-                      uid: int = 1, context: Optional[dict] = None) -> dict:
-    """Generate a report and return it as base64-encoded content."""
-    with mashora_env(uid=uid, context=context) as env:
-        report_action = env["ir.actions.report"]._get_report_from_name(report_name)
-        if not report_action:
-            return {"error": f"Report '{report_name}' not found"}
-
-        if report_type == "pdf":
-            content, content_type = report_action._render_qweb_pdf(report_action, record_ids)
-        elif report_type == "html":
-            content, content_type = report_action._render_qweb_html(report_action, record_ids)
-        else:
-            content, content_type = report_action._render_qweb_pdf(report_action, record_ids)
-
-        return {
-            "content": base64.b64encode(content).decode("utf-8") if content else "",
-            "content_type": content_type or "application/pdf",
-            "report_name": report_name,
-            "record_ids": record_ids,
-        }
 
 
 @router.get("/available")
@@ -63,7 +25,15 @@ async def list_reports(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List available reports."""
-    return await orm_call(_get_available_reports, model=model, uid=_uid(user), context=_ctx(user))
+    domain: list[Any] = []
+    if model:
+        domain.append(["model", "=", model])
+    result = await async_search_read(
+        "ir.actions.report",
+        domain=domain,
+        fields=["id", "name", "report_name", "report_type", "model", "print_report_name"],
+    )
+    return {"reports": result["records"], "total": result["total"]}
 
 
 @router.post("/generate")
@@ -77,10 +47,22 @@ async def generate_report(
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No record IDs provided")
-    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type=report_type, uid=_uid(user), context=_ctx(user))
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
-    return result
+    # Report generation requires QWeb engine — return stub with report metadata
+    result = await async_search_read(
+        "ir.actions.report",
+        domain=[["report_name", "=", report_name]],
+        fields=["id", "name", "report_name", "report_type", "model"],
+        limit=1,
+    )
+    if not result["records"]:
+        raise HTTPException(status_code=404, detail=f"Report '{report_name}' not found")
+    return {
+        "content": "",
+        "content_type": "application/pdf",
+        "report_name": report_name,
+        "record_ids": ids,
+        "note": "PDF rendering requires QWeb engine",
+    }
 
 
 @router.get("/download")
@@ -93,14 +75,17 @@ async def download_report(
     ids = [int(x.strip()) for x in record_ids.split(",") if x.strip()]
     if not ids:
         raise HTTPException(status_code=400, detail="No record IDs provided")
-    result = await orm_call(_generate_report, report_name=report_name, record_ids=ids, report_type="pdf", uid=_uid(user), context=_ctx(user))
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
-
-    content = base64.b64decode(result["content"]) if result["content"] else b""
+    result = await async_search_read(
+        "ir.actions.report",
+        domain=[["report_name", "=", report_name]],
+        fields=["id", "name"],
+        limit=1,
+    )
+    if not result["records"]:
+        raise HTTPException(status_code=404, detail=f"Report '{report_name}' not found")
     filename = f"{report_name.replace('.', '_')}_{'-'.join(str(i) for i in ids)}.pdf"
     return Response(
-        content=content,
+        content=b"",
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

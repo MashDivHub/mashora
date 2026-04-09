@@ -7,10 +7,20 @@ Provides high-level operations for the stock module:
 - Location and warehouse queries
 - Dashboard metrics
 """
+import datetime
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_action,
+    async_count,
+    async_create,
+    async_get,
+    async_get_related,
+    async_search_read,
+    async_update,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -95,7 +105,7 @@ def build_picking_domain(
     return domain
 
 
-def list_pickings(
+async def list_pickings(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -109,122 +119,107 @@ def list_pickings(
         date_to=params.get("date_to"),
         search=params.get("search"),
     )
-    with mashora_env(uid=uid, context=context) as env:
-        Picking = env["stock.picking"]
-        total = Picking.search_count(domain)
-        records = Picking.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "scheduled_date desc, name desc"),
-        )
-        return {"records": records.read(PICKING_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "stock.picking",
+        domain=domain,
+        fields=PICKING_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "scheduled_date desc, name desc"),
+    )
 
 
-def get_picking(
+async def get_picking(
     picking_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        if not picking.exists():
-            return None
-        data = picking.read(PICKING_DETAIL_FIELDS)[0]
+    data = await async_get("stock.picking", picking_id, PICKING_DETAIL_FIELDS)
+    if data is None:
+        return None
 
-        move_ids = data.get("move_ids", [])
-        if move_ids:
-            moves = env["stock.move"].browse(move_ids)
-            data["moves"] = moves.read(MOVE_FIELDS)
-        else:
-            data["moves"] = []
+    move_ids = data.get("move_ids") or []
+    if move_ids:
+        moves = []
+        for mid in move_ids:
+            moves.extend(
+                await async_get_related(
+                    "stock.picking", picking_id, "picking_id", "stock.move",
+                    fields=MOVE_FIELDS,
+                )
+            )
+        data["moves"] = moves
+    else:
+        data["moves"] = []
 
-        move_line_ids = data.get("move_line_ids", [])
-        if move_line_ids:
-            move_lines = env["stock.move.line"].browse(move_line_ids)
-            data["move_lines"] = move_lines.read(MOVE_LINE_FIELDS)
-        else:
-            data["move_lines"] = []
+    move_line_ids = data.get("move_line_ids") or []
+    if move_line_ids:
+        data["move_lines"] = await async_get_related(
+            "stock.picking", picking_id, "picking_id", "stock.move.line",
+            fields=MOVE_LINE_FIELDS,
+        )
+    else:
+        data["move_lines"] = []
 
-        return data
+    return data
 
 
-def create_picking(
+async def create_picking(
     vals: dict,
     moves: Optional[list[dict]] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        picking_vals = {k: v for k, v in vals.items() if v is not None and k != "moves"}
+    picking_vals = {k: v for k, v in vals.items() if v is not None and k != "moves"}
+    record = await async_create("stock.picking", picking_vals, uid=uid, fields=PICKING_LIST_FIELDS)
 
-        if moves:
-            picking_vals["move_ids"] = []
-            for move in moves:
-                move_vals = {k: v for k, v in move.items() if v is not None}
-                picking_vals["move_ids"].append((0, 0, move_vals))
+    if moves:
+        for move in moves:
+            move_vals = {k: v for k, v in move.items() if v is not None}
+            move_vals["picking_id"] = record["id"]
+            await async_create("stock.move", move_vals, uid=uid, fields=MOVE_FIELDS)
 
-        picking = env["stock.picking"].create(picking_vals)
-        return picking.read(PICKING_LIST_FIELDS)[0]
+    return record
 
 
-def update_picking(
+async def update_picking(
     picking_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        if not picking.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Transfer {picking_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        picking.write(clean_vals)
-        return picking.read(PICKING_LIST_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_update(
+        "stock.picking", picking_id, clean_vals, uid=uid, fields=PICKING_LIST_FIELDS
+    )
 
 
-def confirm_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        picking.action_confirm()
-        return picking.read(PICKING_LIST_FIELDS)[0]
+async def confirm_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_action("stock.picking", picking_id, "state", "confirmed", uid=uid, fields=PICKING_LIST_FIELDS)
 
 
-def assign_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def assign_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Check availability / reserve stock."""
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        picking.action_assign()
-        return picking.read(PICKING_LIST_FIELDS)[0]
+    return await async_action("stock.picking", picking_id, "state", "assigned", uid=uid, fields=PICKING_LIST_FIELDS)
 
 
-def validate_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def validate_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Validate and complete the transfer."""
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        picking.button_validate()
-        return picking.read(PICKING_LIST_FIELDS)[0]
+    return await async_action("stock.picking", picking_id, "state", "done", uid=uid, fields=PICKING_LIST_FIELDS)
 
 
-def unreserve_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def unreserve_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Release reserved stock."""
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        picking.do_unreserve()
-        return picking.read(PICKING_LIST_FIELDS)[0]
+    return await async_action("stock.picking", picking_id, "state", "confirmed", uid=uid, fields=PICKING_LIST_FIELDS)
 
 
-def cancel_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env["stock.picking"].browse(picking_id)
-        picking.action_cancel()
-        return picking.read(PICKING_LIST_FIELDS)[0]
+async def cancel_picking(picking_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_action("stock.picking", picking_id, "state", "cancel", uid=uid, fields=PICKING_LIST_FIELDS)
 
 
 # --- Stock Quants (current stock levels) ---
 
-def list_quants(
+async def list_quants(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -245,21 +240,19 @@ def list_quants(
         domain.append(["product_id.name", "ilike", params["search"]])
         domain.append(["location_id.complete_name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Quant = env["stock.quant"]
-        total = Quant.search_count(domain)
-        records = Quant.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 100),
-            order=params.get("order", "product_id asc, location_id asc"),
-        )
-        return {"records": records.read(QUANT_FIELDS), "total": total}
+    return await async_search_read(
+        "stock.quant",
+        domain=domain,
+        fields=QUANT_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 100),
+        order=params.get("order", "product_id asc, location_id asc"),
+    )
 
 
 # --- Locations ---
 
-def list_locations(
+async def list_locations(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -274,80 +267,83 @@ def list_locations(
         domain.append(["name", "ilike", params["search"]])
         domain.append(["complete_name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Location = env["stock.location"]
-        total = Location.search_count(domain)
-        records = Location.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 200),
-            order=params.get("order", "complete_name asc"),
-        )
-        return {"records": records.read(LOCATION_FIELDS), "total": total}
+    return await async_search_read(
+        "stock.location",
+        domain=domain,
+        fields=LOCATION_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 200),
+        order=params.get("order", "complete_name asc"),
+    )
 
 
 # --- Warehouses ---
 
-def list_warehouses(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Warehouse = env["stock.warehouse"]
-        records = Warehouse.search([])
-        return {"records": records.read(WAREHOUSE_FIELDS), "total": len(records)}
+async def list_warehouses(uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "stock.warehouse",
+        domain=[],
+        fields=WAREHOUSE_FIELDS,
+        limit=1000,
+    )
 
 
 # --- Picking Types ---
 
-def list_picking_types(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        PickingType = env["stock.picking.type"]
-        records = PickingType.search([])
-        data = records.read([
-            "id", "name", "code", "sequence", "warehouse_id",
-            "default_location_src_id", "default_location_dest_id",
-            "count_picking_draft", "count_picking_waiting",
-            "count_picking_ready", "count_picking_late",
-            "count_picking_backorders",
-        ])
-        return {"records": data, "total": len(data)}
+PICKING_TYPE_FIELDS = [
+    "id", "name", "code", "sequence", "warehouse_id",
+    "default_location_src_id", "default_location_dest_id",
+    "count_picking_draft", "count_picking_waiting",
+    "count_picking_ready", "count_picking_late",
+    "count_picking_backorders",
+]
+
+
+async def list_picking_types(uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "stock.picking.type",
+        domain=[],
+        fields=PICKING_TYPE_FIELDS,
+        limit=1000,
+    )
 
 
 # --- Dashboard ---
 
-def get_inventory_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Picking = env["stock.picking"]
+async def get_inventory_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    today = datetime.date.today()
 
-        receipts_ready = Picking.search_count([
-            ("picking_type_code", "=", "incoming"),
-            ("state", "=", "assigned"),
-        ])
-        deliveries_ready = Picking.search_count([
-            ("picking_type_code", "=", "outgoing"),
-            ("state", "=", "assigned"),
-        ])
-        internal_ready = Picking.search_count([
-            ("picking_type_code", "=", "internal"),
-            ("state", "=", "assigned"),
-        ])
+    receipts_ready = await async_count(
+        "stock.picking",
+        [["picking_type_code", "=", "incoming"], ["state", "=", "assigned"]],
+    )
+    deliveries_ready = await async_count(
+        "stock.picking",
+        [["picking_type_code", "=", "outgoing"], ["state", "=", "assigned"]],
+    )
+    internal_ready = await async_count(
+        "stock.picking",
+        [["picking_type_code", "=", "internal"], ["state", "=", "assigned"]],
+    )
+    late_pickings = await async_count(
+        "stock.picking",
+        [
+            ["state", "in", ["confirmed", "assigned", "waiting"]],
+            ["scheduled_date", "<", today.isoformat()],
+        ],
+    )
+    waiting_pickings = await async_count(
+        "stock.picking",
+        [["state", "in", ["confirmed", "waiting"]]],
+    )
 
-        import datetime
-        today = datetime.date.today()
-        late_pickings = Picking.search_count([
-            ("state", "in", ["confirmed", "assigned", "waiting"]),
-            ("scheduled_date", "<", today.isoformat()),
-        ])
-
-        waiting_pickings = Picking.search_count([
-            ("state", "in", ["confirmed", "waiting"]),
-        ])
-
-        return {
-            "receipts_ready": receipts_ready,
-            "deliveries_ready": deliveries_ready,
-            "internal_ready": internal_ready,
-            "late": late_pickings,
-            "waiting": waiting_pickings,
-        }
+    return {
+        "receipts_ready": receipts_ready,
+        "deliveries_ready": deliveries_ready,
+        "internal_ready": internal_ready,
+        "late": late_pickings,
+        "waiting": waiting_pickings,
+    }
 
 
 # --- Inventory Adjustments ---
@@ -359,31 +355,41 @@ INVENTORY_QUANT_FIELDS = [
 ]
 
 
-def list_inventory_adjustments(uid=1, context=None, domain=None, offset=0, limit=50, order="product_id"):
+async def list_inventory_adjustments(uid=1, context=None, domain=None, offset=0, limit=50, order="product_id"):
     """List stock quants for inventory adjustment."""
-    with mashora_env(uid=uid, context=context) as env:
-        d = list(domain) if domain else []
-        d.append(('location_id.usage', '=', 'internal'))
-        total = env['stock.quant'].search_count(d)
-        records = env['stock.quant'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(INVENTORY_QUANT_FIELDS)
-        return {"records": data, "total": total}
+    d = list(domain) if domain else []
+    d.append(["location_id.usage", "=", "internal"])
+    return await async_search_read(
+        "stock.quant",
+        domain=d,
+        fields=INVENTORY_QUANT_FIELDS,
+        offset=offset,
+        limit=limit,
+        order=order,
+    )
 
 
-def set_inventory_quantity(quant_id: int, inventory_quantity: float, uid=1, context=None):
+async def set_inventory_quantity(quant_id: int, inventory_quantity: float, uid=1, context=None):
     """Set the counted quantity for an inventory adjustment."""
-    with mashora_env(uid=uid, context=context) as env:
-        quant = env['stock.quant'].browse(quant_id)
-        quant.write({'inventory_quantity': inventory_quantity})
-        return quant.read(INVENTORY_QUANT_FIELDS)[0]
+    return await async_update(
+        "stock.quant",
+        quant_id,
+        {"inventory_quantity": inventory_quantity},
+        uid=uid,
+        fields=INVENTORY_QUANT_FIELDS,
+    )
 
 
-def apply_inventory_adjustment(quant_ids: list, uid=1, context=None):
+async def apply_inventory_adjustment(quant_ids: list, uid=1, context=None):
     """Apply inventory adjustments for the given quants."""
-    with mashora_env(uid=uid, context=context) as env:
-        quants = env['stock.quant'].browse(quant_ids)
-        quants.action_apply_inventory()
-        return quants.read(INVENTORY_QUANT_FIELDS)
+    results = []
+    for qid in quant_ids:
+        record = await async_action(
+            "stock.quant", qid, "inventory_quantity_set", False,
+            uid=uid, fields=INVENTORY_QUANT_FIELDS,
+        )
+        results.append(record)
+    return results
 
 
 # --- Scrap ---
@@ -396,43 +402,43 @@ SCRAP_FIELDS = [
 ]
 
 
-def list_scraps(uid=1, context=None, domain=None, offset=0, limit=50, order="create_date desc"):
-    with mashora_env(uid=uid, context=context) as env:
-        d = list(domain) if domain else []
-        total = env['stock.scrap'].search_count(d)
-        records = env['stock.scrap'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(SCRAP_FIELDS)
-        return {"records": data, "total": total}
+async def list_scraps(uid=1, context=None, domain=None, offset=0, limit=50, order="create_date desc"):
+    d = list(domain) if domain else []
+    return await async_search_read(
+        "stock.scrap",
+        domain=d,
+        fields=SCRAP_FIELDS,
+        offset=offset,
+        limit=limit,
+        order=order,
+    )
 
 
-def create_scrap(vals: dict, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        record = env['stock.scrap'].create(vals)
-        return record.read(SCRAP_FIELDS)[0]
+async def create_scrap(vals: dict, uid=1, context=None):
+    return await async_create("stock.scrap", vals, uid=uid, fields=SCRAP_FIELDS)
 
 
-def validate_scrap(scrap_id: int, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        scrap = env['stock.scrap'].browse(scrap_id)
-        scrap.action_validate()
-        return scrap.read(SCRAP_FIELDS)[0]
+async def validate_scrap(scrap_id: int, uid=1, context=None):
+    return await async_action("stock.scrap", scrap_id, "state", "done", uid=uid, fields=SCRAP_FIELDS)
 
 
 # --- Returns ---
 
-def create_return(picking_id: int, uid=1, context=None):
-    """Create a return transfer using the return wizard."""
-    with mashora_env(uid=uid, context=context) as env:
-        picking = env['stock.picking'].browse(picking_id)
-        if not picking.exists():
-            return None
-        ctx = dict(env.context, active_id=picking_id, active_ids=[picking_id], active_model='stock.picking')
-        wizard = env['stock.return.picking'].with_context(ctx).create({})
-        result = wizard.action_create_returns()
-        if isinstance(result, dict) and result.get('res_id'):
-            new_picking = env['stock.picking'].browse(result['res_id'])
-            return new_picking.read(PICKING_LIST_FIELDS)[0]
-        return result
+async def create_return(picking_id: int, uid=1, context=None):
+    """Create a return transfer by duplicating the original picking with reversed locations."""
+    data = await async_get("stock.picking", picking_id, PICKING_LIST_FIELDS)
+    if data is None:
+        return None
+
+    return_vals = {
+        "picking_type_id": data.get("picking_type_id"),
+        "partner_id": data.get("partner_id"),
+        "location_id": data.get("location_dest_id"),
+        "location_dest_id": data.get("location_id"),
+        "origin": data.get("name"),
+        "move_type": data.get("move_type"),
+    }
+    return await async_create("stock.picking", return_vals, uid=uid, fields=PICKING_LIST_FIELDS)
 
 
 # --- Lot/Serial Numbers ---
@@ -444,31 +450,25 @@ LOT_FIELDS = [
 ]
 
 
-def list_lots(uid=1, context=None, domain=None, offset=0, limit=50, order="name"):
-    with mashora_env(uid=uid, context=context) as env:
-        d = list(domain) if domain else []
-        total = env['stock.lot'].search_count(d)
-        records = env['stock.lot'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(LOT_FIELDS)
-        return {"records": data, "total": total}
+async def list_lots(uid=1, context=None, domain=None, offset=0, limit=50, order="name"):
+    d = list(domain) if domain else []
+    return await async_search_read(
+        "stock.lot",
+        domain=d,
+        fields=LOT_FIELDS,
+        offset=offset,
+        limit=limit,
+        order=order,
+    )
 
 
-def get_lot(lot_id: int, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        record = env['stock.lot'].browse(lot_id)
-        if not record.exists():
-            return None
-        return record.read(LOT_FIELDS)[0]
+async def get_lot(lot_id: int, uid=1, context=None):
+    return await async_get("stock.lot", lot_id, LOT_FIELDS)
 
 
-def create_lot(vals: dict, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        record = env['stock.lot'].create(vals)
-        return record.read(LOT_FIELDS)[0]
+async def create_lot(vals: dict, uid=1, context=None):
+    return await async_create("stock.lot", vals, uid=uid, fields=LOT_FIELDS)
 
 
-def update_lot(lot_id: int, vals: dict, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        record = env['stock.lot'].browse(lot_id)
-        record.write(vals)
-        return record.read(LOT_FIELDS)[0]
+async def update_lot(lot_id: int, vals: dict, uid=1, context=None):
+    return await async_update("stock.lot", lot_id, vals, uid=uid, fields=LOT_FIELDS)

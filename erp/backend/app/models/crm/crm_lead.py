@@ -28,10 +28,10 @@ class CrmLead(Base, TimestampMixin, CompanyMixin, ActiveMixin):
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     type: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # lead / opportunity
     priority: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
+    won_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     stage_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("crm_stage.id", ondelete="SET NULL"), nullable=True
     )
-    kanban_state: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     team_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("crm_team.id", ondelete="SET NULL"), nullable=True
     )
@@ -45,7 +45,6 @@ class CrmLead(Base, TimestampMixin, CompanyMixin, ActiveMixin):
     contact_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     email_from: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    mobile: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     website: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     description: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
     expected_revenue: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 2), nullable=True)

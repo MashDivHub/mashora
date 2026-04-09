@@ -1,5 +1,0 @@
-/var/log/mashora/*.log {
-    copytruncate
-    missingok
-    notifempty
-}

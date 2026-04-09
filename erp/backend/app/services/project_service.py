@@ -12,7 +12,18 @@ Provides high-level operations for:
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_search_read,
+    async_count,
+    async_get,
+    async_get_or_raise,
+    async_create,
+    async_update,
+    async_delete,
+    async_action,
+)
+from app.core.model_registry import get_model_class
 
 _logger = logging.getLogger(__name__)
 
@@ -83,7 +94,7 @@ STAGE_FIELDS = [
 
 # --- Projects ---
 
-def list_projects(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_projects(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("active") is not None:
         domain.append(["active", "=", params["active"]])
@@ -98,58 +109,51 @@ def list_projects(params: dict, uid: int = 1, context: Optional[dict] = None) ->
     # Exclude templates
     domain.append(["is_template", "=", False])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Project = env["project.project"]
-        total = Project.search_count(domain)
-        records = Project.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "sequence asc, name asc"),
+    return await async_search_read(
+        "project.project",
+        domain,
+        PROJECT_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "sequence asc, name asc"),
+    )
+
+
+async def get_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    data = await async_get("project.project", project_id, PROJECT_DETAIL_FIELDS)
+    if data is None:
+        return None
+
+    # Read milestones
+    milestone_ids = data.get("milestone_ids") if "milestone_ids" in data else []
+    if not milestone_ids:
+        milestones_result = await async_search_read(
+            "project.milestone",
+            [["project_id", "=", project_id]],
+            MILESTONE_FIELDS,
+            limit=1000,
         )
-        return {"records": records.read(PROJECT_LIST_FIELDS), "total": total}
+        data["milestones"] = milestones_result["records"]
+    return data
 
 
-def get_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        project = env["project.project"].browse(project_id)
-        if not project.exists():
-            return None
-        data = project.read(PROJECT_DETAIL_FIELDS)[0]
-
-        # Read milestones
-        milestone_ids = data.get("milestone_ids") if "milestone_ids" in data else []
-        if not milestone_ids:
-            milestones = env["project.milestone"].search([("project_id", "=", project_id)])
-            data["milestones"] = milestones.read(MILESTONE_FIELDS)
-        return data
+async def create_project(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "tag_ids" in clean_vals:
+        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+    return await async_create("project.project", clean_vals, uid, PROJECT_LIST_FIELDS)
 
 
-def create_project(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        project = env["project.project"].create(clean_vals)
-        return project.read(PROJECT_LIST_FIELDS)[0]
-
-
-def update_project(project_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        project = env["project.project"].browse(project_id)
-        if not project.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Project {project_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        project.write(clean_vals)
-        return project.read(PROJECT_LIST_FIELDS)[0]
+async def update_project(project_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "tag_ids" in clean_vals:
+        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+    return await async_update("project.project", project_id, clean_vals, uid, PROJECT_LIST_FIELDS)
 
 
 # --- Tasks ---
 
-def list_tasks(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_tasks(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = [["is_template", "=", False]]
     if params.get("project_id"):
         domain.append(["project_id", "=", params["project_id"]])
@@ -171,245 +175,203 @@ def list_tasks(params: dict, uid: int = 1, context: Optional[dict] = None) -> di
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Task = env["project.task"]
-        total = Task.search_count(domain)
-        records = Task.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 50),
-            order=params.get("order", "priority desc, sequence asc, id desc"),
-        )
-        return {"records": records.read(TASK_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "project.task",
+        domain,
+        TASK_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "priority desc, sequence asc, id desc"),
+    )
 
 
-def get_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        task = env["project.task"].browse(task_id)
-        if not task.exists():
-            return None
-        return task.read(TASK_DETAIL_FIELDS)[0]
+async def get_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    return await async_get("project.task", task_id, TASK_DETAIL_FIELDS)
 
 
-def create_task(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "user_ids" in clean_vals:
-            clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        task = env["project.task"].create(clean_vals)
-        return task.read(TASK_LIST_FIELDS)[0]
+async def create_task(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "user_ids" in clean_vals:
+        clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
+    if "tag_ids" in clean_vals:
+        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+    return await async_create("project.task", clean_vals, uid, TASK_LIST_FIELDS)
 
 
-def update_task(task_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        task = env["project.task"].browse(task_id)
-        if not task.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Task {task_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "user_ids" in clean_vals:
-            clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        task.write(clean_vals)
-        return task.read(TASK_LIST_FIELDS)[0]
+async def update_task(task_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "user_ids" in clean_vals:
+        clean_vals["user_ids"] = [(6, 0, clean_vals["user_ids"])]
+    if "tag_ids" in clean_vals:
+        clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
+    return await async_update("project.task", task_id, clean_vals, uid, TASK_LIST_FIELDS)
 
 
-def move_task_stage(task_id: int, stage_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def move_task_stage(task_id: int, stage_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Move a task to a different kanban stage (drag-and-drop)."""
-    with mashora_env(uid=uid, context=context) as env:
-        task = env["project.task"].browse(task_id)
-        task.write({"stage_id": stage_id})
-        return task.read(TASK_LIST_FIELDS)[0]
+    return await async_update("project.task", task_id, {"stage_id": stage_id}, uid, TASK_LIST_FIELDS)
 
 
-def set_task_state(task_id: int, state: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def set_task_state(task_id: int, state: str, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Set task state (in_progress, done, canceled, etc.)."""
-    with mashora_env(uid=uid, context=context) as env:
-        task = env["project.task"].browse(task_id)
-        task.write({"state": state})
-        return task.read(TASK_LIST_FIELDS)[0]
+    return await async_update("project.task", task_id, {"state": state}, uid, TASK_LIST_FIELDS)
 
 
 # --- Task Kanban Pipeline ---
 
-def get_task_pipeline(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_task_pipeline(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Get tasks grouped by stage for kanban view."""
-    with mashora_env(uid=uid, context=context) as env:
-        # Get stages for this project
-        stages = env["project.task.type"].search(
-            [("project_ids", "=", project_id)],
-            order="sequence asc",
+    # Get stages for this project
+    stages_result = await async_search_read(
+        "project.task.type",
+        [["project_ids", "=", project_id]],
+        STAGE_FIELDS,
+        limit=1000,
+        order="sequence asc",
+    )
+    stage_data = stages_result["records"]
+
+    pipeline = []
+    for stage in stage_data:
+        tasks_result = await async_search_read(
+            "project.task",
+            [
+                ["project_id", "=", project_id],
+                ["stage_id", "=", stage["id"]],
+                ["is_template", "=", False],
+            ],
+            TASK_LIST_FIELDS,
+            limit=100,
+            order="priority desc, sequence asc, id desc",
         )
-        stage_data = stages.read(STAGE_FIELDS)
+        pipeline.append({
+            "stage": stage,
+            "tasks": tasks_result["records"],
+            "count": tasks_result["total"],
+        })
 
-        Task = env["project.task"]
-        pipeline = []
-        for stage in stage_data:
-            tasks = Task.search([
-                ("project_id", "=", project_id),
-                ("stage_id", "=", stage["id"]),
-                ("is_template", "=", False),
-            ], order="priority desc, sequence asc, id desc", limit=100)
-
-            pipeline.append({
-                "stage": stage,
-                "tasks": tasks.read(TASK_LIST_FIELDS),
-                "count": len(tasks),
-            })
-
-        return {"pipeline": pipeline}
+    return {"pipeline": pipeline}
 
 
 # --- Milestones ---
 
-def list_milestones(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Milestone = env["project.milestone"]
-        records = Milestone.search(
-            [("project_id", "=", project_id)],
-            order="deadline asc",
-        )
-        return {"records": records.read(MILESTONE_FIELDS), "total": len(records)}
+async def list_milestones(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "project.milestone",
+        [["project_id", "=", project_id]],
+        MILESTONE_FIELDS,
+        limit=1000,
+        order="deadline asc",
+    )
 
 
-def create_milestone(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        milestone = env["project.milestone"].create(clean_vals)
-        return milestone.read(MILESTONE_FIELDS)[0]
+async def create_milestone(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_create("project.milestone", clean_vals, uid, MILESTONE_FIELDS)
 
 
 # --- Status Updates ---
 
-def list_updates(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Update = env["project.update"]
-        records = Update.search(
-            [("project_id", "=", project_id)],
-            order="create_date desc",
-        )
-        return {"records": records.read(UPDATE_FIELDS), "total": len(records)}
+async def list_updates(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "project.update",
+        [["project_id", "=", project_id]],
+        UPDATE_FIELDS,
+        limit=1000,
+        order="create_date desc",
+    )
 
 
-def create_update(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        update = env["project.update"].create(clean_vals)
-        return update.read(UPDATE_FIELDS)[0]
+async def create_update(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_create("project.update", clean_vals, uid, UPDATE_FIELDS)
 
 
 # --- Task Stages ---
 
-def list_task_stages(project_id: Optional[int] = None, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        domain: list[Any] = []
-        if project_id:
-            domain.append(["project_ids", "=", project_id])
-        stages = env["project.task.type"].search(domain, order="sequence asc")
-        return {"records": stages.read(STAGE_FIELDS), "total": len(stages)}
+async def list_task_stages(project_id: Optional[int] = None, uid: int = 1, context: Optional[dict] = None) -> dict:
+    domain: list[Any] = []
+    if project_id:
+        domain.append(["project_ids", "=", project_id])
+    return await async_search_read("project.task.type", domain, STAGE_FIELDS, limit=1000, order="sequence asc")
 
 
 # --- Dashboard ---
 
-def get_project_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Project = env["project.project"]
-        Task = env["project.task"]
+async def get_project_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    active_projects = await async_count("project.project", [
+        ["active", "=", True],
+        ["is_template", "=", False],
+    ])
 
-        active_projects = Project.search_count([
-            ("active", "=", True),
-            ("is_template", "=", False),
+    # Task stats
+    open_tasks = await async_count("project.task", [
+        ["is_closed", "=", False],
+        ["is_template", "=", False],
+    ])
+    closed_tasks = await async_count("project.task", [
+        ["is_closed", "=", True],
+        ["is_template", "=", False],
+    ])
+
+    # Overdue tasks
+    import datetime
+    today = datetime.date.today()
+    overdue_tasks = await async_count("project.task", [
+        ["is_closed", "=", False],
+        ["is_template", "=", False],
+        ["date_deadline", "<", today.isoformat()],
+        ["date_deadline", "!=", False],
+    ])
+
+    # My tasks (for the current user)
+    my_tasks = await async_count("project.task", [
+        ["user_ids", "in", [uid]],
+        ["is_closed", "=", False],
+        ["is_template", "=", False],
+    ])
+
+    # Projects by status
+    status_counts = {}
+    for status in ["on_track", "at_risk", "off_track", "on_hold", "done"]:
+        status_counts[status] = await async_count("project.project", [
+            ["active", "=", True],
+            ["is_template", "=", False],
+            ["last_update_status", "=", status],
         ])
 
-        # Task stats
-        open_tasks = Task.search_count([
-            ("is_closed", "=", False),
-            ("is_template", "=", False),
-        ])
-        closed_tasks = Task.search_count([
-            ("is_closed", "=", True),
-            ("is_template", "=", False),
-        ])
-
-        # Overdue tasks
-        import datetime
-        today = datetime.date.today()
-        overdue_tasks = Task.search_count([
-            ("is_closed", "=", False),
-            ("is_template", "=", False),
-            ("date_deadline", "<", today.isoformat()),
-            ("date_deadline", "!=", False),
-        ])
-
-        # My tasks (for the current user)
-        my_tasks = Task.search_count([
-            ("user_ids", "in", [uid]),
-            ("is_closed", "=", False),
-            ("is_template", "=", False),
-        ])
-
-        # Projects by status
-        status_counts = {}
-        for status in ["on_track", "at_risk", "off_track", "on_hold", "done"]:
-            status_counts[status] = Project.search_count([
-                ("active", "=", True),
-                ("is_template", "=", False),
-                ("last_update_status", "=", status),
-            ])
-
-        return {
-            "projects": {
-                "active": active_projects,
-                "status": status_counts,
-            },
-            "tasks": {
-                "open": open_tasks,
-                "closed": closed_tasks,
-                "overdue": overdue_tasks,
-                "my_tasks": my_tasks,
-            },
-        }
+    return {
+        "projects": {
+            "active": active_projects,
+            "status": status_counts,
+        },
+        "tasks": {
+            "open": open_tasks,
+            "closed": closed_tasks,
+            "overdue": overdue_tasks,
+            "my_tasks": my_tasks,
+        },
+    }
 
 
-def delete_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+async def delete_task(task_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
     """Delete a task."""
-    with mashora_env(uid=uid, context=context) as env:
-        task = env['project.task'].browse(task_id)
-        if not task.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Task {task_id} not found")
-        task.unlink()
-        return True
+    return await async_delete("project.task", task_id)
 
 
-def archive_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def archive_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Archive a project (set active=False)."""
-    with mashora_env(uid=uid, context=context) as env:
-        project = env['project.project'].browse(project_id)
-        project.write({'active': False})
-        return project.read(PROJECT_LIST_FIELDS)[0]
+    return await async_update("project.project", project_id, {"active": False}, uid, PROJECT_LIST_FIELDS)
 
 
-def restore_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def restore_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Restore an archived project (set active=True)."""
-    with mashora_env(uid=uid, context=context) as env:
-        project = env['project.project'].browse(project_id)
-        project.with_context(active_test=False).write({'active': True})
-        return project.read(PROJECT_LIST_FIELDS)[0]
+    return await async_update("project.project", project_id, {"active": True}, uid, PROJECT_LIST_FIELDS)
 
 
-def delete_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+async def delete_project(project_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
     """Delete a project."""
-    with mashora_env(uid=uid, context=context) as env:
-        project = env['project.project'].browse(project_id)
-        if not project.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Project {project_id} not found")
-        project.unlink()
-        return True
+    return await async_delete("project.project", project_id)
 
 
 # --- Timesheets ---
@@ -428,74 +390,62 @@ TIMESHEET_OPTIONAL_FIELDS = ["project_id", "task_id", "employee_id"]
 TIMESHEET_FIELDS = TIMESHEET_BASE_FIELDS
 
 
-def _timesheet_fields(env) -> list:
+def _timesheet_available() -> bool:
+    """Return True if the timesheet module fields are available."""
+    from app.core.model_registry import get_model_class as _get
+    cls = _get("account.analytic.line")
+    if cls is None:
+        return False
+    return hasattr(cls, "project_id")
+
+
+def _timesheet_fields_list() -> list:
     """Return the timesheet field list, including optional fields if available."""
-    model_fields = env['account.analytic.line']._fields
-    extra = [f for f in TIMESHEET_OPTIONAL_FIELDS if f in model_fields]
+    from app.core.model_registry import get_model_class as _get
+    cls = _get("account.analytic.line")
+    if cls is None:
+        return TIMESHEET_BASE_FIELDS
+    extra = [f for f in TIMESHEET_OPTIONAL_FIELDS if hasattr(cls, f)]
     return TIMESHEET_BASE_FIELDS + extra
 
 
-def _timesheet_guard(env) -> bool:
-    """Return True if the timesheet module fields are available."""
-    return 'project_id' in env['account.analytic.line']._fields
+async def list_timesheets(uid: int = 1, context: Optional[dict] = None, domain=None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
+    if not _timesheet_available():
+        return {"records": [], "total": 0, "warning": "timesheet module not installed"}
+    fields = _timesheet_fields_list()
+    d = list(domain) if domain else []
+    d.append(["project_id", "!=", False])
+    return await async_search_read("account.analytic.line", d, fields, offset=offset, limit=limit, order=order)
 
 
-def list_timesheets(uid: int = 1, context: Optional[dict] = None, domain=None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            return {"records": [], "total": 0, "warning": "timesheet module not installed"}
-        fields = _timesheet_fields(env)
-        d = list(domain) if domain else []
-        d.append(('project_id', '!=', False))
-        total = env['account.analytic.line'].search_count(d)
-        records = env['account.analytic.line'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(fields)
-        return {"records": data, "total": total}
+async def get_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if not _timesheet_available():
+        return None
+    fields = _timesheet_fields_list()
+    return await async_get("account.analytic.line", timesheet_id, fields)
 
 
-def get_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            return None
-        fields = _timesheet_fields(env)
-        record = env['account.analytic.line'].browse(timesheet_id)
-        if not record.exists():
-            return None
-        return record.read(fields)[0]
+async def create_timesheet(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if not _timesheet_available():
+        raise RuntimeError("timesheet module not installed; cannot create timesheet")
+    fields = _timesheet_fields_list()
+    return await async_create("account.analytic.line", vals, uid, fields)
 
 
-def create_timesheet(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            raise RuntimeError("timesheet module not installed; cannot create timesheet")
-        fields = _timesheet_fields(env)
-        record = env['account.analytic.line'].create(vals)
-        return record.read(fields)[0]
+async def update_timesheet(timesheet_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if not _timesheet_available():
+        raise RuntimeError("timesheet module not installed; cannot update timesheet")
+    fields = _timesheet_fields_list()
+    return await async_update("account.analytic.line", timesheet_id, vals, uid, fields)
 
 
-def update_timesheet(timesheet_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            raise RuntimeError("timesheet module not installed; cannot update timesheet")
-        fields = _timesheet_fields(env)
-        record = env['account.analytic.line'].browse(timesheet_id)
-        record.write(vals)
-        return record.read(fields)[0]
+async def delete_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
+    if not _timesheet_available():
+        raise RuntimeError("timesheet module not installed; cannot delete timesheet")
+    return await async_delete("account.analytic.line", timesheet_id)
 
 
-def delete_timesheet(timesheet_id: int, uid: int = 1, context: Optional[dict] = None) -> bool:
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            raise RuntimeError("timesheet module not installed; cannot delete timesheet")
-        record = env['account.analytic.line'].browse(timesheet_id)
-        if not record.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Timesheet {timesheet_id} not found")
-        record.unlink()
-        return True
-
-
-def get_timesheet_summary(
+async def get_timesheet_summary(
     project_id: Optional[int] = None,
     employee_id: Optional[int] = None,
     date_from: Optional[str] = None,
@@ -504,29 +454,30 @@ def get_timesheet_summary(
     context: Optional[dict] = None,
 ) -> dict:
     """Get timesheet summary grouped by project and employee."""
-    with mashora_env(uid=uid, context=context) as env:
-        if not _timesheet_guard(env):
-            return {"by_project": [], "by_employee": [], "total_hours": 0, "warning": "timesheet module not installed"}
-        domain = [('project_id', '!=', False)]
-        if project_id:
-            domain.append(('project_id', '=', project_id))
-        if employee_id:
-            domain.append(('employee_id', '=', employee_id))
-        if date_from:
-            domain.append(('date', '>=', date_from))
-        if date_to:
-            domain.append(('date', '<=', date_to))
+    if not _timesheet_available():
+        return {"by_project": [], "by_employee": [], "total_hours": 0, "warning": "timesheet module not installed"}
 
-        by_project = env['account.analytic.line'].read_group(
-            domain, ['project_id', 'unit_amount'], ['project_id']
-        )
-        by_employee = env['account.analytic.line'].read_group(
-            domain, ['employee_id', 'unit_amount'], ['employee_id']
-        )
-        total = sum(g['unit_amount'] for g in by_project)
+    from app.services.base import async_read_group, async_sum
+    domain: list[Any] = [["project_id", "!=", False]]
+    if project_id:
+        domain.append(["project_id", "=", project_id])
+    if employee_id:
+        domain.append(["employee_id", "=", employee_id])
+    if date_from:
+        domain.append(["date", ">=", date_from])
+    if date_to:
+        domain.append(["date", "<=", date_to])
 
-        return {
-            "by_project": by_project,
-            "by_employee": by_employee,
-            "total_hours": total,
-        }
+    by_project = await async_read_group(
+        "account.analytic.line", domain, ["project_id", "unit_amount"], ["project_id"]
+    )
+    by_employee = await async_read_group(
+        "account.analytic.line", domain, ["employee_id", "unit_amount"], ["employee_id"]
+    )
+    total = await async_sum("account.analytic.line", "unit_amount", domain)
+
+    return {
+        "by_project": by_project,
+        "by_employee": by_employee,
+        "total_hours": total,
+    }

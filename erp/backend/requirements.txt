@@ -12,11 +12,6 @@ sqlalchemy[asyncio]>=2.0.30
 asyncpg>=0.29.0
 alembic>=1.13.0
 
-# Legacy ORM bridge (remove after full migration)
-psycopg2-binary>=2.9
-werkzeug>=3.0.1
-lxml>=5.2.1
-
 # Auth
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4

@@ -12,7 +12,6 @@ Provides REST API for:
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.orm_adapter import orm_call
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.schemas.account import (
     InvoiceCreate,
@@ -75,14 +74,14 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 async def get_invoices(params: InvoiceListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List invoices/bills with filters."""
     p = params or InvoiceListParams()
-    result = await orm_call(list_invoices, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    result = await list_invoices(params=p.model_dump())
     return result
 
 
 @router.get("/invoices/{invoice_id}")
 async def get_invoice_detail(invoice_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get full invoice details including lines."""
-    result = await orm_call(get_invoice, invoice_id=invoice_id, uid=_uid(user), context=_ctx(user))
+    result = await get_invoice(invoice_id=invoice_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Invoice {invoice_id} not found")
     return result
@@ -93,7 +92,7 @@ async def create_new_invoice(body: InvoiceCreate, user: CurrentUser | None = Dep
     """Create a new invoice/bill."""
     vals = body.model_dump(exclude={"lines"}, exclude_none=True)
     lines = [l.model_dump(exclude_none=True) for l in body.lines] if body.lines else None
-    result = await orm_call(create_invoice, vals=vals, lines=lines, uid=_uid(user), context=_ctx(user))
+    result = await create_invoice(vals=vals, lines=lines)
     return result
 
 
@@ -101,21 +100,21 @@ async def create_new_invoice(body: InvoiceCreate, user: CurrentUser | None = Dep
 async def update_existing_invoice(invoice_id: int, body: InvoiceUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a draft invoice."""
     vals = body.model_dump(exclude_none=True)
-    result = await orm_call(update_invoice, invoice_id=invoice_id, vals=vals, uid=_uid(user), context=_ctx(user))
+    result = await update_invoice(invoice_id=invoice_id, vals=vals)
     return result
 
 
 @router.post("/invoices/{invoice_id}/post")
 async def post_existing_invoice(invoice_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Post (validate) a draft invoice. Changes state from draft to posted."""
-    result = await orm_call(post_invoice, invoice_id=invoice_id, uid=_uid(user), context=_ctx(user))
+    result = await post_invoice(invoice_id=invoice_id)
     return result
 
 
 @router.post("/invoices/{invoice_id}/cancel")
 async def cancel_existing_invoice(invoice_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Cancel an invoice."""
-    result = await orm_call(cancel_invoice, invoice_id=invoice_id, uid=_uid(user), context=_ctx(user))
+    result = await cancel_invoice(invoice_id=invoice_id)
     return result
 
 
@@ -127,14 +126,7 @@ async def reverse_existing_invoice(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create a reversal (credit note) for a posted invoice."""
-    result = await orm_call(
-        reverse_invoice,
-        invoice_id=invoice_id,
-        reason=reason,
-        date=date,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await reverse_invoice(invoice_id=invoice_id, reason=reason, date=date, )
     return result
 
 
@@ -145,13 +137,7 @@ async def reverse_existing_invoice(
 @router.post("/invoices/{invoice_id}/lines")
 async def add_line(invoice_id: int, body: InvoiceLineCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Add a line to a draft invoice."""
-    result = await orm_call(
-        add_invoice_line,
-        invoice_id=invoice_id,
-        line_vals=body.model_dump(exclude_none=True),
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await add_invoice_line(invoice_id=invoice_id, line_vals=body.model_dump(exclude_none=True), )
     return result
 
 
@@ -159,20 +145,14 @@ async def add_line(invoice_id: int, body: InvoiceLineCreate, user: CurrentUser |
 async def update_line(line_id: int, body: InvoiceLineUpdate, user: CurrentUser | None = Depends(get_optional_user)):
     """Update a specific invoice line."""
     vals = body.model_dump(exclude={"line_id"}, exclude_none=True)
-    result = await orm_call(update_invoice_line, line_id=line_id, vals=vals, uid=_uid(user), context=_ctx(user))
+    result = await update_invoice_line(line_id=line_id, vals=vals)
     return result
 
 
 @router.delete("/invoices/{invoice_id}/lines/{line_id}")
 async def remove_line(invoice_id: int, line_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Remove a line from a draft invoice."""
-    result = await orm_call(
-        delete_invoice_line,
-        invoice_id=invoice_id,
-        line_id=line_id,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await delete_invoice_line(invoice_id=invoice_id, line_id=line_id, )
     return result
 
 
@@ -184,23 +164,14 @@ async def remove_line(invoice_id: int, line_id: int, user: CurrentUser | None = 
 async def get_payments(params: PaymentListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List payments with filters."""
     p = params or PaymentListParams()
-    result = await orm_call(list_payments, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    result = await list_payments(params=p.model_dump())
     return result
 
 
 @router.post("/payments/register")
 async def register_payment(body: PaymentRegisterFromInvoice, user: CurrentUser | None = Depends(get_optional_user)):
     """Register a payment against specific invoices."""
-    result = await orm_call(
-        register_payment_for_invoices,
-        invoice_ids=body.invoice_ids,
-        amount=body.amount,
-        date=str(body.date) if body.date else None,
-        journal_id=body.journal_id,
-        payment_method_line_id=body.payment_method_line_id,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await register_payment_for_invoices(invoice_ids=body.invoice_ids, amount=body.amount, date=str(body.date) if body.date else None, journal_id=body.journal_id, payment_method_line_id=body.payment_method_line_id, )
     return result
 
 
@@ -212,21 +183,15 @@ async def register_payment(body: PaymentRegisterFromInvoice, user: CurrentUser |
 async def get_accounts(params: AccountListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List GL accounts (chart of accounts)."""
     p = params or AccountListParams()
-    result = await orm_call(list_accounts, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    result = await list_accounts(params=p.model_dump())
     return result
 
 
 @router.post("/accounts/create", status_code=201)
 async def create_account(body: AccountCreate, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new GL account."""
-    from app.core.orm_adapter import create_record
-    result = await orm_call(
-        create_record,
-        model="account.account",
-        vals=body.model_dump(exclude_none=True),
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    from app.services.base import async_create
+    result = await async_create("account.account", vals=body.model_dump(exclude_none=True))
     return result
 
 
@@ -238,7 +203,7 @@ async def create_account(body: AccountCreate, user: CurrentUser | None = Depends
 async def get_journals(params: JournalListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List accounting journals."""
     p = params or JournalListParams()
-    result = await orm_call(list_journals, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    result = await list_journals(params=p.model_dump())
     return result
 
 
@@ -250,7 +215,7 @@ async def get_journals(params: JournalListParams | None = None, user: CurrentUse
 async def get_taxes(params: TaxListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List tax definitions."""
     p = params or TaxListParams()
-    result = await orm_call(list_taxes, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    result = await list_taxes(params=p.model_dump())
     return result
 
 
@@ -261,7 +226,7 @@ async def get_taxes(params: TaxListParams | None = None, user: CurrentUser | Non
 @router.get("/dashboard")
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get accounting dashboard summary metrics."""
-    result = await orm_call(get_accounting_dashboard, uid=_uid(user), context=_ctx(user))
+    result = await get_accounting_dashboard()
     return result
 
 
@@ -276,7 +241,7 @@ async def trial_balance(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get trial balance data."""
-    result = await orm_call(get_trial_balance, date_from=date_from, date_to=date_to, uid=_uid(user), context=_ctx(user))
+    result = await get_trial_balance(date_from=date_from, date_to=date_to)
     return result
 
 
@@ -287,7 +252,7 @@ async def profit_and_loss(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get profit and loss report grouped by account type."""
-    result = await orm_call(get_profit_and_loss, date_from=date_from, date_to=date_to, uid=_uid(user), context=_ctx(user))
+    result = await get_profit_and_loss(date_from=date_from, date_to=date_to)
     return result
 
 
@@ -297,21 +262,21 @@ async def balance_sheet(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get balance sheet data grouped by account type."""
-    result = await orm_call(get_balance_sheet, date_to=date_to, uid=_uid(user), context=_ctx(user))
+    result = await get_balance_sheet(date_to=date_to)
     return result
 
 
 @router.get("/reports/aged-receivable")
 async def aged_receivable(user: CurrentUser | None = Depends(get_optional_user)):
     """Get aged receivable report bucketed by days overdue."""
-    result = await orm_call(get_aged_receivable, uid=_uid(user), context=_ctx(user))
+    result = await get_aged_receivable()
     return result
 
 
 @router.get("/reports/aged-payable")
 async def aged_payable(user: CurrentUser | None = Depends(get_optional_user)):
     """Get aged payable report bucketed by days overdue."""
-    result = await orm_call(get_aged_payable, uid=_uid(user), context=_ctx(user))
+    result = await get_aged_payable()
     return result
 
 
@@ -325,7 +290,7 @@ async def get_unreconciled_lines(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List unreconciled bank statement lines."""
-    result = await orm_call(list_unreconciled_lines, journal_id=journal_id, uid=_uid(user), context=_ctx(user))
+    result = await list_unreconciled_lines(journal_id=journal_id)
     return result
 
 
@@ -337,14 +302,14 @@ async def get_bank_statements(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List bank statements."""
-    result = await orm_call(list_bank_statements, offset=offset, limit=limit, order=order, uid=_uid(user), context=_ctx(user))
+    result = await list_bank_statements(offset=offset, limit=limit, order=order)
     return result
 
 
 @router.get("/bank-statements/{statement_id}")
 async def get_bank_statement_detail(statement_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get a bank statement with its lines."""
-    result = await orm_call(get_bank_statement, statement_id=statement_id, uid=_uid(user), context=_ctx(user))
+    result = await get_bank_statement(statement_id=statement_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Bank statement {statement_id} not found")
     return result
@@ -357,13 +322,7 @@ async def reconcile_line(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Reconcile a bank statement line with counterpart journal items."""
-    result = await orm_call(
-        reconcile_statement_line,
-        line_id=line_id,
-        counterpart_ids=counterpart_ids,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await reconcile_statement_line(line_id=line_id, counterpart_ids=counterpart_ids, )
     return result
 
 
@@ -379,12 +338,12 @@ async def get_journal_entries(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """List journal entries."""
-    result = await orm_call(list_journal_entries, offset=offset, limit=limit, order=order, uid=_uid(user), context=_ctx(user))
+    result = await list_journal_entries(offset=offset, limit=limit, order=order)
     return result
 
 
 @router.post("/journal-entries/create", status_code=201)
 async def create_new_journal_entry(body: dict, user: CurrentUser | None = Depends(get_optional_user)):
     """Create a new journal entry."""
-    result = await orm_call(create_journal_entry, vals=body, uid=_uid(user), context=_ctx(user))
+    result = await create_journal_entry(vals=body)
     return result

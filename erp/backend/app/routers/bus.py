@@ -11,7 +11,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from app.core.orm_adapter import mashora_env
 from app.middleware.auth import get_current_user, CurrentUser
 
 router = APIRouter(tags=["bus"])

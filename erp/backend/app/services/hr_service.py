@@ -11,7 +11,18 @@ Provides high-level operations for:
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_search_read,
+    async_count,
+    async_get,
+    async_get_or_raise,
+    async_create,
+    async_update,
+    async_delete,
+    async_action,
+)
+from app.core.model_registry import get_model_class
 
 _logger = logging.getLogger(__name__)
 
@@ -94,7 +105,7 @@ EXPENSE_SHEET_FIELDS = [
 
 # --- Employees ---
 
-def list_employees(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_employees(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("active") is not None:
         domain.append(["active", "=", params["active"]])
@@ -113,81 +124,68 @@ def list_employees(params: dict, uid: int = 1, context: Optional[dict] = None) -
         domain.append(["work_email", "ilike", params["search"]])
         domain.append(["job_title", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Employee = env["hr.employee"]
-        total = Employee.search_count(domain)
-        records = Employee.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 50),
-            order=params.get("order", "name asc"),
-        )
-        return {"records": records.read(EMPLOYEE_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "hr.employee",
+        domain,
+        EMPLOYEE_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "name asc"),
+    )
 
 
-def get_employee(employee_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        emp = env["hr.employee"].browse(employee_id)
-        if not emp.exists():
-            return None
-        return emp.read(EMPLOYEE_DETAIL_FIELDS)[0]
+async def get_employee(employee_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    return await async_get("hr.employee", employee_id, EMPLOYEE_DETAIL_FIELDS)
 
 
-def create_employee(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "category_ids" in clean_vals:
-            clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
-        emp = env["hr.employee"].create(clean_vals)
-        return emp.read(EMPLOYEE_LIST_FIELDS)[0]
+async def create_employee(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "category_ids" in clean_vals:
+        clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
+    return await async_create("hr.employee", clean_vals, uid, EMPLOYEE_LIST_FIELDS)
 
 
-def update_employee(employee_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        emp = env["hr.employee"].browse(employee_id)
-        if not emp.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Employee {employee_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "category_ids" in clean_vals:
-            clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
-        emp.write(clean_vals)
-        return emp.read(EMPLOYEE_LIST_FIELDS)[0]
+async def update_employee(employee_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "category_ids" in clean_vals:
+        clean_vals["category_ids"] = [(6, 0, clean_vals["category_ids"])]
+    return await async_update("hr.employee", employee_id, clean_vals, uid, EMPLOYEE_LIST_FIELDS)
 
 
 # --- Departments ---
 
-def list_departments(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_departments(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("parent_id") is not None:
         domain.append(["parent_id", "=", params["parent_id"] or False])
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Dept = env["hr.department"]
-        total = Dept.search_count(domain)
-        records = Dept.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 100),
-            order=params.get("order", "name asc"),
-        )
-        return {"records": records.read(DEPARTMENT_FIELDS), "total": total}
+    return await async_search_read(
+        "hr.department",
+        domain,
+        DEPARTMENT_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 100),
+        order=params.get("order", "name asc"),
+    )
 
 
 # --- Jobs ---
 
-def list_jobs(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Job = env["hr.job"]
-        records = Job.search([], order="sequence asc, name asc")
-        return {"records": records.read(JOB_FIELDS), "total": len(records)}
+async def list_jobs(uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "hr.job",
+        [],
+        JOB_FIELDS,
+        limit=1000,
+        order="sequence asc, name asc",
+    )
 
 
 # --- Attendance ---
 
-def list_attendance(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_attendance(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("employee_id"):
         domain.append(["employee_id", "=", params["employee_id"]])
@@ -200,23 +198,22 @@ def list_attendance(params: dict, uid: int = 1, context: Optional[dict] = None) 
     if params.get("search"):
         domain.append(["employee_id.name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        if 'hr.attendance' not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_attendance module not installed"}
-        Att = env["hr.attendance"]
-        total = Att.search_count(domain)
-        records = Att.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 50),
-            order=params.get("order", "check_in desc"),
-        )
-        return {"records": records.read(ATTENDANCE_FIELDS), "total": total}
+    if get_model_class("hr.attendance") is None:
+        return {"records": [], "total": 0, "warning": "hr_attendance module not installed"}
+
+    return await async_search_read(
+        "hr.attendance",
+        domain,
+        ATTENDANCE_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "check_in desc"),
+    )
 
 
 # --- Leaves ---
 
-def list_leaves(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_leaves(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     domain: list[Any] = []
     if params.get("employee_id"):
         domain.append(["employee_id", "=", params["employee_id"]])
@@ -233,267 +230,198 @@ def list_leaves(params: dict, uid: int = 1, context: Optional[dict] = None) -> d
     if params.get("search"):
         domain.append(["employee_id.name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
-        Leave = env["hr.leave"]
-        total = Leave.search_count(domain)
-        records = Leave.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "date_from desc"),
-        )
-        return {"records": records.read(LEAVE_LIST_FIELDS), "total": total}
+    if get_model_class("hr.leave") is None:
+        return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
+
+    return await async_search_read(
+        "hr.leave",
+        domain,
+        LEAVE_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_from desc"),
+    )
 
 
-def get_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            return None
-        leave = env["hr.leave"].browse(leave_id)
-        if not leave.exists():
-            return None
-        return leave.read(LEAVE_LIST_FIELDS)[0]
+async def get_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("hr.leave") is None:
+        return None
+    return await async_get("hr.leave", leave_id, LEAVE_LIST_FIELDS)
 
 
-def create_leave(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed; cannot create leave")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        leave = env["hr.leave"].create(clean_vals)
-        return leave.read(LEAVE_LIST_FIELDS)[0]
+async def create_leave(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave") is None:
+        raise RuntimeError("hr_holidays module not installed; cannot create leave")
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_create("hr.leave", clean_vals, uid, LEAVE_LIST_FIELDS)
 
 
-def approve_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        leave = env["hr.leave"].browse(leave_id)
-        leave.action_approve()
-        return leave.read(LEAVE_LIST_FIELDS)[0]
+async def approve_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave", leave_id, "state", "validate", uid=uid, fields=LEAVE_LIST_FIELDS)
 
 
-def refuse_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        leave = env["hr.leave"].browse(leave_id)
-        leave.action_refuse()
-        return leave.read(LEAVE_LIST_FIELDS)[0]
+async def refuse_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave", leave_id, "state", "refuse", uid=uid, fields=LEAVE_LIST_FIELDS)
 
 
-def reset_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        leave = env["hr.leave"].browse(leave_id)
-        leave.action_draft()
-        return leave.read(LEAVE_LIST_FIELDS)[0]
+async def reset_leave(leave_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave", leave_id, "state", "draft", uid=uid, fields=LEAVE_LIST_FIELDS)
 
 
 # --- Leave Types ---
 
-def list_leave_types(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.type" not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
-        Type = env["hr.leave.type"]
-        records = Type.search([], order="sequence asc")
-        return {"records": records.read(LEAVE_TYPE_FIELDS), "total": len(records)}
+async def list_leave_types(uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave.type") is None:
+        return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
+    return await async_search_read("hr.leave.type", [], LEAVE_TYPE_FIELDS, limit=1000, order="sequence asc")
 
 
 # --- Dashboard ---
 
-def get_hr_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Employee = env["hr.employee"]
+async def get_hr_dashboard(uid: int = 1, context: Optional[dict] = None) -> dict:
+    total_employees = await async_count("hr.employee", [["active", "=", True]])
+    newly_hired = await async_count("hr.employee", [["newly_hired", "=", True]])
 
-        total_employees = Employee.search_count([("active", "=", True)])
-        newly_hired = Employee.search_count([("newly_hired", "=", True)])
+    # Department breakdown
+    dept_result = await async_search_read("hr.department", [], ["name", "total_employee"], limit=1000)
+    dept_data = dept_result["records"]
 
-        # Department breakdown
-        departments = env["hr.department"].search([])
-        dept_data = departments.read(["name", "total_employee"])
+    # Leaves pending approval
+    pending_leaves = 0
+    try:
+        if get_model_class("hr.leave") is not None:
+            pending_leaves = await async_count("hr.leave", [["state", "=", "confirm"]])
+    except Exception:
+        pass
 
-        # Leaves pending approval
-        pending_leaves = 0
-        try:
-            Leave = env["hr.leave"]
-            pending_leaves = Leave.search_count([("state", "=", "confirm")])
-        except Exception:
-            pass
+    # Today's attendance
+    present_today = 0
+    try:
+        present_today = await async_count("hr.employee", [
+            ["active", "=", True],
+            ["hr_presence_state", "=", "present"],
+        ])
+    except Exception:
+        pass
 
-        # Today's attendance
-        present_today = 0
-        try:
-            present_today = Employee.search_count([
-                ("active", "=", True),
-                ("hr_presence_state", "=", "present"),
-            ])
-        except Exception:
-            pass
-
-        return {
-            "employees": {
-                "total": total_employees,
-                "newly_hired": newly_hired,
-                "present_today": present_today,
-            },
-            "departments": dept_data,
-            "pending_leaves": pending_leaves,
-        }
+    return {
+        "employees": {
+            "total": total_employees,
+            "newly_hired": newly_hired,
+            "present_today": present_today,
+        },
+        "departments": dept_data,
+        "pending_leaves": pending_leaves,
+    }
 
 
 # --- Leave Allocations ---
 
-def list_allocations(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
-        d = domain or []
-        total = env['hr.leave.allocation'].search_count(d)
-        records = env['hr.leave.allocation'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(ALLOCATION_FIELDS)
-        return {"records": data, "total": total}
+async def list_allocations(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
+    if get_model_class("hr.leave.allocation") is None:
+        return {"records": [], "total": 0, "warning": "hr_holidays module not installed"}
+    d = domain or []
+    return await async_search_read("hr.leave.allocation", d, ALLOCATION_FIELDS, offset=offset, limit=limit, order=order)
 
 
-def get_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            return None
-        record = env['hr.leave.allocation'].browse(allocation_id)
-        if not record.exists():
-            return None
-        return record.read(ALLOCATION_FIELDS)[0]
+async def get_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("hr.leave.allocation") is None:
+        return None
+    return await async_get("hr.leave.allocation", allocation_id, ALLOCATION_FIELDS)
 
 
-def create_allocation(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed; cannot create allocation")
-        record = env['hr.leave.allocation'].create(vals)
-        return record.read(ALLOCATION_FIELDS)[0]
+async def create_allocation(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave.allocation") is None:
+        raise RuntimeError("hr_holidays module not installed; cannot create allocation")
+    return await async_create("hr.leave.allocation", vals, uid, ALLOCATION_FIELDS)
 
 
-def approve_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        record = env['hr.leave.allocation'].browse(allocation_id)
-        record.action_validate()
-        return record.read(ALLOCATION_FIELDS)[0]
+async def approve_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave.allocation") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave.allocation", allocation_id, "state", "validate", uid=uid, fields=ALLOCATION_FIELDS)
 
 
-def refuse_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        record = env['hr.leave.allocation'].browse(allocation_id)
-        record.action_refuse()
-        return record.read(ALLOCATION_FIELDS)[0]
+async def refuse_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave.allocation") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave.allocation", allocation_id, "state", "refuse", uid=uid, fields=ALLOCATION_FIELDS)
 
 
-def reset_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.leave.allocation" not in env.registry:
-            raise RuntimeError("hr_holidays module not installed")
-        record = env['hr.leave.allocation'].browse(allocation_id)
-        record.action_draft()
-        return record.read(ALLOCATION_FIELDS)[0]
+async def reset_allocation(allocation_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.leave.allocation") is None:
+        raise RuntimeError("hr_holidays module not installed")
+    return await async_action("hr.leave.allocation", allocation_id, "state", "draft", uid=uid, fields=ALLOCATION_FIELDS)
 
 
 # --- Expenses ---
 
-def list_expenses(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense" not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
-        d = domain or []
-        total = env['hr.expense'].search_count(d)
-        records = env['hr.expense'].search(d, offset=offset, limit=limit, order=order)
-        return {"records": records.read(EXPENSE_FIELDS), "total": total}
+async def list_expenses(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "date desc") -> dict:
+    if get_model_class("hr.expense") is None:
+        return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
+    d = domain or []
+    return await async_search_read("hr.expense", d, EXPENSE_FIELDS, offset=offset, limit=limit, order=order)
 
 
-def get_expense(expense_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense" not in env.registry:
-            return None
-        record = env['hr.expense'].browse(expense_id)
-        if not record.exists():
-            return None
-        return record.read(EXPENSE_FIELDS)[0]
+async def get_expense(expense_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    if get_model_class("hr.expense") is None:
+        return None
+    return await async_get("hr.expense", expense_id, EXPENSE_FIELDS)
 
 
-def create_expense(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense" not in env.registry:
-            raise RuntimeError("hr_expense module not installed; cannot create expense")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        record = env['hr.expense'].create(clean_vals)
-        return record.read(EXPENSE_FIELDS)[0]
+async def create_expense(vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.expense") is None:
+        raise RuntimeError("hr_expense module not installed; cannot create expense")
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_create("hr.expense", clean_vals, uid, EXPENSE_FIELDS)
 
 
-def update_expense(expense_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense" not in env.registry:
-            raise RuntimeError("hr_expense module not installed")
-        record = env['hr.expense'].browse(expense_id)
-        if not record.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Expense {expense_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        record.write(clean_vals)
-        return record.read(EXPENSE_FIELDS)[0]
+async def update_expense(expense_id: int, vals: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.expense") is None:
+        raise RuntimeError("hr_expense module not installed")
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_update("hr.expense", expense_id, clean_vals, uid, EXPENSE_FIELDS)
 
 
-def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dict] = None):
+async def submit_expenses(expense_ids: list, uid: int = 1, context: Optional[dict] = None):
     """Create expense sheet from selected expenses."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense" not in env.registry:
-            raise RuntimeError("hr_expense module not installed")
-        expenses = env['hr.expense'].browse(expense_ids)
-        sheet = expenses.action_submit_expenses()
-        if hasattr(sheet, 'read'):
-            return sheet.read(EXPENSE_SHEET_FIELDS)[0]
-        return sheet
+    if get_model_class("hr.expense") is None:
+        raise RuntimeError("hr_expense module not installed")
+    # Create an expense sheet grouping the given expense IDs
+    sheet_vals = {
+        "expense_line_ids": [(6, 0, expense_ids)],
+    }
+    return await async_create("hr.expense.sheet", sheet_vals, uid, EXPENSE_SHEET_FIELDS)
 
 
 # --- Expense Sheets ---
 
-def list_expense_sheets(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense.sheet" not in env.registry:
-            return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
-        d = domain or []
-        total = env['hr.expense.sheet'].search_count(d)
-        records = env['hr.expense.sheet'].search(d, offset=offset, limit=limit, order=order)
-        return {"records": records.read(EXPENSE_SHEET_FIELDS), "total": total}
+async def list_expense_sheets(uid: int = 1, context: Optional[dict] = None, domain: Optional[list] = None, offset: int = 0, limit: int = 50, order: str = "create_date desc") -> dict:
+    if get_model_class("hr.expense.sheet") is None:
+        return {"records": [], "total": 0, "warning": "hr_expense module not installed"}
+    d = domain or []
+    return await async_search_read("hr.expense.sheet", d, EXPENSE_SHEET_FIELDS, offset=offset, limit=limit, order=order)
 
 
-def approve_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense.sheet" not in env.registry:
-            raise RuntimeError("hr_expense module not installed")
-        sheet = env['hr.expense.sheet'].browse(sheet_id)
-        sheet.approve_expense_sheets()
-        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+async def approve_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.expense.sheet") is None:
+        raise RuntimeError("hr_expense module not installed")
+    return await async_action("hr.expense.sheet", sheet_id, "state", "approve", uid=uid, fields=EXPENSE_SHEET_FIELDS)
 
 
-def refuse_expense_sheet(sheet_id: int, reason: str, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense.sheet" not in env.registry:
-            raise RuntimeError("hr_expense module not installed")
-        sheet = env['hr.expense.sheet'].browse(sheet_id)
-        sheet.action_sheet_refuse()
-        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+async def refuse_expense_sheet(sheet_id: int, reason: str, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.expense.sheet") is None:
+        raise RuntimeError("hr_expense module not installed")
+    return await async_action("hr.expense.sheet", sheet_id, "state", "refuse", uid=uid, fields=EXPENSE_SHEET_FIELDS)
 
 
-def post_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        if "hr.expense.sheet" not in env.registry:
-            raise RuntimeError("hr_expense module not installed")
-        sheet = env['hr.expense.sheet'].browse(sheet_id)
-        sheet.action_sheet_move_create()
-        return sheet.read(EXPENSE_SHEET_FIELDS)[0]
+async def post_expense_sheet(sheet_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+    if get_model_class("hr.expense.sheet") is None:
+        raise RuntimeError("hr_expense module not installed")
+    return await async_action("hr.expense.sheet", sheet_id, "state", "post", uid=uid, fields=EXPENSE_SHEET_FIELDS)

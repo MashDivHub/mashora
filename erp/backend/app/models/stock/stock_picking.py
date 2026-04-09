@@ -27,7 +27,6 @@ class StockPicking(Base, TimestampMixin, CompanyMixin):
     priority: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
     scheduled_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     date_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     date_done: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     picking_type_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("stock_picking_type.id", ondelete="SET NULL"), nullable=True
@@ -45,9 +44,6 @@ class StockPicking(Base, TimestampMixin, CompanyMixin):
     sale_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("sale_order.id", ondelete="SET NULL"), nullable=True
     )
-    purchase_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("purchase_order.id", ondelete="SET NULL"), nullable=True
-    )
     backorder_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("stock_picking.id", ondelete="SET NULL"), nullable=True
     )
@@ -58,7 +54,6 @@ class StockPicking(Base, TimestampMixin, CompanyMixin):
         Integer, ForeignKey("res_users.id", ondelete="SET NULL"), nullable=True
     )
     is_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    immediate_transfer: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     # Relationships
     picking_type: Mapped[Optional["StockPickingType"]] = relationship(  # type: ignore[name-defined]

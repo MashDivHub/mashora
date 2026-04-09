@@ -1,8 +1,5 @@
 """
 JWT Authentication middleware for the ERP API.
-
-Authenticates against Mashora's res.users table via the ORM adapter.
-Creates JWT tokens with user context (uid, company_id, allowed_company_ids).
 """
 import logging
 from datetime import datetime, timedelta, timezone
@@ -14,12 +11,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.config import get_settings
-from app.core.orm_adapter import mashora_env
 
 _logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
-
 pwd_context = CryptContext(schemes=["pbkdf2_sha512", "bcrypt"], deprecated="auto")
 
 
@@ -54,47 +49,51 @@ def verify_token(token: str) -> dict:
         ) from e
 
 
-def authenticate_user(login: str, password: str) -> Optional[dict[str, Any]]:
-    """
-    Authenticate a user against Mashora's res.users table.
-    Returns user data dict or None if authentication fails.
-    """
-    with mashora_env(uid=1, su=True) as env:
-        User = env['res.users']
-        users = User.search([('login', '=', login)], limit=1)
-        if not users:
+async def authenticate_user(login: str, password: str) -> Optional[dict[str, Any]]:
+    """Authenticate a user against res_users table via SQLAlchemy."""
+    from sqlalchemy import select, text
+    from app.db.session import _get_session_factory
+    from app.core.model_registry import get_model_class
+
+    UserCls = get_model_class("res.users")
+    if UserCls is None:
+        return None
+
+    factory = _get_session_factory()
+    async with factory() as session:
+        query = select(UserCls).where(UserCls.login == login).limit(1)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        if not user:
             return None
 
-        user = users[0]
-        # Mashora stores passwords via passlib (pbkdf2_sha512)
-        try:
-            env.cr.execute(
-                "SELECT COALESCE(password, '') FROM res_users WHERE id=%s",
-                (user.id,)
-            )
-            stored_hash = env.cr.fetchone()[0]
-            if not stored_hash or not pwd_context.verify(password, stored_hash):
-                return None
-        except Exception:
-            _logger.exception("Password verification failed for user %s", login)
+        pw_result = await session.execute(
+            text("SELECT COALESCE(password, '') FROM res_users WHERE id = :uid"),
+            {"uid": user.id},
+        )
+        stored_hash = pw_result.scalar() or ""
+        if not stored_hash or not pwd_context.verify(password, stored_hash):
             return None
 
-        # Read user data
-        user_data = user.read([
-            'name', 'login', 'email', 'lang', 'tz',
-            'company_id', 'company_ids',
-        ])[0]
+        company_name = ""
+        if user.company_id:
+            CompanyCls = get_model_class("res.company")
+            if CompanyCls:
+                company = await session.get(CompanyCls, user.company_id)
+                if company:
+                    name = getattr(company, "name", "")
+                    company_name = name.get("en_US", "") if isinstance(name, dict) else str(name)
 
         return {
             "uid": user.id,
-            "name": user_data.get("name", ""),
-            "login": user_data.get("login", ""),
-            "email": user_data.get("email", ""),
-            "lang": user_data.get("lang", "en_US"),
-            "tz": user_data.get("tz", "UTC"),
-            "company_id": user_data.get("company_id", [False, ""])[0] if user_data.get("company_id") else None,
-            "company_name": user_data.get("company_id", [False, ""])[1] if user_data.get("company_id") else None,
-            "company_ids": user_data.get("company_ids", []),
+            "name": getattr(user, "name", ""),
+            "login": getattr(user, "login", ""),
+            "email": getattr(user, "email", "") or "",
+            "lang": getattr(user, "lang", "en_US") or "en_US",
+            "tz": getattr(user, "tz", "UTC") or "UTC",
+            "company_id": user.company_id,
+            "company_name": company_name,
+            "company_ids": [user.company_id] if user.company_id else [],
         }
 
 
@@ -108,7 +107,6 @@ class CurrentUser:
         self.tz = tz
 
     def get_context(self) -> dict:
-        """Build Mashora-compatible context dict."""
         ctx: dict[str, Any] = {"lang": self.lang, "tz": self.tz}
         if self.company_ids:
             ctx["allowed_company_ids"] = self.company_ids
@@ -137,8 +135,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Cur
 
 
 async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme)) -> CurrentUser | None:
-    """Optional auth — returns None if no token provided. Invalid tokens raise 401."""
+    """Optional auth — returns None if no token provided."""
     if not token:
         return None
-    # If a token is provided but invalid/expired, propagate the error (don't silently ignore)
     return await get_current_user(token)

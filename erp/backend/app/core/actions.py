@@ -2,120 +2,84 @@
 Action resolution for the dynamic view engine.
 
 Fetches ir.actions.act_window definitions and resolves menu → action mappings.
+Now uses SQLAlchemy async.
 """
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import async_get, async_search_read
 
 _logger = logging.getLogger(__name__)
 
-ACTION_FIELDS_BASE = [
-    "id", "name", "res_model", "view_mode", "view_ids",
-    "domain", "context", "target", "limit", "search_view_id",
-    "help", "type",
+ACTION_FIELDS = [
+    "id", "name", "res_model", "view_mode", "domain", "context",
+    "target", "limit", "search_view_id", "help", "type",
+    "binding_model_id", "binding_type", "binding_view_types",
+    "view_id",
 ]
 
-ACTION_FIELDS_OPTIONAL = ["groups_id", "binding_model_id"]
-
-VIEW_FIELDS_BASE = [
-    "id", "view_mode", "sequence",
-]
-
-VIEW_FIELDS_OPTIONAL = ["view_id", "act_window_id"]
+CLIENT_ACTION_FIELDS = ["id", "name", "type", "context"]
 
 
-CLIENT_ACTION_FIELDS = ["id", "name", "type", "tag", "context", "params", "target"]
+async def get_action(action_id: int, uid: int = 1, context: Optional[dict] = None, action_model: Optional[str] = None) -> Optional[dict]:
+    """Fetch an action definition by ID."""
+    # Try act_window first (most common)
+    data = await async_get("ir.act.window", action_id, ACTION_FIELDS)
+    if data:
+        data["action_type"] = "ir.actions.act_window"
+        if data.get("view_mode"):
+            data["view_mode_list"] = [v.strip() for v in data["view_mode"].split(",")]
+        return data
 
-def get_action(action_id: int, uid: int = 1, context: Optional[dict] = None, action_model: Optional[str] = None) -> Optional[dict]:
-    """Fetch an action definition by ID, searching across action types."""
-    with mashora_env(uid=uid, context=context) as env:
-        # If a specific action model is given, search only that
-        models = [action_model] if action_model else [
-            'ir.actions.act_window', 'ir.actions.client',
-            'ir.actions.server', 'ir.actions.report',
-            'ir.actions.act_url',
-        ]
+    # Try ir.actions (base)
+    data = await async_get("ir.actions", action_id, ["id", "name", "type", "path", "binding_type"])
+    if data:
+        data["action_type"] = data.get("type", "ir.actions.act_window")
+        return data
 
-        for model in models:
-            if model not in env.registry:
-                continue
-            action = env[model].browse(action_id)
-            if not action.exists():
-                continue
+    # Try server action
+    data = await async_get("ir.act.server", action_id, ["id", "name", "type", "state", "usage"])
+    if data:
+        data["action_type"] = "ir.actions.server"
+        return data
 
-            if model == 'ir.actions.act_window':
-                model_fields = env[model]._fields
-                fields = [f for f in ACTION_FIELDS_BASE if f in model_fields]
-                fields += [f for f in ACTION_FIELDS_OPTIONAL if f in model_fields]
-                data = action.read(fields)[0]
-                data['action_type'] = model
-                # Fetch view_ids details
-                if data.get('view_ids'):
-                    view_model = env['ir.actions.act_window.view']
-                    vf = view_model._fields
-                    v_fields = [f for f in VIEW_FIELDS_BASE if f in vf] + [f for f in VIEW_FIELDS_OPTIONAL if f in vf]
-                    view_ids = view_model.browse(data['view_ids'])
-                    data['views'] = view_ids.read(v_fields)
-                else:
-                    data['views'] = []
-                if data.get('view_mode'):
-                    data['view_mode_list'] = [v.strip() for v in data['view_mode'].split(',')]
-                return data
+    return None
 
-            elif model == 'ir.actions.client':
-                model_fields = env[model]._fields
-                fields = [f for f in CLIENT_ACTION_FIELDS if f in model_fields]
-                data = action.read(fields)[0]
-                data['action_type'] = model
-                return data
 
-            elif model == 'ir.actions.report':
-                report_fields = [f for f in ['id', 'name', 'type', 'report_name', 'report_type', 'model', 'print_report_name'] if f in env[model]._fields]
-                data = action.read(report_fields)[0]
-                data['action_type'] = model
-                return data
-
-            elif model == 'ir.actions.act_url':
-                data = action.read(['id', 'name', 'type', 'url', 'target'])[0]
-                data['action_type'] = model
-                return data
-
-            else:
-                fields = [f for f in ['id', 'name', 'type'] if f in env[model]._fields]
-                data = action.read(fields)[0]
-                data['action_type'] = model
-                return data
-
+async def get_action_for_model(model_name: str, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
+    """Get the default window action for a model."""
+    result = await async_search_read(
+        "ir.act.window",
+        domain=[["res_model", "=", model_name]],
+        fields=ACTION_FIELDS,
+        limit=1,
+        order="id asc",
+    )
+    if not result["records"]:
         return None
 
-
-def get_action_for_model(model_name: str, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
-    """Get the default window action for a model."""
-    with mashora_env(uid=uid, context=context) as env:
-        actions = env['ir.actions.act_window'].search(
-            [('res_model', '=', model_name)], limit=1, order='id'
-        )
-        if not actions:
-            return None
-        return get_action(actions[0].id, uid=uid, context=context)
+    data = result["records"][0]
+    data["action_type"] = "ir.actions.act_window"
+    if data.get("view_mode"):
+        data["view_mode_list"] = [v.strip() for v in data["view_mode"].split(",")]
+    return data
 
 
-def get_action_views(action_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def get_action_views(action_id: int, uid: int = 1, context: Optional[dict] = None) -> dict:
     """Get all view definitions for an action's view modes."""
-    action = get_action(action_id, uid=uid, context=context)
+    action = await get_action(action_id, uid=uid, context=context)
     if not action:
         return {}
 
     from app.core.views import get_view_definition
     views = {}
-    for vm in action.get('view_mode_list', ['list', 'form']):
+    for vm in action.get("view_mode_list", ["list", "form"]):
         try:
-            view_def = get_view_definition(
-                model=action['res_model'], view_type=vm, uid=uid, context=context
+            view_def = await get_view_definition(
+                model=action["res_model"], view_type=vm, uid=uid, context=context
             )
             views[vm] = view_def
         except Exception as e:
-            _logger.warning("Failed to load %s view for %s: %s", vm, action['res_model'], e)
+            _logger.warning("Failed to load %s view for %s: %s", vm, action["res_model"], e)
 
     return {"action": action, "views": views}

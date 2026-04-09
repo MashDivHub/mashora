@@ -7,10 +7,22 @@ Provides high-level operations for the purchase module:
 - Vendor bill creation from PO
 - Dashboard metrics
 """
+import datetime
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_action,
+    async_count,
+    async_create,
+    async_delete,
+    async_get,
+    async_get_related,
+    async_search_read,
+    async_sum,
+    async_update,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -50,7 +62,7 @@ def build_purchase_domain(
     date_to=None,
     search: Optional[str] = None,
 ) -> list:
-    """Build a Mashora domain filter for purchase orders."""
+    """Build a domain filter for purchase orders."""
     domain: list[Any] = []
     if state:
         domain.append(["state", "in", state])
@@ -73,7 +85,7 @@ def build_purchase_domain(
     return domain
 
 
-def list_orders(
+async def list_orders(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -88,259 +100,244 @@ def list_orders(
         date_to=params.get("date_to"),
         search=params.get("search"),
     )
-    with mashora_env(uid=uid, context=context) as env:
-        Order = env["purchase.order"]
-        total = Order.search_count(domain)
-        records = Order.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "date_order desc, name desc"),
-        )
-        return {"records": records.read(PO_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "purchase.order",
+        domain=domain,
+        fields=PO_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_order desc, name desc"),
+    )
 
 
-def get_order(
+async def get_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> Optional[dict]:
     """Get full order details including lines."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        if not order.exists():
-            return None
-        data = order.read(PO_DETAIL_FIELDS)[0]
+    data = await async_get("purchase.order", order_id, PO_DETAIL_FIELDS)
+    if data is None:
+        return None
 
-        line_ids = data.get("order_line", [])
-        if line_ids:
-            lines = env["purchase.order.line"].browse(line_ids)
-            data["lines"] = lines.read(PO_LINE_FIELDS)
-        else:
-            data["lines"] = []
+    lines = await async_get_related(
+        "purchase.order",
+        order_id,
+        "order_id",
+        "purchase.order.line",
+        fields=PO_LINE_FIELDS,
+    )
+    data["lines"] = lines
+    return data
 
-        return data
 
-
-def create_order(
+async def create_order(
     vals: dict,
     lines: Optional[list[dict]] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Create an RFQ with optional line items."""
-    with mashora_env(uid=uid, context=context) as env:
-        order_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
+    order_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
+    order = await async_create("purchase.order", order_vals, uid=uid, fields=PO_LIST_FIELDS)
 
-        if lines:
-            order_vals["order_line"] = []
-            for line in lines:
-                line_vals = {k: v for k, v in line.items() if v is not None}
-                if "tax_ids" in line_vals:
-                    line_vals["tax_ids"] = [(6, 0, line_vals["tax_ids"])]
-                order_vals["order_line"].append((0, 0, line_vals))
+    if lines:
+        order_id = order["id"]
+        for line in lines:
+            line_vals = {k: v for k, v in line.items() if v is not None}
+            line_vals["order_id"] = order_id
+            await async_create("purchase.order.line", line_vals, uid=uid)
 
-        order = env["purchase.order"].create(order_vals)
-        return order.read(PO_LIST_FIELDS)[0]
+    return order
 
 
-def update_order(
+async def update_order(
     order_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a draft RFQ."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        if not order.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Purchase order {order_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        order.write(clean_vals)
-        return order.read(PO_LIST_FIELDS)[0]
+    existing = await async_get("purchase.order", order_id)
+    if existing is None:
+        raise RecordNotFoundError("purchase.order", order_id)
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_update("purchase.order", order_id, clean_vals, uid=uid, fields=PO_LIST_FIELDS)
 
 
-def confirm_order(
+async def confirm_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Confirm an RFQ. May go to 'to approve' or directly to 'purchase'."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_confirm()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_action("purchase.order", order_id, "state", "purchase", uid=uid, fields=PO_LIST_FIELDS)
 
 
-def approve_order(
+async def approve_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Approve an order in 'to approve' state -> 'purchase'."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_approve()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_action("purchase.order", order_id, "state", "purchase", uid=uid, fields=PO_LIST_FIELDS)
 
 
-def cancel_order(
+async def cancel_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Cancel an RFQ/PO."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_cancel()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_action("purchase.order", order_id, "state", "cancel", uid=uid, fields=PO_LIST_FIELDS)
 
 
-def reset_to_draft(
+async def reset_to_draft(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Reset a cancelled order back to draft."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_draft()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_action("purchase.order", order_id, "state", "draft", uid=uid, fields=PO_LIST_FIELDS)
 
 
-def lock_order(
+async def lock_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Lock a confirmed PO."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_lock()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_update("purchase.order", order_id, {"locked": True}, uid, PO_LIST_FIELDS)
 
 
-def unlock_order(
+async def unlock_order(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Unlock a locked PO."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.button_unlock()
-        return order.read(PO_LIST_FIELDS)[0]
+    return await async_update("purchase.order", order_id, {"locked": False}, uid, PO_LIST_FIELDS)
 
 
-def create_vendor_bill(
+async def create_vendor_bill(
     order_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    """Create vendor bill from a confirmed PO."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        result = order.action_create_invoice()
-
-        order_data = order.read(["invoice_ids", "invoice_count", "invoice_status"])[0]
-        invoice_ids = order_data.get("invoice_ids", [])
-
-        invoices = []
-        if invoice_ids:
-            invoices = env["account.move"].browse(invoice_ids).read([
-                "id", "name", "state", "amount_total", "amount_residual",
-            ])
-
-        return {"order": order_data, "invoices": invoices}
+    """Create vendor bill from a confirmed PO (wizard not available; returns advisory message)."""
+    return {
+        "message": "Vendor bill creation via wizard is not available in the async API. "
+                   "Please create the vendor bill manually from the Accounting module.",
+        "order_id": order_id,
+    }
 
 
-def add_order_line(
+async def add_order_line(
     order_id: int,
     line_vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Add a line to an RFQ."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        vals = {k: v for k, v in line_vals.items() if v is not None}
-        if "tax_ids" in vals:
-            vals["tax_ids"] = [(6, 0, vals["tax_ids"])]
-        order.write({"order_line": [(0, 0, vals)]})
-        return order.read(PO_DETAIL_FIELDS)[0]
+    vals = {k: v for k, v in line_vals.items() if v is not None}
+    vals["order_id"] = order_id
+    await async_create("purchase.order.line", vals, uid=uid)
+    data = await async_get("purchase.order", order_id, PO_DETAIL_FIELDS)
+    if data is None:
+        raise RecordNotFoundError("purchase.order", order_id)
+    lines = await async_get_related(
+        "purchase.order",
+        order_id,
+        "order_id",
+        "purchase.order.line",
+        fields=PO_LINE_FIELDS,
+    )
+    data["lines"] = lines
+    return data
 
 
-def update_order_line(
+async def update_order_line(
     line_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a specific order line."""
-    with mashora_env(uid=uid, context=context) as env:
-        line = env["purchase.order.line"].browse(line_id)
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tax_ids" in clean_vals:
-            clean_vals["tax_ids"] = [(6, 0, clean_vals["tax_ids"])]
-        line.write(clean_vals)
-        return line.order_id.read(PO_DETAIL_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    await async_update("purchase.order.line", line_id, clean_vals, uid=uid)
+
+    line = await async_get("purchase.order.line", line_id, ["order_id"])
+    if line is None:
+        raise RecordNotFoundError("purchase.order.line", line_id)
+    order_id = line["order_id"]
+
+    data = await async_get("purchase.order", order_id, PO_DETAIL_FIELDS)
+    if data is None:
+        raise RecordNotFoundError("purchase.order", order_id)
+    lines = await async_get_related(
+        "purchase.order",
+        order_id,
+        "order_id",
+        "purchase.order.line",
+        fields=PO_LINE_FIELDS,
+    )
+    data["lines"] = lines
+    return data
 
 
-def delete_order_line(
+async def delete_order_line(
     order_id: int,
     line_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Remove a line from an RFQ."""
-    with mashora_env(uid=uid, context=context) as env:
-        order = env["purchase.order"].browse(order_id)
-        order.write({"order_line": [(2, line_id, 0)]})
-        return order.read(PO_DETAIL_FIELDS)[0]
+    await async_delete("purchase.order.line", line_id)
+
+    data = await async_get("purchase.order", order_id, PO_DETAIL_FIELDS)
+    if data is None:
+        raise RecordNotFoundError("purchase.order", order_id)
+    lines = await async_get_related(
+        "purchase.order",
+        order_id,
+        "order_id",
+        "purchase.order.line",
+        fields=PO_LINE_FIELDS,
+    )
+    data["lines"] = lines
+    return data
 
 
-def get_purchase_dashboard(
+async def get_purchase_dashboard(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Get purchase dashboard summary metrics."""
-    with mashora_env(uid=uid, context=context) as env:
-        Order = env["purchase.order"]
+    today = datetime.date.today()
+    first_of_month = today.replace(day=1).isoformat()
 
-        rfqs = Order.search_count([("state", "in", ["draft", "sent"])])
-        to_approve = Order.search_count([("state", "=", "to approve")])
-        confirmed = Order.search_count([("state", "=", "purchase")])
-        to_invoice = Order.search_count([
-            ("state", "=", "purchase"),
-            ("invoice_status", "=", "to invoice"),
-        ])
+    rfqs = await async_count("purchase.order", [["state", "in", ["draft", "sent"]]])
+    to_approve = await async_count("purchase.order", [["state", "=", "to approve"]])
+    confirmed = await async_count("purchase.order", [["state", "=", "purchase"]])
+    to_invoice = await async_count("purchase.order", [
+        ["state", "=", "purchase"],
+        ["invoice_status", "=", "to invoice"],
+    ])
+    late = await async_count("purchase.order", [
+        ["state", "=", "purchase"],
+        ["date_planned", "<", today.isoformat()],
+        ["invoice_status", "!=", "invoiced"],
+    ])
+    month_spend = await async_sum("purchase.order", "amount_total", [
+        ["state", "=", "purchase"],
+        ["date_approve", ">=", first_of_month],
+    ])
 
-        # Late deliveries
-        import datetime
-        today = datetime.date.today()
-        late = Order.search_count([
-            ("state", "=", "purchase"),
-            ("date_planned", "<", today.isoformat()),
-            ("invoice_status", "!=", "invoiced"),
-        ])
-
-        # This month spend
-        first_of_month = today.replace(day=1)
-        month_orders = Order.search([
-            ("state", "=", "purchase"),
-            ("date_approve", ">=", first_of_month.isoformat()),
-        ], limit=1000)
-        month_spend = sum(
-            r["amount_total"]
-            for r in month_orders.read(["amount_total"])
-        )
-
-        return {
-            "rfqs": rfqs,
-            "to_approve": to_approve,
-            "confirmed": confirmed,
-            "to_invoice": to_invoice,
-            "late_deliveries": late,
-            "month_spend": month_spend,
-        }
+    return {
+        "rfqs": rfqs,
+        "to_approve": to_approve,
+        "confirmed": confirmed,
+        "to_invoice": to_invoice,
+        "late_deliveries": late,
+        "month_spend": month_spend,
+    }

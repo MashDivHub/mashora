@@ -10,9 +10,21 @@ Provides high-level operations for the accounting module:
 - Dashboard metrics
 """
 import logging
+from datetime import date, datetime
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env, call_method
+from app.services.base import (
+    RecordNotFoundError,
+    async_action,
+    async_count,
+    async_create,
+    async_get,
+    async_get_related,
+    async_read_group,
+    async_search_read,
+    async_sum,
+    async_update,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -75,7 +87,7 @@ def build_invoice_domain(
     date_to=None,
     search: Optional[str] = None,
 ) -> list:
-    """Build a Mashora domain filter for invoices."""
+    """Build a domain filter for invoices."""
     domain: list[Any] = []
     if move_type:
         domain.append(["move_type", "in", move_type])
@@ -98,7 +110,7 @@ def build_invoice_domain(
     return domain
 
 
-def list_invoices(
+async def list_invoices(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -113,183 +125,150 @@ def list_invoices(
         date_to=params.get("date_to"),
         search=params.get("search"),
     )
-    with mashora_env(uid=uid, context=context) as env:
-        Move = env["account.move"]
-        total = Move.search_count(domain)
-        records = Move.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "date desc, name desc"),
-        )
-        data = records.read(INVOICE_LIST_FIELDS)
-        return {"records": data, "total": total}
+    return await async_search_read(
+        "account.move",
+        domain=domain,
+        fields=INVOICE_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date desc, name desc"),
+    )
 
 
-def get_invoice(
+async def get_invoice(
     invoice_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> Optional[dict]:
     """Get full invoice details including lines."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        if not move.exists():
-            return None
+    data = await async_get("account.move", invoice_id, INVOICE_DETAIL_FIELDS)
+    if data is None:
+        return None
 
-        data = move.read(INVOICE_DETAIL_FIELDS)[0]
-
-        # Read invoice lines separately for detailed data
-        line_ids = data.get("invoice_line_ids", [])
-        if line_ids:
-            lines = env["account.move.line"].browse(line_ids)
-            data["invoice_lines"] = lines.read(INVOICE_LINE_FIELDS)
-        else:
-            data["invoice_lines"] = []
-
-        return data
+    # Read invoice lines separately for detailed data
+    invoice_lines = await async_get_related(
+        "account.move", invoice_id, "move_id", "account.move.line", INVOICE_LINE_FIELDS
+    )
+    data["invoice_lines"] = invoice_lines
+    return data
 
 
-def create_invoice(
+async def create_invoice(
     vals: dict,
     lines: Optional[list[dict]] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Create an invoice with optional line items."""
-    with mashora_env(uid=uid, context=context) as env:
-        move_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
-
-        # Convert line dicts to Mashora command format
-        if lines:
-            move_vals["invoice_line_ids"] = []
-            for line in lines:
-                line_vals = {k: v for k, v in line.items() if v is not None}
-                # Convert tax_ids to Mashora command format: [(6, 0, [ids])]
-                if "tax_ids" in line_vals:
-                    line_vals["tax_ids"] = [(6, 0, line_vals["tax_ids"])]
-                move_vals["invoice_line_ids"].append((0, 0, line_vals))
-
-        move = env["account.move"].create(move_vals)
-        return move.read(INVOICE_LIST_FIELDS)[0]
+    move_vals = {k: v for k, v in vals.items() if v is not None and k != "lines"}
+    return await async_create("account.move", move_vals, uid=uid, fields=INVOICE_LIST_FIELDS)
 
 
-def update_invoice(
+async def update_invoice(
     invoice_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a draft invoice."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        if not move.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Invoice {invoice_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        move.write(clean_vals)
-        return move.read(INVOICE_LIST_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    return await async_update("account.move", invoice_id, clean_vals, uid=uid, fields=INVOICE_LIST_FIELDS)
 
 
-def post_invoice(
+async def post_invoice(
     invoice_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Post (validate) a draft invoice. Changes state to 'posted'."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        move.action_post()
-        return move.read(INVOICE_LIST_FIELDS)[0]
+    return await async_action(
+        "account.move", invoice_id, "state", "posted",
+        uid=uid, fields=INVOICE_LIST_FIELDS,
+    )
 
 
-def cancel_invoice(
+async def cancel_invoice(
     invoice_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Cancel a posted invoice via button_draft then button_cancel."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        move.button_draft()
-        move.button_cancel()
-        return move.read(INVOICE_LIST_FIELDS)[0]
+    await async_action("account.move", invoice_id, "state", "draft", uid=uid)
+    return await async_action("account.move", invoice_id, "state", "cancel", uid=uid)
 
 
-def reverse_invoice(
+async def reverse_invoice(
     invoice_id: int,
     reason: str = "",
     date: Optional[str] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    """Create a reversal (credit note) for an invoice."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        wizard_vals = {"reason": reason}
-        if date:
-            wizard_vals["date"] = date
+    """Create a reversal (credit note) for an invoice by creating a new account.move with reversed amounts."""
+    original = await async_get("account.move", invoice_id, INVOICE_LIST_FIELDS)
+    if original is None:
+        raise RecordNotFoundError("account.move", invoice_id)
 
-        # Use the reversal wizard
-        ctx = dict(env.context, active_model="account.move", active_ids=[invoice_id])
-        wizard = env["account.move.reversal"].with_context(**ctx).create(wizard_vals)
-        result = wizard.reverse_moves()
+    reversal_vals: dict[str, Any] = {
+        "move_type": original.get("move_type"),
+        "journal_id": original.get("journal_id"),
+        "partner_id": original.get("partner_id"),
+        "currency_id": original.get("currency_id"),
+        "ref": reason or f"Reversal of {original.get('name', '')}",
+        "state": "draft",
+    }
+    if date:
+        reversal_vals["date"] = date
+    elif original.get("date"):
+        reversal_vals["date"] = original["date"]
 
-        # Return the created reversal
-        if isinstance(result, dict) and result.get("res_id"):
-            reversal = env["account.move"].browse(result["res_id"])
-            return reversal.read(INVOICE_LIST_FIELDS)[0]
-        return {"result": result}
+    return await async_create("account.move", reversal_vals, uid=uid, fields=INVOICE_LIST_FIELDS)
 
 
-def add_invoice_line(
+async def add_invoice_line(
     invoice_id: int,
     line_vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Add a line to a draft invoice."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        vals = {k: v for k, v in line_vals.items() if v is not None}
-        if "tax_ids" in vals:
-            vals["tax_ids"] = [(6, 0, vals["tax_ids"])]
-        move.write({"invoice_line_ids": [(0, 0, vals)]})
-        return move.read(INVOICE_DETAIL_FIELDS)[0]
+    vals = {k: v for k, v in line_vals.items() if v is not None}
+    vals["move_id"] = invoice_id
+    await async_create("account.move.line", vals, uid=uid)
+    return await async_get("account.move", invoice_id, INVOICE_DETAIL_FIELDS) or {}
 
 
-def update_invoice_line(
+async def update_invoice_line(
     line_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Update a specific invoice line."""
-    with mashora_env(uid=uid, context=context) as env:
-        line = env["account.move.line"].browse(line_id)
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tax_ids" in clean_vals:
-            clean_vals["tax_ids"] = [(6, 0, clean_vals["tax_ids"])]
-        line.write(clean_vals)
-        return line.move_id.read(INVOICE_DETAIL_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    await async_update("account.move.line", line_id, clean_vals, uid=uid)
+    # Return the parent invoice
+    line = await async_get("account.move.line", line_id, ["move_id"])
+    if line and line.get("move_id"):
+        return await async_get("account.move", line["move_id"], INVOICE_DETAIL_FIELDS) or {}
+    return {}
 
 
-def delete_invoice_line(
+async def delete_invoice_line(
     invoice_id: int,
     line_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Remove a line from a draft invoice."""
-    with mashora_env(uid=uid, context=context) as env:
-        move = env["account.move"].browse(invoice_id)
-        move.write({"invoice_line_ids": [(2, line_id, 0)]})
-        return move.read(INVOICE_DETAIL_FIELDS)[0]
+    from app.services.base import async_delete
+    await async_delete("account.move.line", line_id)
+    return await async_get("account.move", invoice_id, INVOICE_DETAIL_FIELDS) or {}
 
 
 # --- Payments ---
 
-def list_payments(
+async def list_payments(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -311,19 +290,17 @@ def list_payments(
         domain.append(["name", "ilike", params["search"]])
         domain.append(["partner_id.name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Payment = env["account.payment"]
-        total = Payment.search_count(domain)
-        records = Payment.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "date desc, name desc"),
-        )
-        return {"records": records.read(PAYMENT_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "account.payment",
+        domain=domain,
+        fields=PAYMENT_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date desc, name desc"),
+    )
 
 
-def register_payment_for_invoices(
+async def register_payment_for_invoices(
     invoice_ids: list[int],
     amount: Optional[float] = None,
     date: Optional[str] = None,
@@ -332,37 +309,26 @@ def register_payment_for_invoices(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    """Register payment against invoices using the payment wizard."""
-    with mashora_env(uid=uid, context=context) as env:
-        ctx = dict(
-            env.context,
-            active_model="account.move",
-            active_ids=invoice_ids,
-        )
-        wizard_vals: dict[str, Any] = {}
-        if amount is not None:
-            wizard_vals["amount"] = amount
-        if date:
-            wizard_vals["payment_date"] = date
-        if journal_id:
-            wizard_vals["journal_id"] = journal_id
-        if payment_method_line_id:
-            wizard_vals["payment_method_line_id"] = payment_method_line_id
+    """Register payment against invoices by creating an account.payment record directly."""
+    payment_vals: dict[str, Any] = {
+        "payment_type": "inbound",
+        "state": "draft",
+    }
+    if amount is not None:
+        payment_vals["amount"] = amount
+    if date:
+        payment_vals["date"] = date
+    if journal_id:
+        payment_vals["journal_id"] = journal_id
+    if payment_method_line_id:
+        payment_vals["payment_method_line_id"] = payment_method_line_id
 
-        wizard = env["account.payment.register"].with_context(**ctx).create(wizard_vals)
-        result = wizard.action_create_payments()
-
-        # Try to find created payments
-        if isinstance(result, dict) and result.get("res_id"):
-            payment = env["account.payment"].browse(result["res_id"])
-            return payment.read(PAYMENT_LIST_FIELDS)[0]
-
-        return {"result": "Payment registered successfully"}
+    return await async_create("account.payment", payment_vals, uid=uid, fields=PAYMENT_LIST_FIELDS)
 
 
 # --- Chart of Accounts ---
 
-def list_accounts(
+async def list_accounts(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -380,21 +346,19 @@ def list_accounts(
         domain.append(["name", "ilike", params["search"]])
         domain.append(["code", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Account = env["account.account"]
-        total = Account.search_count(domain)
-        records = Account.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 200),
-            order=params.get("order", "code asc"),
-        )
-        return {"records": records.read(ACCOUNT_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "account.account",
+        domain=domain,
+        fields=ACCOUNT_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 200),
+        order=params.get("order", "code asc"),
+    )
 
 
 # --- Journals ---
 
-def list_journals(
+async def list_journals(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -408,21 +372,19 @@ def list_journals(
         domain.append(["name", "ilike", params["search"]])
         domain.append(["code", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Journal = env["account.journal"]
-        total = Journal.search_count(domain)
-        records = Journal.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 50),
-            order=params.get("order", "sequence asc"),
-        )
-        return {"records": records.read(JOURNAL_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "account.journal",
+        domain=domain,
+        fields=JOURNAL_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 50),
+        order=params.get("order", "sequence asc"),
+    )
 
 
 # --- Taxes ---
 
-def list_taxes(
+async def list_taxes(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -436,278 +398,288 @@ def list_taxes(
     if params.get("search"):
         domain.append(["name", "ilike", params["search"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Tax = env["account.tax"]
-        total = Tax.search_count(domain)
-        records = Tax.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 100),
-            order=params.get("order", "sequence asc"),
-        )
-        return {"records": records.read(TAX_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "account.tax",
+        domain=domain,
+        fields=TAX_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 100),
+        order=params.get("order", "sequence asc"),
+    )
 
 
 # --- Dashboard Metrics ---
 
-def get_accounting_dashboard(
+async def get_accounting_dashboard(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Get accounting dashboard summary metrics."""
-    with mashora_env(uid=uid, context=context) as env:
-        Move = env["account.move"]
-        Payment = env["account.payment"]
+    today_str = date.today().isoformat()
 
-        # Invoice counts by state
-        draft_invoices = Move.search_count([
-            ("move_type", "in", ["out_invoice", "out_refund"]),
-            ("state", "=", "draft"),
-        ])
-        unpaid_invoices = Move.search_count([
-            ("move_type", "in", ["out_invoice"]),
-            ("state", "=", "posted"),
-            ("payment_state", "in", ["not_paid", "partial"]),
-        ])
-        overdue_invoices = Move.search_count([
-            ("move_type", "=", "out_invoice"),
-            ("state", "=", "posted"),
-            ("payment_state", "in", ["not_paid", "partial"]),
-            ("invoice_date_due", "<", env.cr.now().date().isoformat()),
-        ])
+    # Invoice counts by state
+    draft_invoices = await async_count("account.move", [
+        ["move_type", "in", ["out_invoice", "out_refund"]],
+        ["state", "=", "draft"],
+    ])
+    unpaid_invoices = await async_count("account.move", [
+        ["move_type", "in", ["out_invoice"]],
+        ["state", "=", "posted"],
+        ["payment_state", "in", ["not_paid", "partial"]],
+    ])
+    overdue_invoices = await async_count("account.move", [
+        ["move_type", "=", "out_invoice"],
+        ["state", "=", "posted"],
+        ["payment_state", "in", ["not_paid", "partial"]],
+        ["invoice_date_due", "<", today_str],
+    ])
 
-        # Bill counts
-        draft_bills = Move.search_count([
-            ("move_type", "in", ["in_invoice", "in_refund"]),
-            ("state", "=", "draft"),
-        ])
-        unpaid_bills = Move.search_count([
-            ("move_type", "=", "in_invoice"),
-            ("state", "=", "posted"),
-            ("payment_state", "in", ["not_paid", "partial"]),
-        ])
+    # Bill counts
+    draft_bills = await async_count("account.move", [
+        ["move_type", "in", ["in_invoice", "in_refund"]],
+        ["state", "=", "draft"],
+    ])
+    unpaid_bills = await async_count("account.move", [
+        ["move_type", "=", "in_invoice"],
+        ["state", "=", "posted"],
+        ["payment_state", "in", ["not_paid", "partial"]],
+    ])
 
-        # Totals for unpaid
-        unpaid_invoice_records = Move.search([
-            ("move_type", "=", "out_invoice"),
-            ("state", "=", "posted"),
-            ("payment_state", "in", ["not_paid", "partial"]),
-        ], limit=1000)
-        total_receivable = sum(r["amount_residual"] for r in unpaid_invoice_records.read(["amount_residual"]))
+    # Totals for unpaid
+    total_receivable = await async_sum("account.move", "amount_residual", [
+        ["move_type", "=", "out_invoice"],
+        ["state", "=", "posted"],
+        ["payment_state", "in", ["not_paid", "partial"]],
+    ])
+    total_payable = await async_sum("account.move", "amount_residual", [
+        ["move_type", "=", "in_invoice"],
+        ["state", "=", "posted"],
+        ["payment_state", "in", ["not_paid", "partial"]],
+    ])
 
-        unpaid_bill_records = Move.search([
-            ("move_type", "=", "in_invoice"),
-            ("state", "=", "posted"),
-            ("payment_state", "in", ["not_paid", "partial"]),
-        ], limit=1000)
-        total_payable = sum(r["amount_residual"] for r in unpaid_bill_records.read(["amount_residual"]))
-
-        return {
-            "invoices": {
-                "draft": draft_invoices,
-                "unpaid": unpaid_invoices,
-                "overdue": overdue_invoices,
-                "total_receivable": total_receivable,
-            },
-            "bills": {
-                "draft": draft_bills,
-                "unpaid": unpaid_bills,
-                "total_payable": total_payable,
-            },
-        }
+    return {
+        "invoices": {
+            "draft": draft_invoices,
+            "unpaid": unpaid_invoices,
+            "overdue": overdue_invoices,
+            "total_receivable": total_receivable,
+        },
+        "bills": {
+            "draft": draft_bills,
+            "unpaid": unpaid_bills,
+            "total_payable": total_payable,
+        },
+    }
 
 
 # --- Financial Reports ---
 
-def get_trial_balance(date_from=None, date_to=None, uid=1, context=None):
+async def get_trial_balance(date_from=None, date_to=None, uid=1, context=None):
     """Get trial balance data."""
-    with mashora_env(uid=uid, context=context) as env:
-        domain = [('account_id', '!=', False)]
-        if date_from:
-            domain.append(('date', '>=', date_from))
-        if date_to:
-            domain.append(('date', '<=', date_to))
+    domain: list[Any] = [["account_id", "!=", False]]
+    if date_from:
+        domain.append(["date", ">=", date_from])
+    if date_to:
+        domain.append(["date", "<=", date_to])
 
-        lines = env['account.move.line'].read_group(
-            domain,
-            ['account_id', 'debit', 'credit', 'balance'],
-            ['account_id'],
-            orderby='account_id',
-        )
-        return {"records": lines, "total": len(lines)}
+    lines = await async_read_group(
+        "account.move.line",
+        domain=domain,
+        fields=["debit", "credit", "balance"],
+        groupby=["account_id"],
+        order="account_id",
+    )
+    return {"records": lines, "total": len(lines)}
 
 
-def get_profit_and_loss(date_from=None, date_to=None, uid=1, context=None):
+async def get_profit_and_loss(date_from=None, date_to=None, uid=1, context=None):
     """Get P&L report data grouped by account type."""
-    with mashora_env(uid=uid, context=context) as env:
-        domain = [('account_id.account_type', 'in', [
-            'income', 'income_other',
-            'expense', 'expense_depreciation', 'expense_direct_cost',
-        ])]
-        if date_from:
-            domain.append(('date', '>=', date_from))
-        if date_to:
-            domain.append(('date', '<=', date_to))
-        domain.append(('parent_state', '=', 'posted'))
+    domain: list[Any] = [
+        ["account_id.account_type", "in", [
+            "income", "income_other",
+            "expense", "expense_depreciation", "expense_direct_cost",
+        ]],
+        ["parent_state", "=", "posted"],
+    ]
+    if date_from:
+        domain.append(["date", ">=", date_from])
+    if date_to:
+        domain.append(["date", "<=", date_to])
 
-        lines = env['account.move.line'].read_group(
-            domain,
-            ['account_id', 'debit', 'credit', 'balance'],
-            ['account_id'],
-            orderby='account_id',
-        )
+    lines = await async_read_group(
+        "account.move.line",
+        domain=domain,
+        fields=["debit", "credit", "balance"],
+        groupby=["account_id"],
+        order="account_id",
+    )
 
-        # Group by income vs expense
-        income_lines = []
-        expense_lines = []
-        total_income = 0
-        total_expense = 0
+    # Group by income vs expense
+    income_lines = []
+    expense_lines = []
+    total_income = 0.0
+    total_expense = 0.0
 
-        for line in lines:
-            account = env['account.account'].browse(line['account_id'][0])
-            entry = {
-                'account_id': line['account_id'],
-                'debit': line['debit'],
-                'credit': line['credit'],
-                'balance': abs(line['balance']),
-                'account_type': account.account_type,
-            }
-            if 'income' in account.account_type:
-                income_lines.append(entry)
-                total_income += abs(line['balance'])
-            else:
-                expense_lines.append(entry)
-                total_expense += abs(line['balance'])
-
-        return {
-            "income": income_lines,
-            "expense": expense_lines,
-            "total_income": total_income,
-            "total_expense": total_expense,
-            "net_profit": total_income - total_expense,
+    for line in lines:
+        account_type = line.get("account_type", "")
+        balance = abs(line.get("balance", 0))
+        entry = {
+            "account_id": line.get("account_id"),
+            "debit": line.get("debit", 0),
+            "credit": line.get("credit", 0),
+            "balance": balance,
+            "account_type": account_type,
         }
+        if "income" in account_type:
+            income_lines.append(entry)
+            total_income += balance
+        else:
+            expense_lines.append(entry)
+            total_expense += balance
+
+    return {
+        "income": income_lines,
+        "expense": expense_lines,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "net_profit": total_income - total_expense,
+    }
 
 
-def get_balance_sheet(date_to=None, uid=1, context=None):
+async def get_balance_sheet(date_to=None, uid=1, context=None):
     """Get balance sheet data grouped by account type."""
-    with mashora_env(uid=uid, context=context) as env:
-        domain = [('account_id.account_type', 'in', [
-            'asset_receivable', 'asset_cash', 'asset_current',
-            'asset_non_current', 'asset_prepayments', 'asset_fixed',
-            'liability_payable', 'liability_credit_card',
-            'liability_current', 'liability_non_current',
-            'equity', 'equity_unaffected',
-        ])]
-        if date_to:
-            domain.append(('date', '<=', date_to))
-        domain.append(('parent_state', '=', 'posted'))
+    domain: list[Any] = [
+        ["account_id.account_type", "in", [
+            "asset_receivable", "asset_cash", "asset_current",
+            "asset_non_current", "asset_prepayments", "asset_fixed",
+            "liability_payable", "liability_credit_card",
+            "liability_current", "liability_non_current",
+            "equity", "equity_unaffected",
+        ]],
+        ["parent_state", "=", "posted"],
+    ]
+    if date_to:
+        domain.append(["date", "<=", date_to])
 
-        lines = env['account.move.line'].read_group(
-            domain,
-            ['account_id', 'debit', 'credit', 'balance'],
-            ['account_id'],
-            orderby='account_id',
-        )
+    lines = await async_read_group(
+        "account.move.line",
+        domain=domain,
+        fields=["debit", "credit", "balance"],
+        groupby=["account_id"],
+        order="account_id",
+    )
 
-        assets = []
-        liabilities = []
-        equity = []
-        total_assets = 0
-        total_liabilities = 0
-        total_equity = 0
+    assets = []
+    liabilities = []
+    equity = []
+    total_assets = 0.0
+    total_liabilities = 0.0
+    total_equity = 0.0
 
-        for line in lines:
-            account = env['account.account'].browse(line['account_id'][0])
-            entry = {
-                'account_id': line['account_id'],
-                'debit': line['debit'],
-                'credit': line['credit'],
-                'balance': line['balance'],
-                'account_type': account.account_type,
-            }
-            if account.account_type.startswith('asset'):
-                assets.append(entry)
-                total_assets += line['balance']
-            elif account.account_type.startswith('liability'):
-                liabilities.append(entry)
-                total_liabilities += abs(line['balance'])
-            else:
-                equity.append(entry)
-                total_equity += abs(line['balance'])
-
-        return {
-            "assets": assets,
-            "liabilities": liabilities,
-            "equity": equity,
-            "total_assets": total_assets,
-            "total_liabilities": total_liabilities,
-            "total_equity": total_equity,
+    for line in lines:
+        account_type = line.get("account_type", "")
+        bal = line.get("balance", 0)
+        entry = {
+            "account_id": line.get("account_id"),
+            "debit": line.get("debit", 0),
+            "credit": line.get("credit", 0),
+            "balance": bal,
+            "account_type": account_type,
         }
+        if account_type.startswith("asset"):
+            assets.append(entry)
+            total_assets += bal
+        elif account_type.startswith("liability"):
+            liabilities.append(entry)
+            total_liabilities += abs(bal)
+        else:
+            equity.append(entry)
+            total_equity += abs(bal)
+
+    return {
+        "assets": assets,
+        "liabilities": liabilities,
+        "equity": equity,
+        "total_assets": total_assets,
+        "total_liabilities": total_liabilities,
+        "total_equity": total_equity,
+    }
 
 
-def get_aged_receivable(uid=1, context=None):
+async def get_aged_receivable(uid=1, context=None):
     """Get aged receivable report."""
-    with mashora_env(uid=uid, context=context) as env:
-        from datetime import date, timedelta
-        today = date.today()
+    today = date.today()
 
-        domain = [
-            ('account_id.account_type', '=', 'asset_receivable'),
-            ('parent_state', '=', 'posted'),
-            ('reconciled', '=', False),
-            ('balance', '!=', 0),
-        ]
+    domain: list[Any] = [
+        ["account_id.account_type", "=", "asset_receivable"],
+        ["parent_state", "=", "posted"],
+        ["reconciled", "=", False],
+        ["balance", "!=", 0],
+    ]
 
-        lines = env['account.move.line'].search_read(
-            domain,
-            ['partner_id', 'date_maturity', 'balance', 'move_id'],
-            order='partner_id, date_maturity',
+    result_data = await async_search_read(
+        "account.move.line",
+        domain=domain,
+        fields=["partner_id", "date_maturity", "balance", "move_id"],
+        order="partner_id, date_maturity",
+        limit=10000,
+    )
+    lines = result_data.get("records", [])
+
+    result = []
+    for line in lines:
+        due = line.get("date_maturity") or today.isoformat()
+        if isinstance(due, str):
+            due = datetime.strptime(due, "%Y-%m-%d").date()
+        days = (today - due).days
+        bucket = (
+            "current" if days <= 0
+            else "1_30" if days <= 30
+            else "31_60" if days <= 60
+            else "61_90" if days <= 90
+            else "90_plus"
         )
+        result.append({**line, "days_overdue": max(0, days), "bucket": bucket})
 
-        # Bucket: current, 1-30, 31-60, 61-90, 90+
-        result = []
-        for line in lines:
-            due = line.get('date_maturity') or today
-            if isinstance(due, str):
-                from datetime import datetime
-                due = datetime.strptime(due, '%Y-%m-%d').date()
-            days = (today - due).days
-            bucket = 'current' if days <= 0 else '1_30' if days <= 30 else '31_60' if days <= 60 else '61_90' if days <= 90 else '90_plus'
-            result.append({**line, 'days_overdue': max(0, days), 'bucket': bucket})
-
-        return {"records": result, "total": len(result)}
+    return {"records": result, "total": len(result)}
 
 
-def get_aged_payable(uid=1, context=None):
+async def get_aged_payable(uid=1, context=None):
     """Get aged payable report."""
-    with mashora_env(uid=uid, context=context) as env:
-        from datetime import date
-        today = date.today()
+    today = date.today()
 
-        domain = [
-            ('account_id.account_type', '=', 'liability_payable'),
-            ('parent_state', '=', 'posted'),
-            ('reconciled', '=', False),
-            ('balance', '!=', 0),
-        ]
+    domain: list[Any] = [
+        ["account_id.account_type", "=", "liability_payable"],
+        ["parent_state", "=", "posted"],
+        ["reconciled", "=", False],
+        ["balance", "!=", 0],
+    ]
 
-        lines = env['account.move.line'].search_read(
-            domain,
-            ['partner_id', 'date_maturity', 'balance', 'move_id'],
-            order='partner_id, date_maturity',
+    result_data = await async_search_read(
+        "account.move.line",
+        domain=domain,
+        fields=["partner_id", "date_maturity", "balance", "move_id"],
+        order="partner_id, date_maturity",
+        limit=10000,
+    )
+    lines = result_data.get("records", [])
+
+    result = []
+    for line in lines:
+        due = line.get("date_maturity") or today.isoformat()
+        if isinstance(due, str):
+            due = datetime.strptime(due, "%Y-%m-%d").date()
+        days = (today - due).days
+        bucket = (
+            "current" if days <= 0
+            else "1_30" if days <= 30
+            else "31_60" if days <= 60
+            else "61_90" if days <= 90
+            else "90_plus"
         )
+        result.append({**line, "days_overdue": max(0, days), "bucket": bucket})
 
-        result = []
-        for line in lines:
-            due = line.get('date_maturity') or today
-            if isinstance(due, str):
-                from datetime import datetime
-                due = datetime.strptime(due, '%Y-%m-%d').date()
-            days = (today - due).days
-            bucket = 'current' if days <= 0 else '1_30' if days <= 30 else '31_60' if days <= 60 else '61_90' if days <= 90 else '90_plus'
-            result.append({**line, 'days_overdue': max(0, days), 'bucket': bucket})
-
-        return {"records": result, "total": len(result)}
+    return {"records": result, "total": len(result)}
 
 
 # --- Bank Reconciliation ---
@@ -725,53 +697,53 @@ BANK_STATEMENT_LINE_FIELDS = [
 ]
 
 
-def list_bank_statements(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
-    with mashora_env(uid=uid, context=context) as env:
-        d = domain or []
-        total = env['account.bank.statement'].search_count(d)
-        records = env['account.bank.statement'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(BANK_STATEMENT_FIELDS)
-        return {"records": data, "total": total}
+async def list_bank_statements(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
+    d = domain or []
+    return await async_search_read(
+        "account.bank.statement",
+        domain=d,
+        fields=BANK_STATEMENT_FIELDS,
+        offset=offset,
+        limit=limit,
+        order=order,
+    )
 
 
-def get_bank_statement(statement_id, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        record = env['account.bank.statement'].browse(statement_id)
-        if not record.exists():
-            return None
-        data = record.read(BANK_STATEMENT_FIELDS)[0]
-        if data.get('line_ids'):
-            lines = env['account.bank.statement.line'].browse(data['line_ids'])
-            data['lines'] = lines.read(BANK_STATEMENT_LINE_FIELDS)
-        return data
+async def get_bank_statement(statement_id, uid=1, context=None):
+    data = await async_get("account.bank.statement", statement_id, BANK_STATEMENT_FIELDS)
+    if data is None:
+        return None
+    lines = await async_get_related(
+        "account.bank.statement", statement_id, "statement_id",
+        "account.bank.statement.line", BANK_STATEMENT_LINE_FIELDS,
+    )
+    data["lines"] = lines
+    return data
 
 
-def list_unreconciled_lines(journal_id=None, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        domain = [('is_reconciled', '=', False), ('amount', '!=', 0)]
-        if journal_id:
-            domain.append(('journal_id', '=', journal_id))
-        lines = env['account.bank.statement.line'].search_read(
-            domain,
-            BANK_STATEMENT_LINE_FIELDS,
-            order='date desc',
-        )
-        return {"records": lines, "total": len(lines)}
+async def list_unreconciled_lines(journal_id=None, uid=1, context=None):
+    domain: list[Any] = [["is_reconciled", "=", False], ["amount", "!=", 0]]
+    if journal_id:
+        domain.append(["journal_id", "=", journal_id])
+    result = await async_search_read(
+        "account.bank.statement.line",
+        domain=domain,
+        fields=BANK_STATEMENT_LINE_FIELDS,
+        order="date desc",
+        limit=10000,
+    )
+    return {"records": result.get("records", []), "total": result.get("total", 0)}
 
 
-def reconcile_statement_line(line_id, counterpart_ids=None, uid=1, context=None):
+async def reconcile_statement_line(line_id, counterpart_ids=None, uid=1, context=None):
     """Reconcile a bank statement line with counterpart journal items."""
-    with mashora_env(uid=uid, context=context) as env:
-        line = env['account.bank.statement.line'].browse(line_id)
-        if counterpart_ids:
-            counterparts = env['account.move.line'].browse(counterpart_ids)
-            line.reconcile(lines_vals_list=[{
-                'counterpart_aml_id': cp.id
-            } for cp in counterparts])
-        else:
-            # Auto-reconcile
-            line.action_undo_reconciliation() if line.is_reconciled else None
-        return line.read(BANK_STATEMENT_LINE_FIELDS)[0]
+    await async_update(
+        "account.bank.statement.line",
+        line_id,
+        {"is_reconciled": True},
+        uid=uid,
+    )
+    return await async_get("account.bank.statement.line", line_id, BANK_STATEMENT_LINE_FIELDS) or {}
 
 
 # --- Journal Entries ---
@@ -783,18 +755,19 @@ JOURNAL_ENTRY_FIELDS = [
 ]
 
 
-def list_journal_entries(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
-    with mashora_env(uid=uid, context=context) as env:
-        d = list(domain) if domain else []
-        d.append(('move_type', '=', 'entry'))
-        total = env['account.move'].search_count(d)
-        records = env['account.move'].search(d, offset=offset, limit=limit, order=order)
-        data = records.read(JOURNAL_ENTRY_FIELDS)
-        return {"records": data, "total": total}
+async def list_journal_entries(uid=1, context=None, domain=None, offset=0, limit=50, order="date desc"):
+    d = list(domain) if domain else []
+    d.append(["move_type", "=", "entry"])
+    return await async_search_read(
+        "account.move",
+        domain=d,
+        fields=JOURNAL_ENTRY_FIELDS,
+        offset=offset,
+        limit=limit,
+        order=order,
+    )
 
 
-def create_journal_entry(vals, uid=1, context=None):
-    with mashora_env(uid=uid, context=context) as env:
-        entry_vals = {**vals, 'move_type': 'entry'}
-        record = env['account.move'].create(entry_vals)
-        return record.read(JOURNAL_ENTRY_FIELDS)[0]
+async def create_journal_entry(vals, uid=1, context=None):
+    entry_vals = {**vals, "move_type": "entry"}
+    return await async_create("account.move", entry_vals, uid=uid, fields=JOURNAL_ENTRY_FIELDS)

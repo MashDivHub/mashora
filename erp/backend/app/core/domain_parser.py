@@ -31,12 +31,43 @@ def _get_column(model_cls, field_name: str):
     return getattr(model_cls, field_name, None)
 
 
+def _coerce_value(col, value: Any) -> Any:
+    """Coerce string values to proper Python types based on column type."""
+    if value is None or value is False:
+        return value
+    if not isinstance(value, str):
+        return value
+
+    # Get the SQLAlchemy column type
+    try:
+        from sqlalchemy import Date, DateTime
+        col_obj = col.property.columns[0] if hasattr(col, 'property') else col
+        col_type = type(col_obj.type)
+
+        if col_type in (Date,) or col_type.__name__ == 'Date':
+            from datetime import date as dt_date
+            return dt_date.fromisoformat(value)
+        elif col_type in (DateTime,) or col_type.__name__ in ('DateTime', 'TIMESTAMP'):
+            from datetime import datetime as dt_datetime
+            if 'T' in value:
+                return dt_datetime.fromisoformat(value)
+            else:
+                return dt_datetime.fromisoformat(value + 'T00:00:00')
+    except Exception:
+        pass
+
+    return value
+
+
 def _make_condition(model_cls, field_name: str, operator: str, value: Any) -> ColumnElement:
     """Convert a single (field, operator, value) triple to a SQLAlchemy condition."""
     col = _get_column(model_cls, field_name)
     if col is None:
         # Unknown field — return always-true to avoid breaking queries
         return and_()
+
+    # Coerce string dates to proper types
+    value = _coerce_value(col, value)
 
     op = operator.lower().strip()
 

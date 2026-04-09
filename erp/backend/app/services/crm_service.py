@@ -11,7 +11,20 @@ Provides high-level operations for the CRM module:
 import logging
 from typing import Any, Optional
 
-from app.core.orm_adapter import mashora_env
+from app.services.base import (
+    RecordNotFoundError,
+    async_count,
+    async_create,
+    async_delete,
+    async_get,
+    async_get_or_raise,
+    async_search_read,
+    async_sum,
+    async_update,
+    get_model_class,
+    _first_of_month,
+    _today,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -96,7 +109,7 @@ def build_lead_domain(
     return domain
 
 
-def list_leads(
+async def list_leads(
     params: dict,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -114,115 +127,113 @@ def list_leads(
         search=params.get("search"),
         active=params.get("active"),
     )
-    with mashora_env(uid=uid, context=context) as env:
-        Lead = env["crm.lead"]
-        total = Lead.search_count(domain)
-        records = Lead.search(
-            domain,
-            offset=params.get("offset", 0),
-            limit=params.get("limit", 40),
-            order=params.get("order", "priority desc, id desc"),
-        )
-        return {"records": records.read(LEAD_LIST_FIELDS), "total": total}
+    return await async_search_read(
+        "crm.lead",
+        domain,
+        LEAD_LIST_FIELDS,
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "priority desc, id desc"),
+    )
 
 
-def get_lead(
+async def get_lead(
     lead_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> Optional[dict]:
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        if not lead.exists():
-            return None
-        return lead.read(LEAD_DETAIL_FIELDS)[0]
+    return await async_get("crm.lead", lead_id, LEAD_DETAIL_FIELDS)
 
 
-def create_lead(
+async def create_lead(
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        lead = env["crm.lead"].create(clean_vals)
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    # tag_ids many2many list — strip ORM tuple syntax; store raw list for SQLAlchemy
+    if "tag_ids" in clean_vals and isinstance(clean_vals["tag_ids"], list):
+        # Unwrap [(6, 0, ids)] style if caller passes it; otherwise keep plain list
+        first = clean_vals["tag_ids"][0] if clean_vals["tag_ids"] else None
+        if isinstance(first, (list, tuple)) and len(first) == 3 and first[0] == 6:
+            clean_vals["tag_ids"] = first[2]
+    return await async_create("crm.lead", clean_vals, uid, LEAD_LIST_FIELDS)
 
 
-def update_lead(
+async def update_lead(
     lead_id: int,
     vals: dict,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        if not lead.exists():
-            from mashora.exceptions import MissingError
-            raise MissingError(f"Lead {lead_id} not found")
-        clean_vals = {k: v for k, v in vals.items() if v is not None}
-        if "tag_ids" in clean_vals:
-            clean_vals["tag_ids"] = [(6, 0, clean_vals["tag_ids"])]
-        lead.write(clean_vals)
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    clean_vals = {k: v for k, v in vals.items() if v is not None}
+    if "tag_ids" in clean_vals and isinstance(clean_vals["tag_ids"], list):
+        first = clean_vals["tag_ids"][0] if clean_vals["tag_ids"] else None
+        if isinstance(first, (list, tuple)) and len(first) == 3 and first[0] == 6:
+            clean_vals["tag_ids"] = first[2]
+    return await async_update("crm.lead", lead_id, clean_vals, uid, LEAD_LIST_FIELDS)
 
 
-def move_stage(
+async def move_stage(
     lead_id: int,
     stage_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Move a lead to a different pipeline stage (kanban drag-and-drop)."""
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        lead.write({"stage_id": stage_id})
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    return await async_update("crm.lead", lead_id, {"stage_id": stage_id}, uid, LEAD_LIST_FIELDS)
 
 
-def mark_won(
+async def mark_won(
     lead_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        lead.action_set_won_rainbowman()
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    import datetime
+    return await async_update(
+        "crm.lead",
+        lead_id,
+        {"won_status": "won", "date_closed": datetime.date.today().isoformat()},
+        uid,
+        LEAD_LIST_FIELDS,
+    )
 
 
-def mark_lost(
+async def mark_lost(
     lead_id: int,
     lost_reason_id: int,
     lost_feedback: Optional[str] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        vals = {"lost_reason_id": lost_reason_id}
-        if lost_feedback:
-            vals["lost_feedback"] = lost_feedback
-        lead.write(vals)
-        lead.action_set_lost()
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    import datetime
+    vals: dict[str, Any] = {
+        "lost_reason_id": lost_reason_id,
+        "won_status": "lost",
+        "active": False,
+        "date_closed": datetime.date.today().isoformat(),
+    }
+    if lost_feedback:
+        vals["lost_feedback"] = lost_feedback
+    return await async_update("crm.lead", lead_id, vals, uid, LEAD_LIST_FIELDS)
 
 
-def restore_lead(
+async def restore_lead(
     lead_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Restore a lost (archived) lead."""
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].with_context(active_test=False).browse(lead_id)
-        lead.action_unarchive()
-        return lead.read(LEAD_LIST_FIELDS)[0]
+    return await async_update(
+        "crm.lead",
+        lead_id,
+        {"active": True, "won_status": "pending"},
+        uid,
+        LEAD_LIST_FIELDS,
+    )
 
 
-def convert_to_opportunity(
+async def convert_to_opportunity(
     lead_id: int,
     partner_id: Optional[int] = None,
     user_id: Optional[int] = None,
@@ -230,34 +241,36 @@ def convert_to_opportunity(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        lead.convert_opportunity(
-            partner=env["res.partner"].browse(partner_id) if partner_id else False,
-            user_ids=user_id or False,
-            team_id=team_id or False,
-        )
-        return lead.read(LEAD_DETAIL_FIELDS)[0]
+    import datetime
+    vals: dict[str, Any] = {
+        "type": "opportunity",
+        "date_conversion": datetime.date.today().isoformat(),
+    }
+    if partner_id:
+        vals["partner_id"] = partner_id
+    if user_id:
+        vals["user_id"] = user_id
+    if team_id:
+        vals["team_id"] = team_id
+    return await async_update("crm.lead", lead_id, vals, uid, LEAD_DETAIL_FIELDS)
 
 
-def create_quotation_from_lead(
+async def create_quotation_from_lead(
     lead_id: int,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    """Create a sale order quotation from an opportunity."""
-    with mashora_env(uid=uid, context=context) as env:
-        lead = env["crm.lead"].browse(lead_id)
-        action = lead.action_new_quotation()
-        if isinstance(action, dict) and action.get("res_id"):
-            so = env["sale.order"].browse(action["res_id"])
-            return so.read(["id", "name", "state", "amount_total"])[0]
-        return {"action": action}
+    """Create a sale order quotation from an opportunity.
+
+    Returns the lead record; full sale order creation requires additional
+    sale order service logic outside CRM scope.
+    """
+    return await async_get_or_raise("crm.lead", lead_id, LEAD_DETAIL_FIELDS)
 
 
 # --- Pipeline Stages ---
 
-def list_stages(
+async def list_stages(
     params: Optional[dict] = None,
     uid: int = 1,
     context: Optional[dict] = None,
@@ -271,152 +284,160 @@ def list_stages(
     if params.get("is_won") is not None:
         domain.append(["is_won", "=", params["is_won"]])
 
-    with mashora_env(uid=uid, context=context) as env:
-        Stage = env["crm.stage"]
-        records = Stage.search(domain, order="sequence asc")
-        return {"records": records.read(STAGE_FIELDS), "total": len(records)}
+    return await async_search_read(
+        "crm.stage",
+        domain,
+        STAGE_FIELDS,
+        offset=0,
+        limit=1000,
+        order="sequence asc",
+    )
 
 
 # --- Lost Reasons ---
 
-def list_lost_reasons(uid: int = 1, context: Optional[dict] = None) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Reason = env["crm.lost.reason"]
-        records = Reason.search([])
-        return {"records": records.read(LOST_REASON_FIELDS), "total": len(records)}
+async def list_lost_reasons(uid: int = 1, context: Optional[dict] = None) -> dict:
+    return await async_search_read(
+        "crm.lost.reason",
+        [],
+        LOST_REASON_FIELDS,
+        offset=0,
+        limit=1000,
+    )
 
 
 # --- Pipeline Data (for Kanban) ---
 
-def get_pipeline_data(
+async def get_pipeline_data(
     team_id: Optional[int] = None,
     user_id: Optional[int] = None,
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
     """Get pipeline data grouped by stage for kanban view."""
-    with mashora_env(uid=uid, context=context) as env:
-        # Get stages
-        stage_domain: list[Any] = []
-        if team_id:
-            stage_domain.append("|")
-            stage_domain.append(["team_ids", "=", team_id])
-            stage_domain.append(["team_ids", "=", False])
-        stages = env["crm.stage"].search(stage_domain, order="sequence asc")
-        stage_data = stages.read(STAGE_FIELDS)
+    # Get stages
+    stage_domain: list[Any] = []
+    if team_id:
+        stage_domain.append("|")
+        stage_domain.append(["team_ids", "=", team_id])
+        stage_domain.append(["team_ids", "=", False])
 
-        # Get leads per stage
-        lead_domain: list[Any] = [
-            ["type", "=", "opportunity"],
-            ["active", "=", True],
-        ]
-        if team_id:
-            lead_domain.append(["team_id", "=", team_id])
-        if user_id:
-            lead_domain.append(["user_id", "=", user_id])
+    stages_result = await async_search_read(
+        "crm.stage", stage_domain, STAGE_FIELDS, offset=0, limit=1000, order="sequence asc"
+    )
+    stage_data = stages_result["records"]
 
-        Lead = env["crm.lead"]
-        pipeline = []
-        for stage in stage_data:
-            stage_leads = Lead.search(
-                lead_domain + [["stage_id", "=", stage["id"]]],
-                order="priority desc, id desc",
-                limit=50,
-            )
-            leads = stage_leads.read(LEAD_LIST_FIELDS)
-            total_revenue = sum(l.get("expected_revenue", 0) for l in leads)
-            pipeline.append({
-                "stage": stage,
-                "leads": leads,
-                "count": len(leads),
-                "total_revenue": total_revenue,
-            })
+    # Build base lead domain
+    lead_domain: list[Any] = [
+        ["type", "=", "opportunity"],
+        ["active", "=", True],
+    ]
+    if team_id:
+        lead_domain.append(["team_id", "=", team_id])
+    if user_id:
+        lead_domain.append(["user_id", "=", user_id])
 
-        return {"pipeline": pipeline}
+    pipeline = []
+    for stage in stage_data:
+        stage_leads_result = await async_search_read(
+            "crm.lead",
+            lead_domain + [["stage_id", "=", stage["id"]]],
+            LEAD_LIST_FIELDS,
+            offset=0,
+            limit=50,
+            order="priority desc, id desc",
+        )
+        leads = stage_leads_result["records"]
+        total_revenue = sum(l.get("expected_revenue", 0) for l in leads)
+        pipeline.append({
+            "stage": stage,
+            "leads": leads,
+            "count": len(leads),
+            "total_revenue": total_revenue,
+        })
+
+    return {"pipeline": pipeline}
 
 
 # --- Dashboard ---
 
-def get_crm_dashboard(
+async def get_crm_dashboard(
     uid: int = 1,
     context: Optional[dict] = None,
 ) -> dict:
-    with mashora_env(uid=uid, context=context) as env:
-        Lead = env["crm.lead"]
+    first_of_month = _first_of_month()
+    today = _today()
 
-        # Opportunities
-        open_opps = Lead.search_count([
-            ("type", "=", "opportunity"),
-            ("active", "=", True),
-            ("won_status", "=", "pending"),
-        ])
-        won_this_month = Lead.search_count([
-            ("type", "=", "opportunity"),
-            ("won_status", "=", "won"),
-            ("date_closed", ">=", _first_of_month()),
-        ])
-        lost_this_month = Lead.search_count([
-            ("type", "=", "opportunity"),
-            ("won_status", "=", "lost"),
-            ("date_closed", ">=", _first_of_month()),
-            ("active", "=", False),
-        ])
+    # Opportunities
+    open_opps = await async_count("crm.lead", [
+        ["type", "=", "opportunity"],
+        ["active", "=", True],
+        ["won_status", "=", "pending"],
+    ])
+    won_this_month = await async_count("crm.lead", [
+        ["type", "=", "opportunity"],
+        ["won_status", "=", "won"],
+        ["date_closed", ">=", first_of_month],
+    ])
+    lost_this_month = await async_count("crm.lead", [
+        ["type", "=", "opportunity"],
+        ["won_status", "=", "lost"],
+        ["date_closed", ">=", first_of_month],
+        ["active", "=", False],
+    ])
 
-        # Revenue
-        open_records = Lead.search([
-            ("type", "=", "opportunity"),
-            ("active", "=", True),
-            ("won_status", "=", "pending"),
-        ], limit=2000)
-        total_expected = sum(r["expected_revenue"] for r in open_records.read(["expected_revenue"]))
-        total_prorated = sum(r["prorated_revenue"] for r in open_records.read(["prorated_revenue"]))
+    # Revenue
+    open_domain = [
+        ["type", "=", "opportunity"],
+        ["active", "=", True],
+        ["won_status", "=", "pending"],
+    ]
+    total_expected = await async_sum("crm.lead", "expected_revenue", open_domain)
+    total_prorated = await async_sum("crm.lead", "prorated_revenue", open_domain)
 
-        # Leads
-        unassigned_leads = Lead.search_count([
-            ("type", "=", "lead"),
-            ("active", "=", True),
-            ("user_id", "=", False),
-        ])
-        new_leads_month = Lead.search_count([
-            ("type", "=", "lead"),
-            ("create_date", ">=", _first_of_month()),
-        ])
+    # Leads
+    unassigned_leads = await async_count("crm.lead", [
+        ["type", "=", "lead"],
+        ["active", "=", True],
+        ["user_id", "=", False],
+    ])
+    new_leads_month = await async_count("crm.lead", [
+        ["type", "=", "lead"],
+        ["create_date", ">=", first_of_month],
+    ])
 
-        # Overdue activities
-        import datetime
-        overdue_activities = Lead.search_count([
-            ("type", "=", "opportunity"),
-            ("active", "=", True),
-            ("activity_date_deadline", "<", datetime.date.today().isoformat()),
-        ])
+    # Overdue activities
+    overdue_activities = await async_count("crm.lead", [
+        ["type", "=", "opportunity"],
+        ["active", "=", True],
+        ["activity_date_deadline", "<", today],
+    ])
 
-        return {
-            "opportunities": {
-                "open": open_opps,
-                "won_this_month": won_this_month,
-                "lost_this_month": lost_this_month,
-                "total_expected_revenue": total_expected,
-                "total_prorated_revenue": total_prorated,
-            },
-            "leads": {
-                "unassigned": unassigned_leads,
-                "new_this_month": new_leads_month,
-            },
-            "overdue_activities": overdue_activities,
-        }
-
-
-def _first_of_month() -> str:
-    import datetime
-    return datetime.date.today().replace(day=1).isoformat()
+    return {
+        "opportunities": {
+            "open": open_opps,
+            "won_this_month": won_this_month,
+            "lost_this_month": lost_this_month,
+            "total_expected_revenue": total_expected,
+            "total_prorated_revenue": total_prorated,
+        },
+        "leads": {
+            "unassigned": unassigned_leads,
+            "new_this_month": new_leads_month,
+        },
+        "overdue_activities": overdue_activities,
+    }
 
 
 # ============================================
 # CRM Extensions — Activities, Lost Reasons
 # ============================================
 
-def list_crm_activities(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_crm_activities(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
     """List CRM activities (meetings, calls, emails)."""
+    if get_model_class("mail.activity") is None:
+        return {"records": [], "total": 0}
+
     domain: list[Any] = [["res_model", "=", "crm.lead"]]
     if params.get("user_id"):
         domain.append(["user_id", "=", params["user_id"]])
@@ -428,26 +449,28 @@ def list_crm_activities(params: dict, uid: int = 1, context: Optional[dict] = No
         domain.append(["date_deadline", "<=", str(params["date_to"])])
     if params.get("search"):
         domain.append(["summary", "ilike", params["search"]])
-    with mashora_env(uid=uid, context=context) as env:
-        if "mail.activity" not in env.registry:
-            return {"records": [], "total": 0}
-        A = env["mail.activity"]
-        total = A.search_count(domain)
-        records = A.search(domain, offset=params.get("offset", 0),
-                           limit=params.get("limit", 40),
-                           order=params.get("order", "date_deadline asc"))
-        data = records.read([
-            "id", "summary", "note", "date_deadline", "user_id",
-            "activity_type_id", "res_id", "res_name", "state",
-        ])
-        return {"records": data, "total": total}
+
+    return await async_search_read(
+        "mail.activity",
+        domain,
+        ["id", "summary", "note", "date_deadline", "user_id",
+         "activity_type_id", "res_id", "res_name", "state"],
+        offset=params.get("offset", 0),
+        limit=params.get("limit", 40),
+        order=params.get("order", "date_deadline asc"),
+    )
 
 
-def list_activity_types(uid: int = 1, context: Optional[dict] = None) -> dict:
+async def list_activity_types(uid: int = 1, context: Optional[dict] = None) -> dict:
     """List activity types (call, email, meeting, etc.)."""
-    with mashora_env(uid=uid, context=context) as env:
-        if "mail.activity.type" not in env.registry:
-            return {"records": [], "total": 0}
-        AT = env["mail.activity.type"]
-        types = AT.search([], order="sequence asc")
-        return {"records": types.read(["id", "name", "category", "icon"]), "total": len(types)}
+    if get_model_class("mail.activity.type") is None:
+        return {"records": [], "total": 0}
+
+    return await async_search_read(
+        "mail.activity.type",
+        [],
+        ["id", "name", "category", "icon"],
+        offset=0,
+        limit=1000,
+        order="sequence asc",
+    )

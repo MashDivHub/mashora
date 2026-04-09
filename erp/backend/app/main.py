@@ -1,14 +1,9 @@
 """
 Mashora ERP API.
 
-FastAPI application with dual ORM support:
-- Legacy: Mashora ORM via thread pool (USE_NEW_ORM=false)
-- New: SQLAlchemy 2.0 async (USE_NEW_ORM=true)
-
-Toggle via USE_NEW_ORM environment variable.
+FastAPI application with SQLAlchemy 2.0 async ORM.
 """
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -22,41 +17,26 @@ logging.basicConfig(
 )
 _logger = logging.getLogger(__name__)
 
-USE_NEW_ORM = os.environ.get("USE_NEW_ORM", "false").lower() in ("true", "1", "yes")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: initialize ORM backend. Shutdown: cleanup."""
+    """Startup: initialize SQLAlchemy engine. Shutdown: dispose."""
     settings = get_settings()
     _logger.info("Starting Mashora ERP API...")
 
-    if USE_NEW_ORM:
-        # SQLAlchemy 2.0 async backend
-        from app.db.engine import get_engine, dispose_engine
-        from app.core.model_registry import rebuild_registry
-        import app.models  # noqa: F401 — register all models with Base
-        get_engine()
-        rebuild_registry()
-        _logger.info("SQLAlchemy ORM initialized successfully.")
-    else:
-        # Legacy Mashora ORM backend
-        from app.core.orm_adapter import init_mashora
-        init_mashora()
-        _logger.info("Mashora ORM initialized successfully.")
+    from app.db.engine import get_engine, dispose_engine
+    from app.core.model_registry import rebuild_registry
+    import app.models  # noqa: F401 — register all models with Base
+    get_engine()
+    rebuild_registry()
+    _logger.info("SQLAlchemy ORM initialized successfully.")
 
     _register_exception_handlers()
-    _logger.info("Exception handlers registered.")
 
     yield
 
-    # Cleanup
-    if USE_NEW_ORM:
-        from app.db.engine import dispose_engine
-        await dispose_engine()
-    else:
-        from app.core.orm_adapter import shutdown
-        shutdown()
+    from app.db.engine import dispose_engine
+    await dispose_engine()
     _logger.info("Mashora ERP API shut down.")
 
 
@@ -67,7 +47,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow all origins during development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,39 +60,13 @@ app.add_middleware(SecurityAuditMiddleware)
 
 
 def _register_exception_handlers():
-    """Register exception handlers for ORM exception types."""
-    if USE_NEW_ORM:
-        from app.core.orm_adapter_v2 import RecordNotFoundError
-        from fastapi import Request
-        from fastapi.responses import JSONResponse
+    """Register exception handlers."""
+    from app.services.base import RecordNotFoundError
+    from app.core.exceptions import mashora_exception_handler
 
-        async def not_found_handler(request: Request, exc: RecordNotFoundError):
-            return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-        app.add_exception_handler(RecordNotFoundError, not_found_handler)
-    else:
-        try:
-            from mashora.exceptions import (
-                AccessDenied,
-                AccessError,
-                CacheMiss,
-                ConcurrencyError,
-                LockError,
-                MissingError,
-                RedirectWarning,
-                UserError,
-                ValidationError,
-            )
-            from app.core.exceptions import mashora_exception_handler
-
-            for exc_class in (
-                UserError, AccessError, AccessDenied, MissingError,
-                ValidationError, LockError, ConcurrencyError,
-                RedirectWarning, CacheMiss,
-            ):
-                app.add_exception_handler(exc_class, mashora_exception_handler)
-        except ImportError:
-            _logger.warning("Mashora exceptions not available — skipping handlers")
+    app.add_exception_handler(RecordNotFoundError, mashora_exception_handler)
+    app.add_exception_handler(ValueError, mashora_exception_handler)
+    app.add_exception_handler(RuntimeError, mashora_exception_handler)
 
 
 # --- Routers ---
@@ -175,6 +128,6 @@ async def root():
     return {
         "name": "Mashora ERP API",
         "version": "1.0.0",
-        "orm": "sqlalchemy" if USE_NEW_ORM else "mashora-legacy",
+        "orm": "sqlalchemy-2.0-async",
         "docs": "/docs",
     }

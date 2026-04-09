@@ -13,7 +13,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
-from app.core.orm_adapter import orm_call
 from app.schemas.website import (
     ProductListParams,
     CategoryListParams,
@@ -63,7 +62,7 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 @router.get("/config")
 async def website_config(website_id: int | None = Query(default=None), user: CurrentUser | None = Depends(get_optional_user)):
     """Get website configuration (name, domain, languages, social links)."""
-    return await orm_call(get_website_config, website_id=website_id, uid=_uid(user), context=_ctx(user))
+    return await get_website_config(website_id=website_id)
 
 
 # ============================================
@@ -74,7 +73,7 @@ async def website_config(website_id: int | None = Query(default=None), user: Cur
 async def get_pages(params: PageListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List CMS pages."""
     p = params or PageListParams()
-    return await orm_call(list_pages, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    return await list_pages(params=p.model_dump())
 
 
 # ============================================
@@ -85,7 +84,7 @@ async def get_pages(params: PageListParams | None = None, user: CurrentUser | No
 async def get_menus(params: MenuListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List website navigation menus."""
     p = params or MenuListParams()
-    return await orm_call(list_menus, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    return await list_menus(params=p.model_dump())
 
 
 # ============================================
@@ -96,13 +95,13 @@ async def get_menus(params: MenuListParams | None = None, user: CurrentUser | No
 async def get_products(params: ProductListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List products for the storefront."""
     p = params or ProductListParams()
-    return await orm_call(list_products, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    return await list_products(params=p.model_dump())
 
 
 @router.get("/products/{product_id}")
 async def get_product_detail(product_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get product details with variants."""
-    result = await orm_call(get_product, product_id=product_id, uid=_uid(user), context=_ctx(user))
+    result = await get_product(product_id=product_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
     return result
@@ -116,7 +115,7 @@ async def get_product_detail(product_id: int, user: CurrentUser | None = Depends
 async def get_categories(params: CategoryListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List product categories (shop navigation)."""
     p = params or CategoryListParams()
-    return await orm_call(list_categories, params=p.model_dump(), uid=_uid(user), context=_ctx(user))
+    return await list_categories(params=p.model_dump())
 
 
 # ============================================
@@ -126,7 +125,7 @@ async def get_categories(params: CategoryListParams | None = None, user: Current
 @router.get("/cart/{order_id}")
 async def get_cart_detail(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get shopping cart contents."""
-    result = await orm_call(get_cart, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    result = await get_cart(order_id=order_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Cart not found")
     return result
@@ -135,33 +134,25 @@ async def get_cart_detail(order_id: int, user: CurrentUser | None = Depends(get_
 @router.post("/cart/{order_id}/add")
 async def cart_add(order_id: int, body: CartAddItem, user: CurrentUser | None = Depends(get_optional_user)):
     """Add a product to the cart."""
-    return await orm_call(
-        add_to_cart,
-        order_id=order_id,
-        product_id=body.product_id,
-        quantity=body.quantity,
-        product_uom_id=body.product_uom_id,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    return await add_to_cart(order_id=order_id, product_id=body.product_id, quantity=body.quantity, product_uom_id=body.product_uom_id, )
 
 
 @router.put("/cart/{order_id}/lines/{line_id}")
 async def cart_update(order_id: int, line_id: int, body: CartUpdateItem, user: CurrentUser | None = Depends(get_optional_user)):
     """Update cart line quantity. Set to 0 to remove."""
-    return await orm_call(update_cart_line, line_id=line_id, quantity=body.quantity, uid=_uid(user), context=_ctx(user))
+    return await update_cart_line(line_id=line_id, quantity=body.quantity)
 
 
 @router.delete("/cart/{order_id}/lines/{line_id}")
 async def cart_remove(order_id: int, line_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Remove an item from the cart."""
-    return await orm_call(remove_cart_line, order_id=order_id, line_id=line_id, uid=_uid(user), context=_ctx(user))
+    return await remove_cart_line(order_id=order_id, line_id=line_id)
 
 
 @router.post("/cart/{order_id}/clear")
 async def cart_clear(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Clear all items from the cart."""
-    return await orm_call(clear_cart, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    return await clear_cart(order_id=order_id)
 
 
 # ============================================
@@ -171,7 +162,7 @@ async def cart_clear(order_id: int, user: CurrentUser | None = Depends(get_optio
 @router.get("/checkout/{order_id}")
 async def get_checkout(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get checkout info including addresses and available payment terms."""
-    result = await orm_call(get_checkout_info, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    result = await get_checkout_info(order_id=order_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Order not found")
     return result
@@ -185,14 +176,7 @@ async def set_checkout_addresses_endpoint(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Set billing and shipping addresses for checkout."""
-    result = await orm_call(
-        set_checkout_addresses,
-        order_id=order_id,
-        invoice_partner_id=invoice_partner_id,
-        shipping_partner_id=shipping_partner_id,
-        uid=_uid(user),
-        context=_ctx(user),
-    )
+    result = await set_checkout_addresses(order_id=order_id, invoice_partner_id=invoice_partner_id, shipping_partner_id=shipping_partner_id, )
     if result is None:
         raise HTTPException(status_code=404, detail="Order not found")
     return result
@@ -201,7 +185,7 @@ async def set_checkout_addresses_endpoint(
 @router.post("/checkout/{order_id}/confirm")
 async def confirm_checkout_endpoint(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Confirm the sale order (checkout complete)."""
-    result = await orm_call(confirm_checkout, order_id=order_id, uid=_uid(user), context=_ctx(user))
+    result = await confirm_checkout(order_id=order_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Order not found")
     return result
@@ -214,7 +198,7 @@ async def get_addresses(
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get all addresses for a customer (for address selection at checkout)."""
-    return await orm_call(get_customer_addresses, partner_id=partner_id, uid=_uid(user), context=_ctx(user))
+    return await get_customer_addresses(partner_id=partner_id)
 
 
 # ============================================
@@ -224,7 +208,7 @@ async def get_addresses(
 @router.get("/dashboard")
 async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
     """Get website/eCommerce dashboard metrics."""
-    return await orm_call(get_website_dashboard, uid=_uid(user), context=_ctx(user))
+    return await get_website_dashboard()
 
 
 # ============================================
@@ -234,12 +218,12 @@ async def dashboard(user: CurrentUser | None = Depends(get_optional_user)):
 @router.post("/blog/posts")
 async def blog_posts(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     """List blog posts."""
-    return await orm_call(list_blog_posts, params=params or {}, uid=_uid(user), context=_ctx(user))
+    return await list_blog_posts(params=params or {})
 
 @router.get("/blog/posts/{post_id}")
 async def blog_post_detail(post_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get a single blog post."""
-    result = await orm_call(get_blog_post, post_id=post_id, uid=_uid(user), context=_ctx(user))
+    result = await get_blog_post(post_id=post_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Blog post not found")
     return result
@@ -247,7 +231,7 @@ async def blog_post_detail(post_id: int, user: CurrentUser | None = Depends(get_
 @router.get("/blog/categories")
 async def blog_categories(user: CurrentUser | None = Depends(get_optional_user)):
     """List blog categories."""
-    return await orm_call(list_blogs, uid=_uid(user), context=_ctx(user))
+    return await list_blogs()
 
 
 # ============================================
@@ -257,9 +241,9 @@ async def blog_categories(user: CurrentUser | None = Depends(get_optional_user))
 @router.post("/pages/{page_id}/publish")
 async def toggle_page_publish(page_id: int, publish: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
     """Publish or unpublish a CMS page."""
-    return await orm_call(publish_page, page_id=page_id, publish=publish, uid=_uid(user), context=_ctx(user))
+    return await publish_page(page_id=page_id, publish=publish)
 
 @router.post("/products/{product_id}/publish")
 async def toggle_product_publish(product_id: int, publish: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
     """Publish or unpublish a product."""
-    return await orm_call(publish_product, product_id=product_id, publish=publish, uid=_uid(user), context=_ctx(user))
+    return await publish_product(product_id=product_id, publish=publish)

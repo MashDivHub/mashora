@@ -25,21 +25,11 @@ class CrmStage(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
     sequence: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    probability: Mapped[Optional[float]] = mapped_column(nullable=True)
     is_won: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     requirements: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
-    team_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("crm_team.id", ondelete="SET NULL"), nullable=True
-    )
-    legend_blocked: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
-    legend_done: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
-    legend_normal: Mapped[Optional[JSONB]] = mapped_column(JSONB, nullable=True)
+    rotting_threshold_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    color: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     fold: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-
-    # Relationships
-    team: Mapped[Optional["CrmTeam"]] = relationship(  # type: ignore[name-defined]
-        "CrmTeam", foreign_keys=[team_id]
-    )
 
     def __repr__(self) -> str:
         return f"<CrmStage id={self.id} sequence={self.sequence} is_won={self.is_won}>"
