@@ -193,7 +193,7 @@ export default function PosOrderList() {
         loading={isLoading}
         emptyIcon={<Receipt className="h-8 w-8 text-muted-foreground/40" />}
         emptyMessage="No orders found"
-        onRowClick={(row) => navigate(`/pos/orders/${row.id}`)}
+        onRowClick={(row) => navigate(`/admin/pos/orders/${row.id}`)}
       />
     </div>
   )

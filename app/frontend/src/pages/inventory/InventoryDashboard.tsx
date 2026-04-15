@@ -53,23 +53,23 @@ export default function InventoryDashboard() {
     {
       label: 'Receipts Ready', value: data?.receipts || 0, sub: 'to process',
       icon: <ArrowDownToLine className="h-5 w-5" />, color: 'info',
-      onClick: () => navigate('/inventory/receipts'),
+      onClick: () => navigate('/admin/inventory/receipts'),
     },
     {
       label: 'Deliveries Ready', value: data?.deliveries || 0, sub: 'to process',
       icon: <ArrowUpFromLine className="h-5 w-5" />, color: 'success',
-      onClick: () => navigate('/inventory/deliveries'),
+      onClick: () => navigate('/admin/inventory/deliveries'),
     },
     {
       label: 'Internal Ready', value: data?.internal || 0, sub: 'transfers',
       icon: <ArrowLeftRight className="h-5 w-5" />, color: 'default',
-      onClick: () => navigate('/inventory/transfers?filter=internal'),
+      onClick: () => navigate('/admin/inventory/transfers?filter=internal'),
     },
     {
       label: 'Late', value: data?.late || 0, sub: 'past scheduled date',
       icon: <Clock className="h-5 w-5" />,
       color: (data?.late || 0) > 0 ? 'danger' : 'default',
-      onClick: () => navigate('/inventory/transfers?filter=late'),
+      onClick: () => navigate('/admin/inventory/transfers?filter=late'),
     },
   ]
 

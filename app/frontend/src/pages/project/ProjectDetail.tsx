@@ -87,7 +87,7 @@ export default function ProjectDetail() {
       toast.success('Saved', 'Project saved successfully')
       queryClient.invalidateQueries({ queryKey: ['project'] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      if (isNew && data?.id) navigate(`/projects/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/projects/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {
@@ -113,7 +113,7 @@ export default function ProjectDetail() {
   const status = STATUS_MAP[form.last_update_status] || STATUS_MAP.to_define
 
   const smartButtons: SmartButton[] = [
-    { label: 'Tasks', value: `${form.open_task_count || 0} / ${form.task_count || 0}`, icon: <CheckSquare className="h-5 w-5" />, onClick: () => navigate(`/projects/tasks?project=${recordId}`) },
+    { label: 'Tasks', value: `${form.open_task_count || 0} / ${form.task_count || 0}`, icon: <CheckSquare className="h-5 w-5" />, onClick: () => navigate(`/admin/projects/tasks?project=${recordId}`) },
   ]
 
   const M2O = ({ field, model, label }: { field: string; model: string; label: string }) => {

@@ -99,7 +99,7 @@ export default function FleetList() {
                 <TableRow
                   key={row.id}
                   className="border-border/40 hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/fleet/${row.id}`)}
+                  onClick={() => navigate(`/admin/fleet/${row.id}`)}
                 >
                   <TableCell>
                     <div>

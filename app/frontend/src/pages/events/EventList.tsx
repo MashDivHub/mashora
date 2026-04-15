@@ -135,7 +135,7 @@ export default function EventList() {
       <PageHeader
         title="Events"
         subtitle={data?.total != null ? `${data.total} event${data.total !== 1 ? 's' : ''}` : undefined}
-        onNew={() => navigate('/events/new')}
+        onNew={() => navigate('/admin/events/new')}
       />
       <SearchBar
         placeholder="Search events..."

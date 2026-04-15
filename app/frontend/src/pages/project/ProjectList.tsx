@@ -107,7 +107,7 @@ export default function ProjectList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Projects" subtitle="project" onNew={() => navigate('/projects/new')} />
+      <PageHeader title="Projects" subtitle="project" onNew={() => navigate('/admin/projects/new')} />
       <SearchBar placeholder="Search projects..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

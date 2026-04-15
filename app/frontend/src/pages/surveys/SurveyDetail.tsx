@@ -136,7 +136,7 @@ export default function SurveyDetail() {
         <Button
           size="sm"
           className="rounded-xl gap-1.5"
-          onClick={() => navigate(`/surveys/${id}/responses`)}
+          onClick={() => navigate(`/admin/surveys/${id}/responses`)}
         >
           <BarChart2 className="h-3.5 w-3.5" />
           View Responses

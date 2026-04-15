@@ -56,7 +56,7 @@ export default function SpreadsheetList() {
         loading={isLoading}
         emptyMessage="No spreadsheets found"
         emptyIcon={<FileSpreadsheet className="h-10 w-10" />}
-        onRowClick={(row: any) => navigate(`/spreadsheets/${row.id}`)}
+        onRowClick={(row: any) => navigate(`/admin/spreadsheets/${row.id}`)}
       />
     </div>
   )

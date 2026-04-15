@@ -62,7 +62,7 @@ export default function CalendarView({ model, action, domain: actionDomain }: Vi
 
   const handleEventClick = useCallback(
     (info: any) => {
-      navigate(`/model/${model}/${info.event.id}`)
+      navigate(`/admin/model/${model}/${info.event.id}`)
     },
     [navigate, model],
   )
@@ -88,7 +88,7 @@ export default function CalendarView({ model, action, domain: actionDomain }: Vi
   )
 
   const handleDateClick = useCallback(() => {
-    navigate(`/model/${model}/new`)
+    navigate(`/admin/model/${model}/new`)
   }, [navigate, model])
 
   const handleDatesSet = useCallback((info: any) => {

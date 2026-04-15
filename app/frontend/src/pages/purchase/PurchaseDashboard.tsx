@@ -40,7 +40,7 @@ export default function PurchaseDashboard() {
       sub: 'draft & sent',
       icon: <FileText className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/purchase/orders?filter=rfq'),
+      onClick: () => navigate('/admin/purchase/orders?filter=rfq'),
     },
     {
       label: 'To Approve',
@@ -48,7 +48,7 @@ export default function PurchaseDashboard() {
       sub: 'awaiting approval',
       icon: <Clock className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/purchase/orders?filter=to_approve'),
+      onClick: () => navigate('/admin/purchase/orders?filter=to_approve'),
     },
     {
       label: 'Confirmed',
@@ -56,7 +56,7 @@ export default function PurchaseDashboard() {
       sub: 'purchase orders',
       icon: <Package className="h-5 w-5" />,
       color: 'success',
-      onClick: () => navigate('/purchase/orders?filter=orders'),
+      onClick: () => navigate('/admin/purchase/orders?filter=orders'),
     },
     {
       label: 'Month Spend',

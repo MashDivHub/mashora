@@ -40,7 +40,7 @@ export default function WebsiteDashboard() {
       sub: 'live in store',
       icon: <Package className="h-5 w-5" />,
       color: 'success',
-      onClick: () => navigate('/website/products'),
+      onClick: () => navigate('/admin/website/products'),
     },
     {
       label: 'Pages',
@@ -48,7 +48,7 @@ export default function WebsiteDashboard() {
       sub: 'CMS pages',
       icon: <FileText className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/website/pages'),
+      onClick: () => navigate('/admin/website/pages'),
     },
     {
       label: 'Orders This Month',
@@ -56,7 +56,7 @@ export default function WebsiteDashboard() {
       sub: 'e-commerce orders',
       icon: <ShoppingCart className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/website/orders'),
+      onClick: () => navigate('/admin/website/orders'),
     },
     {
       label: 'Online Revenue',
@@ -64,7 +64,7 @@ export default function WebsiteDashboard() {
       sub: 'this month',
       icon: <BarChart3 className="h-5 w-5" />,
       color: 'default',
-      onClick: () => navigate('/website/analytics'),
+      onClick: () => navigate('/admin/website/analytics'),
     },
   ]
 

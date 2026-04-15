@@ -77,7 +77,7 @@ export default function UserList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Users" subtitle="settings" onNew={() => navigate('/settings/users/new')} backTo="/settings" />
+      <PageHeader title="Users" subtitle="settings" onNew={() => navigate('/admin/settings/users/new')} backTo="/settings" />
       <SearchBar placeholder="Search users..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

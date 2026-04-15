@@ -158,7 +158,7 @@ export default function ActivityDashboard() {
                         variant="ghost"
                         size="sm"
                         className="rounded-xl text-xs gap-1"
-                        onClick={() => navigate(`/model/${activity.res_model}/${activity.res_id}`)}
+                        onClick={() => navigate(`/admin/model/${activity.res_model}/${activity.res_id}`)}
                       >
                         Open <ArrowRight className="h-3 w-3" />
                       </Button>

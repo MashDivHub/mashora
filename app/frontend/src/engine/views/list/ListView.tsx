@@ -158,7 +158,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
           </p>
           <h1 className="text-xl font-semibold tracking-tight capitalize">{modelLabel}</h1>
         </div>
-        <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate(`/model/${model}/new`)}>
+        <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate(`/admin/model/${model}/new`)}>
           <Plus className="h-3.5 w-3.5" /> New
         </Button>
       </div>
@@ -214,7 +214,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
                       <TableRow
                         key={rec.id}
                         className="border-border/30 hover:bg-muted/20 cursor-pointer transition-colors"
-                        onClick={() => navigate(`/model/${model}/${rec.id}`)}
+                        onClick={() => navigate(`/admin/model/${model}/${rec.id}`)}
                       >
                         {columns.map((col, ci) => (
                           <TableCell

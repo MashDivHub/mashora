@@ -39,7 +39,7 @@ export default function SalesDashboard() {
       sub: 'draft & sent',
       icon: <FileText className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/sales/orders?filter=quotations'),
+      onClick: () => navigate('/admin/sales/orders?filter=quotations'),
     },
     {
       label: 'Confirmed',
@@ -47,7 +47,7 @@ export default function SalesDashboard() {
       sub: 'sales orders',
       icon: <ShoppingCart className="h-5 w-5" />,
       color: 'success',
-      onClick: () => navigate('/sales/orders?filter=orders'),
+      onClick: () => navigate('/admin/sales/orders?filter=orders'),
     },
     {
       label: 'To Invoice',
@@ -55,7 +55,7 @@ export default function SalesDashboard() {
       sub: 'ready for invoicing',
       icon: <Clock className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/sales/orders?filter=to_invoice'),
+      onClick: () => navigate('/admin/sales/orders?filter=to_invoice'),
     },
     {
       label: 'Month Revenue',

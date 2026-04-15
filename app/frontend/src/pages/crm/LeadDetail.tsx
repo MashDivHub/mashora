@@ -101,7 +101,7 @@ export default function LeadDetail() {
       toast.success('Saved', 'Lead saved successfully')
       queryClient.invalidateQueries({ queryKey: ['crm-lead'] })
       queryClient.invalidateQueries({ queryKey: ['crm-pipeline'] })
-      if (isNew && data?.id) navigate(`/crm/leads/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/crm/leads/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

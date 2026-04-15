@@ -74,7 +74,7 @@ export default function UserForm() {
       toast.success('Saved', 'User saved successfully')
       queryClient.invalidateQueries({ queryKey: ['user'] })
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      if (isNew && data?.id) navigate(`/settings/users/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/settings/users/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

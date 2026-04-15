@@ -107,7 +107,7 @@ export default function TransferDetail() {
       toast.success('Saved', 'Transfer saved successfully')
       queryClient.invalidateQueries({ queryKey: ['transfer'] })
       queryClient.invalidateQueries({ queryKey: ['transfers'] })
-      if (isNew && data?.id) navigate(`/inventory/transfers/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/inventory/transfers/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

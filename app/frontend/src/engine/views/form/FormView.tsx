@@ -81,7 +81,7 @@ export default function FormView({ model, recordId }: ViewProps) {
       setState(prev => prev ? markSaved(prev, saved) : prev)
       setEditing(false)
       if (!recordId && newId) {
-        navigate(`/model/${model}/${newId}`, { replace: true })
+        navigate(`/admin/model/${model}/${newId}`, { replace: true })
       } else {
         queryClient.invalidateQueries({ queryKey: ['form', model, recordId] })
       }
@@ -133,7 +133,7 @@ export default function FormView({ model, recordId }: ViewProps) {
         recordId = saved.id ?? null
         if (recordId) {
           setState(prev => prev ? markSaved(prev, saved) : prev)
-          navigate(`/model/${model}/${recordId}`, { replace: true })
+          navigate(`/admin/model/${model}/${recordId}`, { replace: true })
         }
       } catch (e: any) {
         console.error('Save before action failed:', e)

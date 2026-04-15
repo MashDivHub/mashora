@@ -97,7 +97,7 @@ export default function EmployeeList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Employees" subtitle="hr" onNew={() => navigate('/hr/employees/new')} />
+      <PageHeader title="Employees" subtitle="hr" onNew={() => navigate('/admin/hr/employees/new')} />
       <SearchBar placeholder="Search employees..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

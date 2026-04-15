@@ -137,7 +137,7 @@ export default function LoyaltyPrograms() {
             return (
               <div
                 key={program.id}
-                onClick={() => navigate(`/sales/loyalty/${program.id}`)}
+                onClick={() => navigate(`/admin/sales/loyalty/${program.id}`)}
                 className="rounded-2xl border border-border/30 bg-card/50 p-5 hover:bg-muted/20 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
                 {/* Header row */}

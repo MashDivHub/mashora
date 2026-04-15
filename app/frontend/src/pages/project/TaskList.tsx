@@ -105,7 +105,7 @@ export default function TaskList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={projectId ? 'Project Tasks' : 'All Tasks'} subtitle="project" onNew={() => navigate('/projects/tasks/new')} backTo={projectId ? `/projects/${projectId}` : undefined} />
+      <PageHeader title={projectId ? 'Project Tasks' : 'All Tasks'} subtitle="project" onNew={() => navigate('/admin/projects/tasks/new')} backTo={projectId ? `/projects/${projectId}` : undefined} />
       <SearchBar placeholder="Search tasks..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

@@ -85,7 +85,7 @@ export default function PurchaseOrderList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={title} subtitle="purchase" onNew={() => navigate('/purchase/orders/new')} />
+      <PageHeader title={title} subtitle="purchase" onNew={() => navigate('/admin/purchase/orders/new')} />
       <SearchBar placeholder="Search orders..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

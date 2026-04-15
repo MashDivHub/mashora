@@ -41,7 +41,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -50,7 +50,7 @@ export default function Login() {
     clearError()
     const ok = await login(email, password)
     if (ok) {
-      navigate('/dashboard', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     }
   }
 
@@ -66,9 +66,9 @@ export default function Login() {
 
         {/* ── Left: dark hero panel ───────────────────────────────────────── */}
         <div className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
-          {/* Radial gradient layer */}
-          <div className="absolute inset-0 bg-zinc-950 dark:bg-zinc-900" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.30),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.24),transparent_40%)]" />
+          {/* Solid dark background with subtle top glow */}
+          <div className="absolute inset-0 bg-zinc-950" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.04),transparent_60%)]" />
 
           {/* Content */}
           <div className="relative z-10 flex flex-col gap-12">
@@ -116,12 +116,11 @@ export default function Login() {
                 <Icon className="size-4" />
               </div>
             ))}
-            <span className="text-xs text-zinc-500">Phase 0 Proof of Concept</span>
           </div>
         </div>
 
         {/* ── Right: login card ────────────────────────────────────────────── */}
-        <div className="flex w-full items-center justify-center lg:bg-background/60 lg:px-12">
+        <div className="flex w-full items-center justify-center bg-background lg:px-12">
           <div className="w-full max-w-md">
             {/* Mobile-only logo */}
             <div className="mb-8 flex items-center gap-3 lg:hidden">
@@ -162,12 +161,12 @@ export default function Login() {
                 {/* Form */}
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email address</Label>
+                    <Label htmlFor="email">Username or email</Label>
                     <Input
                       id="email"
-                      type="email"
-                      placeholder="admin@mashora.com"
-                      autoComplete="email"
+                      type="text"
+                      placeholder="admin"
+                      autoComplete="username"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}

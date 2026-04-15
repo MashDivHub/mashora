@@ -115,7 +115,7 @@ export default function InvoiceDetail() {
       toast.success('Saved', 'Invoice saved successfully')
       queryClient.invalidateQueries({ queryKey: ['invoice'] })
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      if (isNew && data?.id) navigate(`/invoicing/invoices/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/invoicing/invoices/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

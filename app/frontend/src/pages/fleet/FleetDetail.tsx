@@ -56,7 +56,7 @@ export default function FleetDetail() {
       <div className="flex flex-col items-center gap-4 py-24">
         <Car className="h-10 w-10 text-muted-foreground" />
         <p className="text-muted-foreground">Vehicle not found.</p>
-        <Button variant="outline" className="rounded-xl" onClick={() => navigate('/fleet')}>
+        <Button variant="outline" className="rounded-xl" onClick={() => navigate('/admin/fleet')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Fleet
         </Button>
       </div>
@@ -133,7 +133,7 @@ export default function FleetDetail() {
           <Button
             variant="outline"
             className="rounded-xl gap-2 w-fit"
-            onClick={() => navigate(`/fleet/${vehicleId}/costs`)}
+            onClick={() => navigate(`/admin/fleet/${vehicleId}/costs`)}
           >
             <DollarSign className="h-4 w-4" />
             View Vehicle Costs

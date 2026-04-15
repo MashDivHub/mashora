@@ -51,7 +51,7 @@ export default function DashboardList() {
           {records.map((row: any) => (
             <div
               key={row.id}
-              onClick={() => navigate(`/dashboards/${row.id}`)}
+              onClick={() => navigate(`/admin/dashboards/${row.id}`)}
               className="rounded-2xl border border-border/30 bg-card/50 p-5 hover:bg-muted/20 hover:-translate-y-0.5 transition-all cursor-pointer"
             >
               <p className="text-base font-bold truncate">{row.name}</p>

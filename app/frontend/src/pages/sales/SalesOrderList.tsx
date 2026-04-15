@@ -100,7 +100,7 @@ export default function SalesOrderList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={title} subtitle="sales" onNew={() => navigate('/sales/orders/new')} />
+      <PageHeader title={title} subtitle="sales" onNew={() => navigate('/admin/sales/orders/new')} />
       <SearchBar placeholder="Search orders..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

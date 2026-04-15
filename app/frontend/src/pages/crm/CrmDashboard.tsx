@@ -104,7 +104,7 @@ export default function CrmDashboard() {
       sub: `${leads.new_this_month ?? 0} new leads this month`,
       icon: <Target className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/crm/pipeline'),
+      onClick: () => navigate('/admin/crm/pipeline'),
     },
     {
       label: 'Won This Month',
@@ -118,7 +118,7 @@ export default function CrmDashboard() {
       value: fmtCur(opps.total_expected_revenue ?? 0),
       icon: <DollarSign className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/crm/pipeline'),
+      onClick: () => navigate('/admin/crm/pipeline'),
     },
     {
       label: 'Overdue Activities',
@@ -126,7 +126,7 @@ export default function CrmDashboard() {
       sub: overdue > 0 ? 'needs attention' : 'all clear',
       icon: <CalendarCheck className="h-5 w-5" />,
       color: overdue > 0 ? 'danger' : 'default',
-      onClick: () => navigate('/crm/activities'),
+      onClick: () => navigate('/admin/crm/activities'),
     },
   ]
 

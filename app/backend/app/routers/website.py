@@ -65,6 +65,22 @@ async def website_config(website_id: int | None = Query(default=None), user: Cur
     return await get_website_config(website_id=website_id)
 
 
+@router.get("/homepage")
+async def get_homepage():
+    """Return the published homepage (page with url='/') or 404."""
+    from app.services.base import async_search_read
+    result = await async_search_read(
+        "website.page",
+        domain=[["url", "=", "/"], ["website_published", "=", True]],
+        fields=["id", "name", "url", "content", "website_published"],
+        limit=1,
+    )
+    records = result.get("records", [])
+    if not records:
+        raise HTTPException(status_code=404, detail="No homepage configured")
+    return records[0]
+
+
 # ============================================
 # CMS Pages
 # ============================================

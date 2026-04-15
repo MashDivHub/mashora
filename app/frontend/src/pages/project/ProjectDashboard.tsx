@@ -40,7 +40,7 @@ export default function ProjectDashboard() {
       sub: 'projects',
       icon: <FolderKanban className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/projects/list'),
+      onClick: () => navigate('/admin/projects/list'),
     },
     {
       label: 'Open Tasks',
@@ -48,7 +48,7 @@ export default function ProjectDashboard() {
       sub: 'in progress',
       icon: <ClipboardList className="h-5 w-5" />,
       color: 'success',
-      onClick: () => navigate('/projects/tasks'),
+      onClick: () => navigate('/admin/projects/tasks'),
     },
     {
       label: 'My Tasks',
@@ -56,7 +56,7 @@ export default function ProjectDashboard() {
       sub: 'assigned to me',
       icon: <CheckSquare className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/projects/todos'),
+      onClick: () => navigate('/admin/projects/todos'),
     },
     {
       label: 'Overdue',
@@ -64,7 +64,7 @@ export default function ProjectDashboard() {
       sub: 'past due date',
       icon: <Flag className="h-5 w-5" />,
       color: overdue > 0 ? 'danger' : 'default',
-      onClick: () => navigate('/projects/tasks?filter=overdue'),
+      onClick: () => navigate('/admin/projects/tasks?filter=overdue'),
     },
   ]
 

@@ -70,57 +70,57 @@ const navSections = [
   {
     label: 'Core',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { name: 'Activities', href: '/activities', icon: CalendarCheck },
-      { name: 'Contacts', href: '/contacts', icon: Users },
+      { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { name: 'Activities', href: '/admin/activities', icon: CalendarCheck },
+      { name: 'Contacts', href: '/admin/contacts', icon: Users },
     ],
   },
   {
     label: 'Sales & CRM',
     items: [
-      { name: 'Sales', href: '/sales', icon: ShoppingCart },
-      { name: 'CRM', href: '/crm', icon: Target },
+      { name: 'Sales', href: '/admin/sales', icon: ShoppingCart },
+      { name: 'CRM', href: '/admin/crm', icon: Target },
     ],
   },
   {
     label: 'Supply Chain',
     items: [
-      { name: 'Purchase', href: '/purchase', icon: Package },
-      { name: 'Inventory', href: '/inventory', icon: Warehouse },
+      { name: 'Purchase', href: '/admin/purchase', icon: Package },
+      { name: 'Inventory', href: '/admin/inventory', icon: Warehouse },
     ],
   },
   {
     label: 'Finance',
-    items: [{ name: 'Accounting', href: '/accounting', icon: Calculator }],
+    items: [{ name: 'Accounting', href: '/admin/accounting', icon: Calculator }],
   },
   {
     label: 'Operations',
     items: [
-      { name: 'Manufacturing', href: '/manufacturing', icon: Factory },
-      { name: 'HR', href: '/hr', icon: UserCheck },
-      { name: 'Projects', href: '/projects', icon: FolderKanban },
+      { name: 'Manufacturing', href: '/admin/manufacturing', icon: Factory },
+      { name: 'HR', href: '/admin/hr', icon: UserCheck },
+      { name: 'Projects', href: '/admin/projects', icon: FolderKanban },
     ],
   },
   {
     label: 'Online',
-    items: [{ name: 'Website', href: '/website', icon: Globe }],
+    items: [{ name: 'Website', href: '/admin/website', icon: Globe }],
   },
   {
     label: 'Other',
     items: [
-      { name: 'Fleet', href: '/fleet', icon: Car },
-      { name: 'Repairs', href: '/repairs', icon: Wrench },
-      { name: 'Events', href: '/events', icon: CalendarDays },
-      { name: 'Surveys', href: '/surveys', icon: ClipboardList },
-      { name: 'Email Marketing', href: '/email-marketing', icon: Mail },
-      { name: 'POS', href: '/pos', icon: Monitor },
-      { name: 'Calendar', href: '/calendar', icon: Calendar },
+      { name: 'Fleet', href: '/admin/fleet', icon: Car },
+      { name: 'Repairs', href: '/admin/repairs', icon: Wrench },
+      { name: 'Events', href: '/admin/events', icon: CalendarDays },
+      { name: 'Surveys', href: '/admin/surveys', icon: ClipboardList },
+      { name: 'Email Marketing', href: '/admin/email-marketing', icon: Mail },
+      { name: 'POS', href: '/admin/pos', icon: Monitor },
+      { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
     ],
   },
   {
     label: 'Admin',
     items: [
-      { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Settings', href: '/admin/settings', icon: Settings },
     ],
   },
 ]
@@ -647,34 +647,36 @@ export default function Layout() {
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-80">
-                    <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <div className="max-h-64 overflow-y-auto">
+                  <DropdownMenuContent align="end" className="w-80 p-1">
+                    <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Notifications
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="my-1" />
+                    <div className="max-h-80 overflow-y-auto space-y-1 py-1">
                       {notifications.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-sm text-muted-foreground">No notifications</div>
+                        <div className="px-3 py-6 text-center text-xs text-muted-foreground">No notifications</div>
                       ) : (
                         notifications.slice(0, 10).map(notif => (
                           <DropdownMenuItem
                             key={notif.id}
                             className={cn(
-                              'flex flex-col items-start gap-1 rounded-lg py-3 cursor-pointer',
-                              !notif.read && 'bg-accent/50'
+                              'flex flex-col items-start gap-0.5 rounded-md px-2 py-2 cursor-pointer',
+                              !notif.read && 'bg-accent/40'
                             )}
                             onClick={() => markRead(notif.id)}
                           >
-                            <span className="text-sm font-medium">{notif.title}</span>
-                            <span className="text-xs text-muted-foreground line-clamp-2">{notif.body}</span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs font-medium leading-tight">{notif.title}</span>
+                            <span className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">{notif.body}</span>
+                            <span className="text-[10px] text-muted-foreground/70 mt-0.5">
                               {notif.timestamp.toLocaleString()}
                             </span>
                           </DropdownMenuItem>
                         ))
                       )}
                     </div>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
-                      className="justify-center text-sm text-muted-foreground cursor-pointer rounded-lg"
+                      className="justify-center text-xs text-muted-foreground cursor-pointer rounded-md py-1.5"
                       onClick={markAllRead}
                     >
                       Mark all as read
@@ -741,14 +743,14 @@ export default function Layout() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="cursor-pointer rounded-lg gap-2"
-                      onClick={() => navigate(`/settings/users/${user?.id}`)}
+                      onClick={() => navigate(`/admin/settings/users/${user?.id}`)}
                     >
                       <User className="size-4" />
                       My Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer rounded-lg gap-2"
-                      onClick={() => navigate('/settings')}
+                      onClick={() => navigate('/admin/settings')}
                     >
                       <Settings className="size-4" />
                       Settings

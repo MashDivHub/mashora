@@ -58,28 +58,28 @@ export default function HrDashboard() {
       value: emp.total ?? data?.total_employees ?? 0,
       icon: <Users className="h-5 w-5" />,
       color: 'info',
-      onClick: () => navigate('/hr/employees'),
+      onClick: () => navigate('/admin/hr/employees'),
     },
     {
       label: 'Present Today',
       value: emp.present_today ?? data?.present_today ?? 0,
       icon: <Clock className="h-5 w-5" />,
       color: 'success',
-      onClick: () => navigate('/hr/attendance'),
+      onClick: () => navigate('/admin/hr/attendance'),
     },
     {
       label: 'Pending Leaves',
       value: data?.pending_leaves ?? 0,
       icon: <CalendarDays className="h-5 w-5" />,
       color: 'warning',
-      onClick: () => navigate('/hr/leaves'),
+      onClick: () => navigate('/admin/hr/leaves'),
     },
     {
       label: 'Departments',
       value: deptCount,
       icon: <Building2 className="h-5 w-5" />,
       color: 'default',
-      onClick: () => navigate('/hr/departments'),
+      onClick: () => navigate('/admin/hr/departments'),
     },
   ]
 

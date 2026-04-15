@@ -76,7 +76,7 @@ export default function TemplateGallery() {
             return (
               <button
                 key={tpl.id}
-                onClick={() => navigate(`/email-marketing/${tpl.id}`)}
+                onClick={() => navigate(`/admin/email-marketing/${tpl.id}`)}
                 className="rounded-2xl border border-border/30 bg-card/50 p-5 hover:bg-muted/20 transition-all text-left space-y-2 w-full"
               >
                 <p className="font-bold text-sm leading-snug">

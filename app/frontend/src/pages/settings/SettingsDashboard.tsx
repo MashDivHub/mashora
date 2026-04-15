@@ -25,8 +25,8 @@ export default function SettingsDashboard() {
   }
 
   const stats: StatCardData[] = [
-    { label: 'Users', value: data?.users || 0, sub: 'active', icon: <Users className="h-5 w-5" />, color: 'info', onClick: () => navigate('/settings/users') },
-    { label: 'Companies', value: data?.companies || 0, icon: <Building2 className="h-5 w-5" />, color: 'success', onClick: () => navigate('/settings/companies') },
+    { label: 'Users', value: data?.users || 0, sub: 'active', icon: <Users className="h-5 w-5" />, color: 'info', onClick: () => navigate('/admin/settings/users') },
+    { label: 'Companies', value: data?.companies || 0, icon: <Building2 className="h-5 w-5" />, color: 'success', onClick: () => navigate('/admin/settings/companies') },
   ]
 
   const sections = [

@@ -80,13 +80,13 @@ export default function AccountingDashboard() {
     {
       label: 'Draft Invoices', value: data?.draftInvoices || 0,
       icon: <FileText className="h-5 w-5" />, color: 'info',
-      onClick: () => navigate('/invoicing/invoices?filter=draft'),
+      onClick: () => navigate('/admin/invoicing/invoices?filter=draft'),
     },
     {
       label: 'Overdue', value: data?.overdueCount || 0, sub: 'past due date',
       icon: <AlertTriangle className="h-5 w-5" />,
       color: (data?.overdueCount || 0) > 0 ? 'danger' : 'default',
-      onClick: () => navigate('/invoicing/invoices?filter=overdue'),
+      onClick: () => navigate('/admin/invoicing/invoices?filter=overdue'),
     },
     {
       label: 'Receivable', value: fmtCur(data?.totalReceivable || 0), sub: 'outstanding',

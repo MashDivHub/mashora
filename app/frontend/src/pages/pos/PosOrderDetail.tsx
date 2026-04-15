@@ -139,7 +139,7 @@ export default function PosOrderDetail() {
         title={
           <span className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/pos/orders')}
+              onClick={() => navigate('/admin/pos/orders')}
               className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Back to orders"
             >
@@ -167,7 +167,7 @@ export default function PosOrderDetail() {
                 value={
                   sessionId ? (
                     <button
-                      onClick={() => navigate(`/pos/sessions/${sessionId}`)}
+                      onClick={() => navigate(`/admin/pos/sessions/${sessionId}`)}
                       className="text-primary hover:underline"
                     >
                       {sessionName}

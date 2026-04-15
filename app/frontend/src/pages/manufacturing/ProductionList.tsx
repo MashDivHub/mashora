@@ -106,7 +106,7 @@ export default function ProductionList() {
       <PageHeader
         title="Production Orders"
         subtitle="manufacturing"
-        onNew={() => navigate('/manufacturing/orders/new')}
+        onNew={() => navigate('/admin/manufacturing/orders/new')}
       />
       <SearchBar
         placeholder="Search production orders..."

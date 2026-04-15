@@ -131,7 +131,7 @@ export default function EventDetail() {
         </div>
         <div className="mt-4">
           <button
-            onClick={() => navigate(`/events/${event.id}/registrations`)}
+            onClick={() => navigate(`/admin/events/${event.id}/registrations`)}
             className="text-sm text-primary hover:underline"
           >
             View {regCount} registration{regCount !== 1 ? 's' : ''} &rarr;

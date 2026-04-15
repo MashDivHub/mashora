@@ -109,7 +109,7 @@ export default function CrmActivities() {
       render: (v: string, row: Activity) => (
         <button
           className="text-sm text-primary hover:underline text-left"
-          onClick={e => { e.stopPropagation(); navigate(`/crm/leads/${row.res_id}`) }}
+          onClick={e => { e.stopPropagation(); navigate(`/admin/crm/leads/${row.res_id}`) }}
         >
           {v || row.res_id}
         </button>

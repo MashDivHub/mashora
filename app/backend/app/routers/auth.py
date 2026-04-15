@@ -36,7 +36,7 @@ async def login(body: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token_data = {
-        "sub": user_data["uid"],
+        "sub": str(user_data["uid"]),
         "login": user_data["login"],
         "company_id": user_data["company_id"],
         "company_ids": user_data["company_ids"],
@@ -63,7 +63,7 @@ async def refresh_token(body: RefreshRequest):
         raise HTTPException(status_code=401, detail="Invalid token type")
 
     token_data = {
-        "sub": payload["sub"],
+        "sub": str(payload["sub"]),
         "login": payload.get("login"),
         "company_id": payload.get("company_id"),
         "company_ids": payload.get("company_ids", []),

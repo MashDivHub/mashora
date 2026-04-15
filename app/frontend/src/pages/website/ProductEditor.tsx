@@ -60,7 +60,7 @@ export default function ProductEditor() {
         <p className="text-sm font-medium">Product not found.</p>
         <button
           className="rounded-2xl border border-border/60 px-4 py-2 text-sm hover:bg-muted/20 transition-colors flex items-center gap-2"
-          onClick={() => navigate('/website/products')}
+          onClick={() => navigate('/admin/website/products')}
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Products

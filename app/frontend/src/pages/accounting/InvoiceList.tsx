@@ -105,7 +105,7 @@ export default function InvoiceList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={title} subtitle="invoicing" onNew={() => navigate('/invoicing/invoices/new')} />
+      <PageHeader title={title} subtitle="invoicing" onNew={() => navigate('/admin/invoicing/invoices/new')} />
       <SearchBar placeholder="Search invoices..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

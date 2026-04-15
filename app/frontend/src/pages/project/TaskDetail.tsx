@@ -99,7 +99,7 @@ export default function TaskDetail() {
       toast.success('Saved', 'Task saved successfully')
       queryClient.invalidateQueries({ queryKey: ['task'] })
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      if (isNew && data?.id) navigate(`/projects/tasks/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/projects/tasks/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {
@@ -170,7 +170,7 @@ export default function TaskDetail() {
             form.child_ids.map((child: any) => {
               const c = typeof child === 'object' ? child : { id: child }
               return (
-                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-border/50 p-3 hover:bg-muted/20 cursor-pointer" onClick={() => navigate(`/projects/tasks/${c.id}`)}>
+                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-border/50 p-3 hover:bg-muted/20 cursor-pointer" onClick={() => navigate(`/admin/projects/tasks/${c.id}`)}>
                   <FolderKanban className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-sm">{c.name || c.display_name || `Task #${c.id}`}</span>
                 </div>

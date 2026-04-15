@@ -132,7 +132,7 @@ export default function LeaveList() {
       <PageHeader
         title="Leave Requests"
         subtitle={isLoading ? undefined : `${total} record${total !== 1 ? 's' : ''}`}
-        onNew={() => navigate('/hr/leaves/new')}
+        onNew={() => navigate('/admin/hr/leaves/new')}
       />
 
       {/* Search + tab filters */}

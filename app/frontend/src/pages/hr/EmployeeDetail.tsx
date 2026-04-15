@@ -105,7 +105,7 @@ export default function EmployeeDetail() {
       toast.success('Saved', 'Employee saved successfully')
       queryClient.invalidateQueries({ queryKey: ['employee'] })
       queryClient.invalidateQueries({ queryKey: ['employees'] })
-      if (isNew && data?.id) navigate(`/hr/employees/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/hr/employees/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

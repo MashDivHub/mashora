@@ -111,7 +111,7 @@ export default function PurchaseOrderDetail() {
       toast.success('Saved', 'Purchase order saved successfully')
       queryClient.invalidateQueries({ queryKey: ['purchase-order'] })
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
-      if (isNew && data?.id) navigate(`/purchase/orders/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/purchase/orders/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {

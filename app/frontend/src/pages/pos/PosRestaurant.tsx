@@ -147,7 +147,7 @@ export default function PosRestaurant() {
     : tables
 
   function openTerminal(tableId: number) {
-    navigate(`/pos/terminal/1?table=${tableId}`)
+    navigate(`/admin/pos/terminal/1?table=${tableId}`)
   }
 
   // ── loading skeleton ───────────────────────────────────────────────────────

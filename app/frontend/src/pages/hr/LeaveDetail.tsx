@@ -105,7 +105,7 @@ function NewLeaveView() {
       toast.success('Created', 'Leave request created successfully')
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
       const newId = data?.id ?? data
-      if (newId) navigate(`/hr/leaves/${newId}`, { replace: true })
+      if (newId) navigate(`/admin/hr/leaves/${newId}`, { replace: true })
     },
     onError: (e: any) => {
       toast.error('Error', e?.response?.data?.detail || e.message || 'Failed to create leave request')

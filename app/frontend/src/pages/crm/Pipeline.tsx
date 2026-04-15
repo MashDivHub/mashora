@@ -98,7 +98,7 @@ export default function Pipeline() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Pipeline" subtitle="CRM" onNew={() => navigate('/crm/leads/new')} />
+      <PageHeader title="Pipeline" subtitle="CRM" onNew={() => navigate('/admin/crm/leads/new')} />
       <SearchBar placeholder="Search opportunities..." onSearch={setSearch} filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k])} />
 
@@ -142,7 +142,7 @@ export default function Pipeline() {
                         as === 'today' && 'border-l-2 border-l-amber-500',
                         as === 'planned' && 'border-l-2 border-l-emerald-500',
                       )}
-                      onClick={() => navigate(`/crm/leads/${lead.id}`)}
+                      onClick={() => navigate(`/admin/crm/leads/${lead.id}`)}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="text-sm font-medium leading-tight line-clamp-2">{lead.name}</p>

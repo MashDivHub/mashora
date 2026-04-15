@@ -106,7 +106,7 @@ export default function LeadList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Leads & Opportunities" subtitle="CRM" onNew={() => navigate('/crm/leads/new')} />
+      <PageHeader title="Leads & Opportunities" subtitle="CRM" onNew={() => navigate('/admin/crm/leads/new')} />
       <SearchBar placeholder="Search leads..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

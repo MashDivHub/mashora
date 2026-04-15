@@ -119,7 +119,7 @@ export default function BlogList() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
         loading={isLoading}
-        onRowClick={row => navigate(`/website/blog/${row.id}`)}
+        onRowClick={row => navigate(`/admin/website/blog/${row.id}`)}
         emptyMessage="No blog posts found"
         emptyIcon={<FileText className="h-10 w-10" />}
       />

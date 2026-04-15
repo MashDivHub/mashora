@@ -91,7 +91,7 @@ export default function TransferList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={title} subtitle="inventory" onNew={() => navigate('/inventory/transfers/new')} />
+      <PageHeader title={title} subtitle="inventory" onNew={() => navigate('/admin/inventory/transfers/new')} />
       <SearchBar placeholder="Search transfers..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />

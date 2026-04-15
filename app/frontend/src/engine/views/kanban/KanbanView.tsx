@@ -48,7 +48,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
   const isLoading = columnsLoading || flatLoading
 
   const handleCardClick = useCallback(
-    (recordId: number) => navigate(`/model/${model}/${recordId}`),
+    (recordId: number) => navigate(`/admin/model/${model}/${recordId}`),
     [navigate, model],
   )
 
@@ -62,7 +62,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
   )
 
   const handleQuickCreate = useCallback(
-    () => navigate(`/model/${model}/new`),
+    () => navigate(`/admin/model/${model}/new`),
     [navigate, model],
   )
 
@@ -98,7 +98,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
         <Button
           size="sm"
           className="rounded-xl gap-1.5"
-          onClick={() => navigate(`/model/${model}/new`)}
+          onClick={() => navigate(`/admin/model/${model}/new`)}
         >
           <Plus className="h-3.5 w-3.5" /> New
         </Button>

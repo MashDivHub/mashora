@@ -114,7 +114,7 @@ export default function ContactForm() {
       queryClient.invalidateQueries({ queryKey: ['contact'] })
       queryClient.invalidateQueries({ queryKey: ['contacts'] })
       if (isNew && data?.id) {
-        navigate(`/contacts/${data.id}`, { replace: true })
+        navigate(`/admin/contacts/${data.id}`, { replace: true })
       }
     },
     onError: (e: any) => {
@@ -220,7 +220,7 @@ export default function ContactForm() {
                   <div
                     key={c.id}
                     className="rounded-xl border border-border/50 p-3 hover:bg-muted/20 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/contacts/${c.id}`)}
+                    onClick={() => navigate(`/admin/contacts/${c.id}`)}
                   >
                     <p className="text-sm font-medium">{c.name || c.display_name || `Contact #${c.id}`}</p>
                     {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
@@ -234,7 +234,7 @@ export default function ContactForm() {
             <p className="text-sm text-muted-foreground py-4 text-center">No contacts or addresses</p>
           )}
           {!isNew && editing && (
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigate(`/contacts/new?parent_id=${recordId}`)}>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigate(`/admin/contacts/new?parent_id=${recordId}`)}>
               Add Contact
             </Button>
           )}

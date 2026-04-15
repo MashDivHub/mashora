@@ -139,7 +139,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> Cur
         raise HTTPException(status_code=401, detail="Invalid token type")
 
     return CurrentUser(
-        uid=payload.get("sub", 1),
+        uid=int(payload.get("sub", 1)),
         company_id=payload.get("company_id"),
         company_ids=payload.get("company_ids", []),
         lang=payload.get("lang", "en_US"),

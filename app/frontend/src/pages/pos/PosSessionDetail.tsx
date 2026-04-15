@@ -304,7 +304,7 @@ export default function PosSessionDetail() {
                   <TableRow
                     key={order.id}
                     className="border-border/20 hover:bg-muted/10 cursor-pointer"
-                    onClick={() => navigate(`/pos/orders/${order.id}`)}
+                    onClick={() => navigate(`/admin/pos/orders/${order.id}`)}
                   >
                     <TableCell className="text-sm font-medium text-primary">{order.name}</TableCell>
                     <TableCell className="text-sm">

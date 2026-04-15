@@ -122,7 +122,7 @@ export default function SalesOrderDetail() {
       toast.success('Saved', 'Sales order saved successfully')
       queryClient.invalidateQueries({ queryKey: ['sale-order'] })
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] })
-      if (isNew && data?.id) navigate(`/sales/orders/${data.id}`, { replace: true })
+      if (isNew && data?.id) navigate(`/admin/sales/orders/${data.id}`, { replace: true })
     },
     onError: (e: any) => {
       if (e.message !== 'Validation failed') {
@@ -145,7 +145,7 @@ export default function SalesOrderDetail() {
           payment_term_id: m2oId(form.payment_term_id) || undefined,
         })
         rid = data?.id
-        if (rid) navigate(`/sales/orders/${rid}`, { replace: true })
+        if (rid) navigate(`/admin/sales/orders/${rid}`, { replace: true })
       } catch (e: any) {
         toast.error('Save Failed', e?.response?.data?.detail || 'Could not create order')
         return

@@ -169,7 +169,7 @@ export default function ExpenseList() {
       <PageHeader
         title="Expenses"
         subtitle={isLoading ? 'Loading…' : `${total} expense${total !== 1 ? 's' : ''}`}
-        onNew={() => navigate('/hr/expenses/new')}
+        onNew={() => navigate('/admin/hr/expenses/new')}
       />
 
       <SearchBar
@@ -190,7 +190,7 @@ export default function ExpenseList() {
         loading={isLoading}
         emptyMessage="No expenses found"
         emptyIcon={<Receipt className="size-6" />}
-        onRowClick={(row) => navigate(`/hr/expenses/${row.id}`)}
+        onRowClick={(row) => navigate(`/admin/hr/expenses/${row.id}`)}
       />
     </div>
   )

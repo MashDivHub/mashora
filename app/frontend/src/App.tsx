@@ -180,6 +180,15 @@ const PosConfig = lazy(() => import('./pages/pos/PosConfig'))
 const PosTerminal = lazy(() => import('./pages/pos/PosTerminal'))
 const PosRestaurant = lazy(() => import('./pages/pos/PosRestaurant'))
 
+// Public website pages
+const WebsiteLayout = lazy(() => import('./components/WebsiteLayout'))
+const Home = lazy(() => import('./pages/public/Home'))
+const Shop = lazy(() => import('./pages/public/Shop'))
+const ShopProduct = lazy(() => import('./pages/public/ShopProduct'))
+const Blog = lazy(() => import('./pages/public/Blog'))
+const BlogPost = lazy(() => import('./pages/public/BlogPost'))
+const ContactUs = lazy(() => import('./pages/public/ContactUs'))
+
 // Module pages — Settings
 const SettingsDashboard = lazy(() => import('./pages/settings/SettingsDashboard'))
 const UserList = lazy(() => import('./pages/settings/UserList'))
@@ -329,7 +338,7 @@ export { BoneSkeleton, dashboardBones, listBones, detailBones }
 // Redirect helper for legacy URL patterns that include a dynamic :id segment
 function LegacyRedirect({ model }: { model: string }) {
   const { id } = useParams<{ id: string }>()
-  return <Navigate to={`/model/${model}/${id}`} replace />
+  return <Navigate to={`/admin/model/${model}/${id}`} replace />
 }
 
 export default function App() {
@@ -341,8 +350,20 @@ export default function App() {
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+
+        {/* Public website */}
+        <Route element={<WebsiteLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/shop/:slug" element={<ShopProduct />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/contactus" element={<ContactUs />} />
+        </Route>
+
+        {/* Admin */}
+        <Route path="/admin" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
           {/* Hand-coded dashboards (client actions) */}
           <Route path="dashboard" element={<Dashboard />} />
@@ -417,9 +438,9 @@ export default function App() {
           <Route path="inventory/transfers" element={<TransferList />} />
           <Route path="inventory/transfers/:id" element={<TransferDetail />} />
           <Route path="inventory/stock" element={<StockLevels />} />
-          <Route path="inventory/receipts" element={<Navigate to="/inventory/transfers?filter=receipts" replace />} />
-          <Route path="inventory/deliveries" element={<Navigate to="/inventory/transfers?filter=deliveries" replace />} />
-          <Route path="inventory/internal" element={<Navigate to="/inventory/transfers?filter=internal" replace />} />
+          <Route path="inventory/receipts" element={<Navigate to="/admin/inventory/transfers?filter=receipts" replace />} />
+          <Route path="inventory/deliveries" element={<Navigate to="/admin/inventory/transfers?filter=deliveries" replace />} />
+          <Route path="inventory/internal" element={<Navigate to="/admin/inventory/transfers?filter=internal" replace />} />
           <Route path="inventory/lots" element={<LotSerialList />} />
           <Route path="inventory/scrap" element={<ScrapOrders />} />
           <Route path="inventory/adjustments" element={<InventoryAdjustment />} />
@@ -535,11 +556,11 @@ export default function App() {
           <Route path="model/:model/:id" element={<ActionRouter />} />
 
           {/* Legacy URL redirects — only paths with no hand-coded equivalent */}
-          <Route path="partners" element={<Navigate to="/contacts" replace />} />
+          <Route path="partners" element={<Navigate to="/admin/contacts" replace />} />
           <Route path="partners/:id" element={<LegacyRedirect model="res.partner" />} />
-          <Route path="accounting/invoices" element={<Navigate to="/invoicing/invoices" replace />} />
+          <Route path="accounting/invoices" element={<Navigate to="/admin/invoicing/invoices" replace />} />
           <Route path="accounting/invoices/:id" element={<LegacyRedirect model="account.move" />} />
-          <Route path="accounting/payments" element={<Navigate to="/invoicing/payments" replace />} />
+          <Route path="accounting/payments" element={<Navigate to="/admin/invoicing/payments" replace />} />
           {/* hr/leaves and website/products now have hand-coded routes above */}
 
           {/* 404 catch-all */}
@@ -547,7 +568,7 @@ export default function App() {
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h1 className="text-4xl font-bold text-foreground mb-2">404</h1>
               <p className="text-muted-foreground mb-4">Page not found</p>
-              <a href="/dashboard" className="text-primary hover:underline text-sm">Go to Dashboard</a>
+              <a href="/admin/dashboard" className="text-primary hover:underline text-sm">Go to Dashboard</a>
             </div>
           } />
         </Route>
