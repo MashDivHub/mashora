@@ -104,7 +104,7 @@ export default function EmployeeList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/hr/employees/${row.id}`} emptyMessage="No employees found" emptyIcon={<Users className="h-10 w-10" />} />
+        rowLink={row => `/admin/hr/employees/${row.id}`} emptyMessage="No employees found" emptyIcon={<Users className="h-10 w-10" />} />
     </div>
   )
 }

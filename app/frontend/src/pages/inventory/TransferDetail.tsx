@@ -34,7 +34,7 @@ export default function TransferDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const isNew = id === 'new'
+  const isNew = !id || id === 'new'
   const recordId = isNew ? null : parseInt(id || '0')
   const [editing, setEditing] = useState(isNew)
   const [form, setForm] = useState<Record<string, any>>({})
@@ -238,7 +238,7 @@ export default function TransferDetail() {
     <RecordForm
       editing={editing} onEdit={() => !isDone && setEditing(true)} onSave={() => saveMut.mutate()}
       onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setMoves(moveData || []); setEditing(false) } }}
-      backTo="/inventory/transfers"
+      backTo="/admin/inventory/transfers"
       statusBar={<StatusBar steps={STATES.filter(s => s.key !== 'cancel' || state === 'cancel')} current={state} />}
       headerActions={
         <>

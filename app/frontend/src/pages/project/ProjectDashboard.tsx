@@ -72,30 +72,30 @@ export default function ProjectDashboard() {
     {
       title: 'Projects',
       items: [
-        { label: 'All Projects', desc: 'Browse and manage projects', icon: <FolderKanban className="h-5 w-5" />, path: '/projects/list' },
-        { label: 'My To-Do', desc: 'Your personal to-do list', icon: <CheckSquare className="h-5 w-5" />, path: '/projects/todos' },
+        { label: 'All Projects', desc: 'Browse and manage projects', icon: <FolderKanban className="h-5 w-5" />, path: '/admin/projects/list' },
+        { label: 'My To-Do', desc: 'Your personal to-do list', icon: <CheckSquare className="h-5 w-5" />, path: '/admin/projects/todos' },
       ],
     },
     {
       title: 'Tasks',
       items: [
-        { label: 'All Tasks', desc: 'View all tasks across projects', icon: <ClipboardList className="h-5 w-5" />, path: '/projects/tasks' },
-        { label: 'Task Stages', desc: 'Manage task stage pipeline', icon: <Layers className="h-5 w-5" />, path: '/projects/stages' },
+        { label: 'All Tasks', desc: 'View all tasks across projects', icon: <ClipboardList className="h-5 w-5" />, path: '/admin/projects/tasks' },
+        { label: 'Task Stages', desc: 'Manage task stage pipeline', icon: <Layers className="h-5 w-5" />, path: '/admin/projects/stages' },
       ],
     },
     {
       title: 'Time & Billing',
       items: [
-        { label: 'Timesheets', desc: 'Log and review time entries', icon: <Clock className="h-5 w-5" />, path: '/projects/timesheets' },
-        { label: 'Timesheet Summary', desc: 'Aggregated time reports', icon: <BarChart3 className="h-5 w-5" />, path: '/projects/timesheets/summary' },
-        { label: 'Project Billing', desc: 'Invoicing and billing records', icon: <DollarSign className="h-5 w-5" />, path: '/projects/billing' },
+        { label: 'Timesheets', desc: 'Log and review time entries', icon: <Clock className="h-5 w-5" />, path: '/admin/projects/timesheets' },
+        { label: 'Timesheet Summary', desc: 'Aggregated time reports', icon: <BarChart3 className="h-5 w-5" />, path: '/admin/projects/timesheets/summary' },
+        { label: 'Project Billing', desc: 'Invoicing and billing records', icon: <DollarSign className="h-5 w-5" />, path: '/admin/projects/billing' },
       ],
     },
     {
       title: 'Tracking',
       items: [
-        { label: 'Milestones', desc: 'Track project milestones', icon: <Flag className="h-5 w-5" />, path: '/projects/milestones' },
-        { label: 'Project Updates', desc: 'Status updates and notes', icon: <MessageSquare className="h-5 w-5" />, path: '/projects/updates' },
+        { label: 'Milestones', desc: 'Track project milestones', icon: <Flag className="h-5 w-5" />, path: '/admin/projects/milestones' },
+        { label: 'Project Updates', desc: 'Status updates and notes', icon: <MessageSquare className="h-5 w-5" />, path: '/admin/projects/updates' },
       ],
     },
   ]

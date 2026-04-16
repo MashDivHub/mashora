@@ -119,7 +119,7 @@ export default function ProductionDetail() {
       <PageHeader
         title={production.name || 'Production Order'}
         subtitle="manufacturing"
-        backTo="/manufacturing/orders"
+        backTo="/admin/manufacturing/orders"
         actions={
           <div className="flex items-center gap-2">
             {isDraft && (

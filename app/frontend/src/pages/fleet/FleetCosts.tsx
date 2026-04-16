@@ -65,7 +65,7 @@ export default function FleetCosts() {
       <PageHeader
         title="Vehicle Costs"
         subtitle={vehicleData?.name ?? `Vehicle #${vehicleId}`}
-        backTo={`/fleet/${vehicleId}`}
+        backTo={`/admin/fleet/${vehicleId}`}
       />
 
       {/* Summary strip */}

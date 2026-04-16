@@ -128,7 +128,7 @@ export default function ContactList() {
       <PageHeader
         title="Contacts"
         subtitle="contacts"
-        onNew="/contacts/new"
+        onNew="/admin/contacts/new"
         actions={
           <div className="flex items-center gap-1 rounded-lg bg-muted/40 p-0.5">
             <button className="rounded-md p-1.5 bg-background shadow-sm">
@@ -160,7 +160,7 @@ export default function ContactList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={(row) => `/contacts/${row.id}`}
+        rowLink={(row) => `/admin/contacts/${row.id}`}
         emptyMessage="No contacts found"
         emptyIcon={<Users className="h-10 w-10" />}
       />

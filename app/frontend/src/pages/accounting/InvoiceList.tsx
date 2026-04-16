@@ -112,7 +112,7 @@ export default function InvoiceList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/invoicing/invoices/${row.id}`} emptyMessage="No invoices found" emptyIcon={<FileText className="h-10 w-10" />} />
+        rowLink={row => `/admin/invoicing/invoices/${row.id}`} emptyMessage="No invoices found" emptyIcon={<FileText className="h-10 w-10" />} />
     </div>
   )
 }

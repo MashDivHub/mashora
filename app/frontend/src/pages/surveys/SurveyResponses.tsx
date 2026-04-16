@@ -105,7 +105,7 @@ export default function SurveyResponses() {
     <div className="space-y-4">
       <PageHeader
         title="Survey Responses"
-        backTo={`/surveys/${id}`}
+        backTo={`/admin/surveys/${id}`}
         subtitle={data?.total != null ? `${data.total} response${data.total !== 1 ? 's' : ''}` : undefined}
       />
       <DataTable

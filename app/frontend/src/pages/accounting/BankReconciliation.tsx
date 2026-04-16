@@ -61,7 +61,7 @@ export default function BankReconciliation() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Bank Reconciliation" backTo="/accounting/bank" />
+      <PageHeader title="Bank Reconciliation" backTo="/admin/accounting/bank" />
 
       {statement && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

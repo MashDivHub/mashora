@@ -33,15 +33,15 @@ export default function SettingsDashboard() {
     {
       title: 'Users & Access',
       items: [
-        { label: 'Users', desc: 'Manage user accounts and access', icon: <Users className="h-5 w-5" />, path: '/settings/users' },
-        { label: 'Companies', desc: 'Multi-company configuration', icon: <Building2 className="h-5 w-5" />, path: '/settings/companies' },
+        { label: 'Users', desc: 'Manage user accounts and access', icon: <Users className="h-5 w-5" />, path: '/admin/settings/users' },
+        { label: 'Companies', desc: 'Multi-company configuration', icon: <Building2 className="h-5 w-5" />, path: '/admin/settings/companies' },
       ],
     },
     {
       title: 'Configuration',
       items: [
-        { label: 'General Settings', desc: 'System-wide configuration', icon: <Settings className="h-5 w-5" />, path: '/settings/general' },
-        { label: 'Technical', desc: 'Advanced technical settings', icon: <Database className="h-5 w-5" />, path: '/model/ir.config_parameter' },
+        { label: 'General Settings', desc: 'System-wide configuration', icon: <Settings className="h-5 w-5" />, path: '/admin/settings/general' },
+        { label: 'Technical', desc: 'Advanced technical settings', icon: <Database className="h-5 w-5" />, path: '/admin/model/ir.config_parameter' },
       ],
     },
   ]

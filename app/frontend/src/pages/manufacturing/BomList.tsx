@@ -158,7 +158,7 @@ export default function BomList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={(row) => `/manufacturing/bom/${row.id}`}
+        rowLink={(row) => `/admin/manufacturing/bom/${row.id}`}
         emptyMessage="No bills of materials found"
         emptyIcon={<Layers className="h-10 w-10" />}
       />

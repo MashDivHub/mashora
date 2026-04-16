@@ -44,7 +44,7 @@ export default function DepartmentList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Departments" subtitle="hr" backTo="/hr" />
+      <PageHeader title="Departments" subtitle="hr" backTo="/admin/hr" />
       <SearchBar placeholder="Search departments..." onSearch={v => { setSearch(v); setPage(0) }} />
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={40}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}

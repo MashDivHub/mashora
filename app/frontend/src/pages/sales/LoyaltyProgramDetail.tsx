@@ -115,7 +115,7 @@ export default function LoyaltyProgramDetail() {
     <div className="space-y-6 p-6">
       <PageHeader
         title={program.name}
-        backTo="/sales/loyalty"
+        backTo="/admin/sales/loyalty"
         backLabel="Loyalty Programs"
         icon={<ArrowLeft className="h-4 w-4" />}
       />

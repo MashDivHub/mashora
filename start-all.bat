@@ -11,10 +11,8 @@ echo  App Frontend:    http://localhost:3000
 echo  Portal Backend:  http://localhost:8000
 echo  Portal Frontend: http://localhost:8069
 echo.
-echo  Starting all services...
-echo.
 
-call "%~dp0start-erp.bat"
+call "%~dp0start-app.bat"
 timeout /t 2 /nobreak >nul
 call "%~dp0start-portal.bat"
 

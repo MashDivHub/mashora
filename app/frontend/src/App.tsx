@@ -124,6 +124,9 @@ const CalendarPage = lazy(() => import('./pages/secondary/CalendarPage'))
 const CmsPages = lazy(() => import('./pages/website/CmsPages'))
 const WebsiteMenus = lazy(() => import('./pages/website/WebsiteMenus'))
 const CategoryManager = lazy(() => import('./pages/website/CategoryManager'))
+const ProductsDashboard = lazy(() => import('./pages/products/ProductsDashboard'))
+const PricelistManager = lazy(() => import('./pages/products/PricelistManager'))
+const VariantList = lazy(() => import('./pages/products/VariantList'))
 const BlogList = lazy(() => import('./pages/website/BlogList'))
 const BlogDetail = lazy(() => import('./pages/website/BlogDetail'))
 const EcomOrders = lazy(() => import('./pages/website/EcomOrders'))
@@ -395,6 +398,15 @@ export default function App() {
           <Route path="contacts/tags" element={<ContactTags />} />
           <Route path="contacts/:id" element={<ContactForm />} />
 
+          {/* Products module */}
+          <Route path="products" element={<ProductsDashboard />} />
+          <Route path="products/list" element={<ProductCatalog />} />
+          <Route path="products/categories" element={<CategoryManager />} />
+          <Route path="products/pricelists" element={<PricelistManager />} />
+          <Route path="products/variants" element={<VariantList />} />
+          <Route path="products/new" element={<ProductEditor />} />
+          <Route path="products/:id" element={<ProductEditor />} />
+
           {/* CRM module */}
           <Route path="crm/pipeline" element={<CrmPipeline />} />
           <Route path="crm/leads" element={<CrmLeadList />} />
@@ -411,6 +423,7 @@ export default function App() {
           <Route path="sales/loyalty/:id" element={<LoyaltyProgramDetail />} />
           <Route path="sales/teams" element={<SalesTeams />} />
           <Route path="sales/commission" element={<SalesCommission />} />
+          <Route path="sales/products" element={<ProductCatalog />} />
 
           {/* Purchase module */}
           <Route path="purchase/orders" element={<PurchaseOrderList />} />
@@ -447,6 +460,7 @@ export default function App() {
           <Route path="inventory/warehouses" element={<WarehouseConfig />} />
           <Route path="inventory/locations" element={<LocationList />} />
           <Route path="inventory/replenishment" element={<ReplenishmentRules />} />
+          <Route path="inventory/products" element={<ProductCatalog />} />
           <Route path="inventory/valuation" element={<InventoryValuation />} />
           <Route path="inventory/batch" element={<BatchPicking />} />
 

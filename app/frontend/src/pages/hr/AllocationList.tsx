@@ -167,7 +167,7 @@ export default function AllocationList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/hr/allocations/${row.id}`}
+        rowLink={row => `/admin/hr/allocations/${row.id}`}
         emptyMessage="No allocations found"
         emptyIcon={<CalendarCheck className="h-10 w-10" />}
       />

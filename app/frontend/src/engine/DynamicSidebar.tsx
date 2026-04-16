@@ -62,7 +62,7 @@ function MenuItem({ menu, depth, onNavigate }: MenuItemProps) {
 
       if (actionId) {
         // Encode action model type in URL so ActionRouter can resolve correctly
-        const path = actionModel ? `/action/${actionModel},${actionId}` : `/action/${actionId}`
+        const path = actionModel ? `/admin/action/${actionModel},${actionId}` : `/admin/action/${actionId}`
         navigate(path)
         onNavigate?.()
       }
@@ -84,7 +84,7 @@ function MenuItem({ menu, depth, onNavigate }: MenuItemProps) {
 
   const Icon = getIconForMenu(menu)
   const actionPath = hasAction
-    ? `/action/${typeof menu.action === 'string' ? menu.action : ''}`
+    ? `/admin/action/${typeof menu.action === 'string' ? menu.action : ''}`
     : ''
   const isActive = actionPath && location.pathname.startsWith(actionPath)
 

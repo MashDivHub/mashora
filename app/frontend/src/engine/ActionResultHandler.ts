@@ -51,9 +51,9 @@ export function handleActionResult(
       } else {
         // Navigate to the action
         if (result.res_id) {
-          callbacks.onNavigate(`/model/${result.res_model}/${result.res_id}`)
+          callbacks.onNavigate(`/admin/model/${result.res_model}/${result.res_id}`)
         } else {
-          callbacks.onNavigate(`/model/${result.res_model}`)
+          callbacks.onNavigate(`/admin/model/${result.res_model}`)
         }
       }
       break

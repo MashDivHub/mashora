@@ -169,7 +169,7 @@ export default function PosRestaurant() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Restaurant" backTo="/pos" />
+      <PageHeader title="Restaurant" backTo="/admin/pos" />
 
       {/* Floor selector */}
       {floors.length > 1 && (

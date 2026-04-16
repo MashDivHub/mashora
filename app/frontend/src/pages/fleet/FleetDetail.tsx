@@ -68,7 +68,7 @@ export default function FleetDetail() {
       <PageHeader
         title={vehicle.name}
         subtitle={vehicle.license_plate || undefined}
-        backTo="/fleet"
+        backTo="/admin/fleet"
       />
 
       <div className="grid gap-6 md:grid-cols-2">

@@ -28,7 +28,7 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const isNew = id === 'new'
+  const isNew = !id || id === 'new'
   const recordId = isNew ? null : parseInt(id || '0')
   const [editing, setEditing] = useState(isNew)
   const [form, setForm] = useState<Record<string, any>>({})
@@ -172,7 +172,7 @@ export default function ProjectDetail() {
     <RecordForm
       editing={editing} onEdit={() => setEditing(true)} onSave={() => saveMut.mutate()}
       onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setEditing(false) } }}
-      backTo="/projects/list" smartButtons={smartButtons}
+      backTo="/admin/projects/list" smartButtons={smartButtons}
       headerActions={
         !isNew ? (
           <div className="flex items-center gap-2">

@@ -34,7 +34,7 @@ export default function DashboardView() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={name} backTo="/dashboards" />
+      <PageHeader title={name} backTo="/admin/dashboards" />
 
       {isLoading ? (
         <div className="space-y-3">

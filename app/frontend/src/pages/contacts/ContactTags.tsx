@@ -136,7 +136,7 @@ export default function ContactTags() {
       <PageHeader
         title="Contact Tags"
         subtitle="contacts"
-        backTo="/contacts"
+        backTo="/admin/contacts"
         onNew={() => setShowNew(true)}
       />
 

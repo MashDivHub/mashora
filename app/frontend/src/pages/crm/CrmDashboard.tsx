@@ -131,12 +131,12 @@ export default function CrmDashboard() {
   ]
 
   const actions = [
-    { label: 'Pipeline', desc: 'Manage opportunities by stage', icon: <KanbanIcon className="h-5 w-5" />, path: '/crm/pipeline' },
-    { label: 'All Leads', desc: 'Browse leads & opportunities', icon: <Target className="h-5 w-5" />, path: '/crm/leads' },
-    { label: 'Activities', desc: 'Scheduled & overdue tasks', icon: <CalendarCheck className="h-5 w-5" />, path: '/crm/activities' },
-    { label: 'Pipeline Stages', desc: 'Configure pipeline stages', icon: <Layers className="h-5 w-5" />, path: '/crm/stages' },
-    { label: 'Lost Reasons', desc: 'Analyse deal loss reasons', icon: <XCircle className="h-5 w-5" />, path: '/crm/lost-reasons' },
-    { label: 'Contacts', desc: 'Customers & company contacts', icon: <Users className="h-5 w-5" />, path: '/contacts' },
+    { label: 'Pipeline', desc: 'Manage opportunities by stage', icon: <KanbanIcon className="h-5 w-5" />, path: '/admin/crm/pipeline' },
+    { label: 'All Leads', desc: 'Browse leads & opportunities', icon: <Target className="h-5 w-5" />, path: '/admin/crm/leads' },
+    { label: 'Activities', desc: 'Scheduled & overdue tasks', icon: <CalendarCheck className="h-5 w-5" />, path: '/admin/crm/activities' },
+    { label: 'Pipeline Stages', desc: 'Configure pipeline stages', icon: <Layers className="h-5 w-5" />, path: '/admin/crm/stages' },
+    { label: 'Lost Reasons', desc: 'Analyse deal loss reasons', icon: <XCircle className="h-5 w-5" />, path: '/admin/crm/lost-reasons' },
+    { label: 'Contacts', desc: 'Customers & company contacts', icon: <Users className="h-5 w-5" />, path: '/admin/contacts' },
   ]
 
   return (

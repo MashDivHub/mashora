@@ -99,22 +99,22 @@ export default function AccountingDashboard() {
   ]
 
   const actions = [
-    { label: 'Invoices', desc: 'Customer invoices', icon: <FileText className="h-5 w-5" />, path: '/invoicing/invoices' },
-    { label: 'Vendor Bills', desc: 'Bills from vendors', icon: <Receipt className="h-5 w-5" />, path: '/invoicing/invoices?filter=bills' },
-    { label: 'Payments', desc: 'Register & view payments', icon: <CreditCard className="h-5 w-5" />, path: '/invoicing/payments' },
-    { label: 'Chart of Accounts', desc: 'Account structure', icon: <BookOpen className="h-5 w-5" />, path: '/accounting/accounts' },
-    { label: 'Journals', desc: 'Accounting journals', icon: <BookMarked className="h-5 w-5" />, path: '/accounting/journals' },
-    { label: 'Journal Entries', desc: 'All journal entries', icon: <FileBarChart className="h-5 w-5" />, path: '/accounting/entries' },
-    { label: 'Bank Statements', desc: 'Reconcile bank feeds', icon: <Landmark className="h-5 w-5" />, path: '/accounting/bank' },
-    { label: 'Tax Configuration', desc: 'Tax rates & rules', icon: <Settings className="h-5 w-5" />, path: '/accounting/taxes' },
+    { label: 'Invoices', desc: 'Customer invoices', icon: <FileText className="h-5 w-5" />, path: '/admin/invoicing/invoices' },
+    { label: 'Vendor Bills', desc: 'Bills from vendors', icon: <Receipt className="h-5 w-5" />, path: '/admin/invoicing/invoices?filter=bills' },
+    { label: 'Payments', desc: 'Register & view payments', icon: <CreditCard className="h-5 w-5" />, path: '/admin/invoicing/payments' },
+    { label: 'Chart of Accounts', desc: 'Account structure', icon: <BookOpen className="h-5 w-5" />, path: '/admin/accounting/accounts' },
+    { label: 'Journals', desc: 'Accounting journals', icon: <BookMarked className="h-5 w-5" />, path: '/admin/accounting/journals' },
+    { label: 'Journal Entries', desc: 'All journal entries', icon: <FileBarChart className="h-5 w-5" />, path: '/admin/accounting/entries' },
+    { label: 'Bank Statements', desc: 'Reconcile bank feeds', icon: <Landmark className="h-5 w-5" />, path: '/admin/accounting/bank' },
+    { label: 'Tax Configuration', desc: 'Tax rates & rules', icon: <Settings className="h-5 w-5" />, path: '/admin/accounting/taxes' },
   ]
 
   const reports = [
-    { label: 'Trial Balance', desc: 'Account balances summary', icon: <Scale className="h-5 w-5" />, path: '/accounting/reports/trial-balance' },
-    { label: 'Profit & Loss', desc: 'Income statement', icon: <TrendingUp className="h-5 w-5" />, path: '/accounting/reports/profit-loss' },
-    { label: 'Balance Sheet', desc: 'Assets, liabilities & equity', icon: <BarChart3 className="h-5 w-5" />, path: '/accounting/reports/balance-sheet' },
-    { label: 'Aged Receivable', desc: 'Outstanding customer balances', icon: <ArrowDownCircle className="h-5 w-5" />, path: '/accounting/reports/aged-receivable' },
-    { label: 'Aged Payable', desc: 'Outstanding vendor balances', icon: <ArrowUpCircle className="h-5 w-5" />, path: '/accounting/reports/aged-payable' },
+    { label: 'Trial Balance', desc: 'Account balances summary', icon: <Scale className="h-5 w-5" />, path: '/admin/accounting/reports/trial-balance' },
+    { label: 'Profit & Loss', desc: 'Income statement', icon: <TrendingUp className="h-5 w-5" />, path: '/admin/accounting/reports/profit-loss' },
+    { label: 'Balance Sheet', desc: 'Assets, liabilities & equity', icon: <BarChart3 className="h-5 w-5" />, path: '/admin/accounting/reports/balance-sheet' },
+    { label: 'Aged Receivable', desc: 'Outstanding customer balances', icon: <ArrowDownCircle className="h-5 w-5" />, path: '/admin/accounting/reports/aged-receivable' },
+    { label: 'Aged Payable', desc: 'Outstanding vendor balances', icon: <ArrowUpCircle className="h-5 w-5" />, path: '/admin/accounting/reports/aged-payable' },
   ]
 
   return (

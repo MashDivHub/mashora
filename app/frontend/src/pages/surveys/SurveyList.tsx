@@ -148,7 +148,7 @@ export default function SurveyList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={(row) => `/surveys/${row.id}`}
+        rowLink={(row) => `/admin/surveys/${row.id}`}
         emptyMessage="No surveys found"
         emptyIcon={<ClipboardList className="h-10 w-10" />}
       />

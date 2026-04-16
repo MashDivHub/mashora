@@ -74,18 +74,18 @@ export default function InventoryDashboard() {
   ]
 
   const actions = [
-    { label: 'All Transfers', desc: 'Receipts, deliveries, internal', icon: <Truck className="h-5 w-5" />, path: '/inventory/transfers' },
-    { label: 'Receipts', desc: 'Incoming shipments', icon: <ArrowDownToLine className="h-5 w-5" />, path: '/inventory/receipts' },
-    { label: 'Deliveries', desc: 'Outgoing shipments', icon: <ArrowUpFromLine className="h-5 w-5" />, path: '/inventory/deliveries' },
-    { label: 'Stock on Hand', desc: 'Current inventory levels', icon: <Package className="h-5 w-5" />, path: '/inventory/stock' },
-    { label: 'Lots / Serials', desc: 'Traceability tracking', icon: <ScanBarcode className="h-5 w-5" />, path: '/inventory/lots' },
-    { label: 'Scrap Orders', desc: 'Scrap & waste recording', icon: <RotateCcw className="h-5 w-5" />, path: '/inventory/scrap' },
-    { label: 'Inventory Adjustments', desc: 'Correct stock levels', icon: <ClipboardCheck className="h-5 w-5" />, path: '/inventory/adjustments' },
-    { label: 'Warehouses', desc: 'Warehouse configuration', icon: <Warehouse className="h-5 w-5" />, path: '/inventory/warehouses' },
-    { label: 'Locations', desc: 'Storage locations', icon: <MapPin className="h-5 w-5" />, path: '/inventory/locations' },
-    { label: 'Replenishment', desc: 'Reorder & replenish stock', icon: <RefreshCw className="h-5 w-5" />, path: '/inventory/replenishment' },
-    { label: 'Valuation', desc: 'Stock valuation & costing', icon: <DollarSign className="h-5 w-5" />, path: '/inventory/valuation' },
-    { label: 'Batch Transfers', desc: 'Process transfers in batch', icon: <Layers className="h-5 w-5" />, path: '/inventory/batch' },
+    { label: 'All Transfers', desc: 'Receipts, deliveries, internal', icon: <Truck className="h-5 w-5" />, path: '/admin/inventory/transfers' },
+    { label: 'Receipts', desc: 'Incoming shipments', icon: <ArrowDownToLine className="h-5 w-5" />, path: '/admin/inventory/receipts' },
+    { label: 'Deliveries', desc: 'Outgoing shipments', icon: <ArrowUpFromLine className="h-5 w-5" />, path: '/admin/inventory/deliveries' },
+    { label: 'Stock on Hand', desc: 'Current inventory levels', icon: <Package className="h-5 w-5" />, path: '/admin/inventory/stock' },
+    { label: 'Lots / Serials', desc: 'Traceability tracking', icon: <ScanBarcode className="h-5 w-5" />, path: '/admin/inventory/lots' },
+    { label: 'Scrap Orders', desc: 'Scrap & waste recording', icon: <RotateCcw className="h-5 w-5" />, path: '/admin/inventory/scrap' },
+    { label: 'Inventory Adjustments', desc: 'Correct stock levels', icon: <ClipboardCheck className="h-5 w-5" />, path: '/admin/inventory/adjustments' },
+    { label: 'Warehouses', desc: 'Warehouse configuration', icon: <Warehouse className="h-5 w-5" />, path: '/admin/inventory/warehouses' },
+    { label: 'Locations', desc: 'Storage locations', icon: <MapPin className="h-5 w-5" />, path: '/admin/inventory/locations' },
+    { label: 'Replenishment', desc: 'Reorder & replenish stock', icon: <RefreshCw className="h-5 w-5" />, path: '/admin/inventory/replenishment' },
+    { label: 'Valuation', desc: 'Stock valuation & costing', icon: <DollarSign className="h-5 w-5" />, path: '/admin/inventory/valuation' },
+    { label: 'Batch Transfers', desc: 'Process transfers in batch', icon: <Layers className="h-5 w-5" />, path: '/admin/inventory/batch' },
   ]
 
   return (

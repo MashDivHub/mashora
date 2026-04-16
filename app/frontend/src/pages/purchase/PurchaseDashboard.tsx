@@ -68,13 +68,13 @@ export default function PurchaseDashboard() {
   ]
 
   const quickActions = [
-    { label: 'Purchase Orders', desc: 'Browse all purchase orders', icon: Package, path: '/purchase/orders' },
-    { label: 'New RFQ', desc: 'Create a request for quotation', icon: Plus, path: '/purchase/orders/new' },
+    { label: 'Purchase Orders', desc: 'Browse all purchase orders', icon: Package, path: '/admin/purchase/orders' },
+    { label: 'New RFQ', desc: 'Create a request for quotation', icon: Plus, path: '/admin/purchase/orders/new' },
     {
       label: 'Late Deliveries',
       desc: lateCount > 0 ? `${lateCount} overdue` : 'No late deliveries',
       icon: Truck,
-      path: '/purchase/orders?filter=late',
+      path: '/admin/purchase/orders?filter=late',
       badge: lateCount > 0 ? lateCount : null,
     },
   ]

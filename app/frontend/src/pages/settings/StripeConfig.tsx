@@ -55,7 +55,7 @@ export default function StripeConfig() {
       <PageHeader
         title="Stripe Payment"
         subtitle="Payment gateway configuration"
-        backTo="/settings"
+        backTo="/admin/settings"
       />
 
       {/* Status card */}

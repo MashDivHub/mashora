@@ -113,7 +113,7 @@ export default function LeadList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/crm/leads/${row.id}`} emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
+        rowLink={row => `/admin/crm/leads/${row.id}`} emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
     </div>
   )
 }

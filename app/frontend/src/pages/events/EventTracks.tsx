@@ -84,7 +84,7 @@ export default function EventTracks() {
   if (isError) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Event Tracks" backTo={`/events/${eventId}`} />
+        <PageHeader title="Event Tracks" backTo={`/admin/events/${eventId}`} />
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/30 bg-card/50 py-20 text-muted-foreground">
           <Mic className="h-10 w-10" />
           <p className="text-sm font-medium">Event tracks module not installed</p>
@@ -111,7 +111,7 @@ export default function EventTracks() {
     <div className="space-y-6">
       <PageHeader
         title="Event Tracks"
-        backTo={`/events/${eventId}`}
+        backTo={`/admin/events/${eventId}`}
         subtitle={`${tracks.length} track${tracks.length !== 1 ? 's' : ''}`}
       />
 

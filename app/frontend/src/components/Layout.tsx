@@ -78,6 +78,7 @@ const navSections = [
   {
     label: 'Sales & CRM',
     items: [
+      { name: 'Products', href: '/admin/products', icon: Package },
       { name: 'Sales', href: '/admin/sales', icon: ShoppingCart },
       { name: 'CRM', href: '/admin/crm', icon: Target },
     ],

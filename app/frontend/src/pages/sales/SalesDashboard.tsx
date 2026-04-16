@@ -67,11 +67,11 @@ export default function SalesDashboard() {
   ]
 
   const quickActions = [
-    { label: 'Orders', desc: 'Browse all sales orders', icon: ShoppingCart, path: '/sales/orders' },
-    { label: 'New Quotation', desc: 'Create a new quotation', icon: Plus, path: '/sales/orders/new' },
-    { label: 'Loyalty Programs', desc: 'Manage reward programs', icon: Gift, path: '/sales/loyalty' },
-    { label: 'Sales Teams', desc: 'Manage your sales teams', icon: Users, path: '/sales/teams' },
-    { label: 'Commission', desc: 'Track sales commissions', icon: DollarSign, path: '/sales/commission' },
+    { label: 'Orders', desc: 'Browse all sales orders', icon: ShoppingCart, path: '/admin/sales/orders' },
+    { label: 'New Quotation', desc: 'Create a new quotation', icon: Plus, path: '/admin/sales/orders/new' },
+    { label: 'Loyalty Programs', desc: 'Manage reward programs', icon: Gift, path: '/admin/sales/loyalty' },
+    { label: 'Sales Teams', desc: 'Manage your sales teams', icon: Users, path: '/admin/sales/teams' },
+    { label: 'Commission', desc: 'Track sales commissions', icon: DollarSign, path: '/admin/sales/commission' },
     {
       label: 'Margin Analysis',
       desc: 'Available per order',
@@ -131,8 +131,8 @@ export default function SalesDashboard() {
         <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-1">
           <p className="text-sm font-semibold mb-3">Orders &amp; Invoicing</p>
           {[
-            { label: 'All Orders', path: '/sales/orders' },
-            { label: 'To Invoice', path: '/sales/orders?filter=to_invoice' },
+            { label: 'All Orders', path: '/admin/sales/orders' },
+            { label: 'To Invoice', path: '/admin/sales/orders?filter=to_invoice' },
           ].map(link => (
             <button
               key={link.path}
@@ -147,9 +147,9 @@ export default function SalesDashboard() {
         <div className="rounded-2xl border border-border/50 bg-card p-5 space-y-1">
           <p className="text-sm font-semibold mb-3">Marketing &amp; Analytics</p>
           {[
-            { label: 'Loyalty Programs', path: '/sales/loyalty' },
-            { label: 'Sales Teams', path: '/sales/teams' },
-            { label: 'Commission Dashboard', path: '/sales/commission' },
+            { label: 'Loyalty Programs', path: '/admin/sales/loyalty' },
+            { label: 'Sales Teams', path: '/admin/sales/teams' },
+            { label: 'Commission Dashboard', path: '/admin/sales/commission' },
           ].map(link => (
             <button
               key={link.path}

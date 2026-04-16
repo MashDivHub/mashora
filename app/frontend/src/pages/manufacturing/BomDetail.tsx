@@ -59,6 +59,7 @@ function BomDetailView({ id }: { id: number }) {
   const { data: bom, isLoading } = useQuery<BomDetail>({
     queryKey: ['bom', id],
     queryFn: () => erpClient.raw.get(`/manufacturing/boms/${id}`).then((r) => r.data),
+    enabled: !!id && id > 0,
   })
 
   if (isLoading || !bom) {
@@ -83,7 +84,7 @@ function BomDetailView({ id }: { id: number }) {
       <PageHeader
         title={title}
         subtitle="Bill of Materials"
-        backTo="/manufacturing/bom"
+        backTo="/admin/manufacturing/bom"
       />
 
       {/* Info card */}

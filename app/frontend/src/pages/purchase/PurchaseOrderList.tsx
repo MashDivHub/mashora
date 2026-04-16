@@ -92,7 +92,7 @@ export default function PurchaseOrderList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/purchase/orders/${row.id}`} emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
+        rowLink={row => `/admin/purchase/orders/${row.id}`} emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
     </div>
   )
 }

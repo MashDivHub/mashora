@@ -107,7 +107,7 @@ export default function SalesOrderList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/sales/orders/${row.id}`} emptyMessage="No orders found" emptyIcon={<ShoppingCart className="h-10 w-10" />} />
+        rowLink={row => `/admin/sales/orders/${row.id}`} emptyMessage="No orders found" emptyIcon={<ShoppingCart className="h-10 w-10" />} />
     </div>
   )
 }

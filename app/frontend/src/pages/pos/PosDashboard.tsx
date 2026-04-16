@@ -87,9 +87,9 @@ export default function PosDashboard() {
   ]
 
   const quickActions = [
-    { label: 'Sessions', desc: 'View all POS sessions', icon: <Monitor className="h-5 w-5" />, path: '/pos/sessions' },
-    { label: 'Orders', desc: 'Browse POS orders', icon: <ShoppingCart className="h-5 w-5" />, path: '/pos/orders' },
-    { label: 'Configuration', desc: 'Manage POS settings', icon: <Settings className="h-5 w-5" />, path: '/pos/config' },
+    { label: 'Sessions', desc: 'View all POS sessions', icon: <Monitor className="h-5 w-5" />, path: '/admin/pos/sessions' },
+    { label: 'Orders', desc: 'Browse POS orders', icon: <ShoppingCart className="h-5 w-5" />, path: '/admin/pos/orders' },
+    { label: 'Configuration', desc: 'Manage POS settings', icon: <Settings className="h-5 w-5" />, path: '/admin/pos/config' },
   ]
 
   return (

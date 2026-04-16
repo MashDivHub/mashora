@@ -117,7 +117,7 @@ function NewLeaveView() {
       <PageHeader
         title="New Leave Request"
         subtitle="Human Resources"
-        backTo="/hr/leaves"
+        backTo="/admin/hr/leaves"
         actions={
           <Button
             size="sm"
@@ -215,6 +215,7 @@ function ExistingLeaveView({ id }: { id: number }) {
   const { data: leave, isLoading } = useQuery<LeaveDetail>({
     queryKey: ['leave', id],
     queryFn: () => erpClient.raw.get(`/hr/leaves/${id}`).then(r => r.data),
+    enabled: !!id && id > 0,
   })
 
   const approveMut = useMutation({
@@ -313,7 +314,7 @@ function ExistingLeaveView({ id }: { id: number }) {
       <PageHeader
         title={m2oLabel(leave.employee_id)}
         subtitle="Leave Request"
-        backTo="/hr/leaves"
+        backTo="/admin/hr/leaves"
         actions={actionButtons}
       />
 

@@ -45,7 +45,7 @@ export default function MicrosoftCalendarSync() {
       <PageHeader
         title="Microsoft Calendar"
         subtitle="Integration settings"
-        backTo="/settings"
+        backTo="/admin/settings"
       />
 
       {/* Status card */}

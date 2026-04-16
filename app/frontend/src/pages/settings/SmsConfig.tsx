@@ -52,7 +52,7 @@ export default function SmsConfig() {
       <PageHeader
         title="SMS Configuration"
         subtitle="Twilio SMS gateway"
-        backTo="/settings"
+        backTo="/admin/settings"
       />
 
       {/* Status card */}

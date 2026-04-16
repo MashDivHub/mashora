@@ -45,7 +45,7 @@ export default function GoogleCalendarSync() {
       <PageHeader
         title="Google Calendar"
         subtitle="Integration settings"
-        backTo="/settings"
+        backTo="/admin/settings"
       />
 
       {/* Status card */}

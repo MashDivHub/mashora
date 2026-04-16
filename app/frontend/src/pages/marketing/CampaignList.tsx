@@ -167,7 +167,7 @@ export default function CampaignList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/email-marketing/${row.id}`}
+        rowLink={row => `/admin/email-marketing/${row.id}`}
         emptyMessage="No campaigns found"
         emptyIcon={<Mail className="h-10 w-10" />}
       />

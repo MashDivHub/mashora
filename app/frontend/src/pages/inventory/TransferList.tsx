@@ -98,7 +98,7 @@ export default function TransferList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/inventory/transfers/${row.id}`} emptyMessage="No transfers found" emptyIcon={<Truck className="h-10 w-10" />} />
+        rowLink={row => `/admin/inventory/transfers/${row.id}`} emptyMessage="No transfers found" emptyIcon={<Truck className="h-10 w-10" />} />
     </div>
   )
 }

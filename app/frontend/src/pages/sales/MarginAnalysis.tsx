@@ -70,7 +70,7 @@ export default function MarginAnalysis() {
     <div className="space-y-6">
       <PageHeader
         title={`Margin Analysis — ${data.name}`}
-        backTo={`/sales/orders/${id}`}
+        backTo={`/admin/sales/orders/${id}`}
       />
 
       {/* Summary cards */}

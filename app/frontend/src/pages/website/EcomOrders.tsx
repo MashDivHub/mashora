@@ -125,7 +125,7 @@ export default function EcomOrders() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/sales/orders/${row.id}`}
+        rowLink={row => `/admin/sales/orders/${row.id}`}
         emptyMessage="No e-commerce orders found"
         emptyIcon={<ShoppingBag className="h-10 w-10" />}
       />

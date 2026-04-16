@@ -147,7 +147,7 @@ export default function CampaignDetail() {
     <div className="space-y-6">
       <PageHeader
         title={mailing.subject || mailing.name || 'Campaign'}
-        backTo="/email-marketing"
+        backTo="/admin/email-marketing"
         actions={
           <Badge variant={stateCfg.variant as any}>{stateCfg.label}</Badge>
         }

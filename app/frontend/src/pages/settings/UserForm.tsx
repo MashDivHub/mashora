@@ -16,7 +16,7 @@ export default function UserForm() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const isNew = id === 'new'
+  const isNew = !id || id === 'new'
   const recordId = isNew ? null : parseInt(id || '0')
   const [editing, setEditing] = useState(isNew)
   const [form, setForm] = useState<Record<string, any>>({})
@@ -169,7 +169,7 @@ export default function UserForm() {
     <RecordForm
       editing={editing} onEdit={() => setEditing(true)} onSave={() => saveMut.mutate()}
       onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setEditing(false) } }}
-      backTo="/settings/users"
+      backTo="/admin/settings/users"
       headerActions={
         form.share === false ? <Badge variant="default" className="rounded-full text-xs gap-1"><Shield className="h-3 w-3" /> Internal User</Badge>
         : form.share ? <Badge variant="secondary" className="rounded-full text-xs">Portal User</Badge> : undefined

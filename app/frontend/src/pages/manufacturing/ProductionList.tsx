@@ -126,7 +126,7 @@ export default function ProductionList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/manufacturing/orders/${row.id}`}
+        rowLink={row => `/admin/manufacturing/orders/${row.id}`}
         emptyMessage="No production orders found"
         emptyIcon={<Factory className="h-10 w-10" />}
       />

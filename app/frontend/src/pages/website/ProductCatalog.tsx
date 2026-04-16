@@ -81,7 +81,7 @@ export default function ProductCatalog() {
             {isLoading ? 'Loading...' : `${data?.total ?? 0} products`}
           </p>
         </div>
-        <Button className="rounded-2xl" onClick={() => navigate('/admin/website/products/new')}>
+        <Button className="rounded-2xl" onClick={() => navigate('/admin/products/new')}>
           <Plus className="h-4 w-4" />
           New Product
         </Button>
@@ -165,7 +165,7 @@ export default function ProductCatalog() {
                 <TableRow
                   key={row.id}
                   className="cursor-pointer border-border/40 hover:bg-muted/50 transition-colors"
-                  onClick={() => navigate(`/admin/website/products/${row.id}`)}
+                  onClick={() => navigate(`/admin/products/${row.id}`)}
                 >
                   <TableCell>
                     <div>

@@ -77,14 +77,14 @@ export default function UserList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Users" subtitle="settings" onNew={() => navigate('/admin/settings/users/new')} backTo="/settings" />
+      <PageHeader title="Users" subtitle="settings" onNew={() => navigate('/admin/settings/users/new')} backTo="/admin/settings" />
       <SearchBar placeholder="Search users..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/settings/users/${row.id}`} emptyMessage="No users found" emptyIcon={<Users className="h-10 w-10" />} />
+        rowLink={row => `/admin/settings/users/${row.id}`} emptyMessage="No users found" emptyIcon={<Users className="h-10 w-10" />} />
     </div>
   )
 }

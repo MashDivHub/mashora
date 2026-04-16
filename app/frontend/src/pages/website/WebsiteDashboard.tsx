@@ -72,30 +72,29 @@ export default function WebsiteDashboard() {
     {
       title: 'Content',
       items: [
-        { label: 'CMS Pages', desc: 'Manage website pages', icon: <FileText className="h-5 w-5" />, path: '/website/pages' },
-        { label: 'Menus', desc: 'Configure site navigation', icon: <Menu className="h-5 w-5" />, path: '/website/menus' },
-        { label: 'Blog', desc: 'Posts and blog articles', icon: <Newspaper className="h-5 w-5" />, path: '/website/blog' },
+        { label: 'CMS Pages', desc: 'Manage website pages', icon: <FileText className="h-5 w-5" />, path: '/admin/website/pages' },
+        { label: 'Menus', desc: 'Configure site navigation', icon: <Menu className="h-5 w-5" />, path: '/admin/website/menus' },
+        { label: 'Blog', desc: 'Posts and blog articles', icon: <Newspaper className="h-5 w-5" />, path: '/admin/website/blog' },
       ],
     },
     {
       title: 'E-Commerce',
       items: [
-        { label: 'Products', desc: 'Manage your product catalog', icon: <Package className="h-5 w-5" />, path: '/website/products' },
-        { label: 'Categories', desc: 'Organize product categories', icon: <Tag className="h-5 w-5" />, path: '/website/categories' },
-        { label: 'E-Commerce Orders', desc: 'View and process orders', icon: <ShoppingCart className="h-5 w-5" />, path: '/website/orders' },
+        { label: 'Categories', desc: 'Organize product categories', icon: <Tag className="h-5 w-5" />, path: '/admin/website/categories' },
+        { label: 'E-Commerce Orders', desc: 'View and process orders', icon: <ShoppingCart className="h-5 w-5" />, path: '/admin/website/orders' },
       ],
     },
     {
       title: 'Learning & Community',
       items: [
-        { label: 'Courses', desc: 'Online courses and e-learning', icon: <GraduationCap className="h-5 w-5" />, path: '/website/courses' },
-        { label: 'Forum', desc: 'Community discussion boards', icon: <MessageCircle className="h-5 w-5" />, path: '/website/forum' },
+        { label: 'Courses', desc: 'Online courses and e-learning', icon: <GraduationCap className="h-5 w-5" />, path: '/admin/website/courses' },
+        { label: 'Forum', desc: 'Community discussion boards', icon: <MessageCircle className="h-5 w-5" />, path: '/admin/website/forum' },
       ],
     },
     {
       title: 'Analytics',
       items: [
-        { label: 'Visitor Analytics', desc: 'Traffic and visitor insights', icon: <BarChart3 className="h-5 w-5" />, path: '/website/analytics' },
+        { label: 'Visitor Analytics', desc: 'Traffic and visitor insights', icon: <BarChart3 className="h-5 w-5" />, path: '/admin/website/analytics' },
       ],
     },
   ]

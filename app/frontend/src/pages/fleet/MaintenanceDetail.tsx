@@ -125,7 +125,7 @@ export default function MaintenanceDetail() {
     <div className="space-y-6">
       <PageHeader
         title={request.name}
-        backTo="/maintenance"
+        backTo="/admin/maintenance"
         actions={<Badge variant={kanbanCfg.variant}>{kanbanCfg.label}</Badge>}
       />
 

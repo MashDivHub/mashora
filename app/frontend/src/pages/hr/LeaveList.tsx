@@ -172,7 +172,7 @@ export default function LeaveList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/hr/leaves/${row.id}`}
+        rowLink={row => `/admin/hr/leaves/${row.id}`}
         emptyMessage="No leave requests found"
         emptyIcon={<CalendarDays className="h-10 w-10" />}
       />

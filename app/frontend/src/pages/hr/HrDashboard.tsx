@@ -87,34 +87,34 @@ export default function HrDashboard() {
     {
       title: 'People',
       actions: [
-        { label: 'Employees', desc: 'Browse employee directory', icon: <Users className="h-5 w-5" />, path: '/hr/employees' },
-        { label: 'Departments', desc: 'Organization structure', icon: <Building2 className="h-5 w-5" />, path: '/hr/departments' },
-        { label: 'Job Positions', desc: 'Manage roles & positions', icon: <Briefcase className="h-5 w-5" />, path: '/hr/jobs' },
-        { label: 'Organization Chart', desc: 'Visual org hierarchy', icon: <GitBranch className="h-5 w-5" />, path: '/hr/org-chart' },
+        { label: 'Employees', desc: 'Browse employee directory', icon: <Users className="h-5 w-5" />, path: '/admin/hr/employees' },
+        { label: 'Departments', desc: 'Organization structure', icon: <Building2 className="h-5 w-5" />, path: '/admin/hr/departments' },
+        { label: 'Job Positions', desc: 'Manage roles & positions', icon: <Briefcase className="h-5 w-5" />, path: '/admin/hr/jobs' },
+        { label: 'Organization Chart', desc: 'Visual org hierarchy', icon: <GitBranch className="h-5 w-5" />, path: '/admin/hr/org-chart' },
       ],
     },
     {
       title: 'Time & Attendance',
       actions: [
-        { label: 'Attendance', desc: 'Track check-ins & hours', icon: <Clock className="h-5 w-5" />, path: '/hr/attendance' },
-        { label: 'Leave Requests', desc: 'Review pending leaves', icon: <CalendarDays className="h-5 w-5" />, path: '/hr/leaves' },
-        { label: 'Leave Types', desc: 'Configure leave policies', icon: <CalendarCheck className="h-5 w-5" />, path: '/hr/leave-types' },
-        { label: 'Allocations', desc: 'Manage leave allocations', icon: <CalendarPlus className="h-5 w-5" />, path: '/hr/allocations' },
+        { label: 'Attendance', desc: 'Track check-ins & hours', icon: <Clock className="h-5 w-5" />, path: '/admin/hr/attendance' },
+        { label: 'Leave Requests', desc: 'Review pending leaves', icon: <CalendarDays className="h-5 w-5" />, path: '/admin/hr/leaves' },
+        { label: 'Leave Types', desc: 'Configure leave policies', icon: <CalendarCheck className="h-5 w-5" />, path: '/admin/hr/leave-types' },
+        { label: 'Allocations', desc: 'Manage leave allocations', icon: <CalendarPlus className="h-5 w-5" />, path: '/admin/hr/allocations' },
       ],
     },
     {
       title: 'Finance & Skills',
       actions: [
-        { label: 'Expenses', desc: 'Submit & review expenses', icon: <Receipt className="h-5 w-5" />, path: '/hr/expenses' },
-        { label: 'Expense Reports', desc: 'View expense sheets', icon: <FileText className="h-5 w-5" />, path: '/hr/expense-sheets' },
-        { label: 'Skills Matrix', desc: 'Employee skills & levels', icon: <Star className="h-5 w-5" />, path: '/hr/skills' },
-        { label: 'Work Entries', desc: 'Payroll work records', icon: <Clock className="h-5 w-5" />, path: '/hr/work-entries' },
+        { label: 'Expenses', desc: 'Submit & review expenses', icon: <Receipt className="h-5 w-5" />, path: '/admin/hr/expenses' },
+        { label: 'Expense Reports', desc: 'View expense sheets', icon: <FileText className="h-5 w-5" />, path: '/admin/hr/expense-sheets' },
+        { label: 'Skills Matrix', desc: 'Employee skills & levels', icon: <Star className="h-5 w-5" />, path: '/admin/hr/skills' },
+        { label: 'Work Entries', desc: 'Payroll work records', icon: <Clock className="h-5 w-5" />, path: '/admin/hr/work-entries' },
       ],
     },
     {
       title: 'Other',
       actions: [
-        { label: 'Homeworking', desc: 'Remote work schedules', icon: <Home className="h-5 w-5" />, path: '/hr/homeworking' },
+        { label: 'Homeworking', desc: 'Remote work schedules', icon: <Home className="h-5 w-5" />, path: '/admin/hr/homeworking' },
       ],
     },
   ]

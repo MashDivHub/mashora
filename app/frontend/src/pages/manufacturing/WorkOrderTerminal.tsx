@@ -86,7 +86,7 @@ export default function WorkOrderTerminal() {
       <PageHeader
         title={wo.name || 'Work Order'}
         subtitle="manufacturing"
-        backTo="/manufacturing/workorders"
+        backTo="/admin/manufacturing/workorders"
         actions={
           <Badge variant={badge.variant as any} className="rounded-full text-sm px-3 py-1">
             {badge.label}

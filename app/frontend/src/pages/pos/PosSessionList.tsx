@@ -123,7 +123,7 @@ export default function PosSessionList() {
         pageSize={pageSize}
         onPageChange={setPage}
         loading={isLoading}
-        rowLink={row => `/pos/sessions/${row.id}`}
+        rowLink={row => `/admin/pos/sessions/${row.id}`}
         emptyMessage="No sessions found"
         emptyIcon={<Monitor className="h-10 w-10" />}
       />

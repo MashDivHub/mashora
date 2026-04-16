@@ -112,7 +112,7 @@ export default function TaskList() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/projects/tasks/${row.id}`} emptyMessage="No tasks found" emptyIcon={<CheckSquare className="h-10 w-10" />} />
+        rowLink={row => `/admin/projects/tasks/${row.id}`} emptyMessage="No tasks found" emptyIcon={<CheckSquare className="h-10 w-10" />} />
     </div>
   )
 }

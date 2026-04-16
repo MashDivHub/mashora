@@ -70,7 +70,7 @@ export default function BlogDetail() {
       <PageHeader
         title={data.name}
         subtitle="Blog"
-        backTo="/website/blog"
+        backTo="/admin/website/blog"
       />
 
       {/* Info card — two columns */}

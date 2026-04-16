@@ -203,7 +203,7 @@ export default function PosSessionDetail() {
       {/* Page header */}
       <PageHeader
         title={session.name}
-        backTo="/pos/sessions"
+        backTo="/admin/pos/sessions"
         actions={actionButtons}
       >
         <StatusBar steps={SESSION_STEPS} current={state} />

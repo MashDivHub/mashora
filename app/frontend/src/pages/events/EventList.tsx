@@ -158,7 +158,7 @@ export default function EventList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        rowLink={row => `/events/${row.id}`}
+        rowLink={row => `/admin/events/${row.id}`}
         emptyMessage="No events found"
         emptyIcon={<CalendarDays className="h-10 w-10" />}
       />

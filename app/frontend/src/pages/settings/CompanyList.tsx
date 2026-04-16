@@ -46,7 +46,7 @@ export default function CompanyList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Companies" subtitle="settings" backTo="/settings" />
+      <PageHeader title="Companies" subtitle="settings" backTo="/admin/settings" />
       <SearchBar placeholder="Search companies..." onSearch={setSearch} />
       <DataTable columns={columns} data={data?.records || []} total={data?.total} loading={isLoading}
         emptyMessage="No companies found" emptyIcon={<Building2 className="h-10 w-10" />} />

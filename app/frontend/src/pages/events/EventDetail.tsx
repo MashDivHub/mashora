@@ -90,7 +90,7 @@ export default function EventDetail() {
     <div className="space-y-6">
       <PageHeader
         title={event.name}
-        backTo="/events"
+        backTo="/admin/events"
         actions={<Badge variant={stateCfg.variant}>{stateCfg.label}</Badge>}
       />
 

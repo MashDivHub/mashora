@@ -80,7 +80,7 @@ export default function SurveyDetail() {
     <div className="space-y-6">
       <PageHeader
         title={survey.title}
-        backTo="/surveys"
+        backTo="/admin/surveys"
         actions={
           <Badge variant={STATE_VARIANT[survey.state] ?? 'secondary'} className="rounded-full px-3 text-sm">
             {STATE_LABEL[survey.state] ?? survey.state}

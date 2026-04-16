@@ -94,7 +94,7 @@ export default function EventRegistrations() {
     <div className="space-y-4">
       <PageHeader
         title="Event Registrations"
-        backTo={`/events/${eventId}`}
+        backTo={`/admin/events/${eventId}`}
         subtitle={data?.total != null ? `${data.total} registration${data.total !== 1 ? 's' : ''}` : undefined}
       />
       <DataTable
