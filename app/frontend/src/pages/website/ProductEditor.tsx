@@ -88,6 +88,54 @@ const EMPTY: ProductForm = {
 
 const selectCls = 'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors appearance-none'
 
+function PriceInput({ id, label, value, onChange, currency = '$' }: {
+  id: string; label: string; value: number; onChange: (v: number) => void; currency?: string
+}) {
+  const [focused, setFocused] = useState(false)
+  const [raw, setRaw] = useState('')
+
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+
+  function handleFocus() {
+    setFocused(true)
+    setRaw(value === 0 ? '' : value.toString())
+  }
+
+  function handleBlur() {
+    setFocused(false)
+    const parsed = parseFloat(raw.replace(/,/g, ''))
+    onChange(isNaN(parsed) ? 0 : Math.round(parsed * 100) / 100)
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value
+    // Allow digits, dots, commas, minus
+    if (/^[-\d.,]*$/.test(v)) setRaw(v)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">{currency}</span>
+        <Input
+          id={id}
+          className="pl-7 font-mono tabular-nums text-right"
+          value={focused ? raw : formatted}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder="0.00"
+          inputMode="decimal"
+        />
+      </div>
+    </div>
+  )
+}
+
 function SelectField({ id, label, value, onChange, options, hint }: {
   id: string; label: string; value: string; hint?: string
   onChange: (v: string) => void
@@ -316,10 +364,10 @@ export default function ProductEditor() {
 
       {/* ── Hero section: name + price + type + image ── */}
       <Card className="rounded-2xl">
-        <CardContent className="p-6">
-          <div className="flex gap-6">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             {/* Image */}
-            <div className="shrink-0 relative group">
+            <div className="shrink-0 relative group mx-auto sm:mx-0">
               <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" onChange={handleImageSelect} />
               <div
                 className="flex w-32 h-32 items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/30 overflow-hidden cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/50"
@@ -352,11 +400,8 @@ export default function ProductEditor() {
                 <Label htmlFor="name">Product Name</Label>
                 <Input id="name" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Wooden Chair" />
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Sales Price</Label>
-                  <Input id="price" type="number" step="0.01" min="0" value={form.list_price} onChange={e => set('list_price', parseFloat(e.target.value) || 0)} />
-                </div>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                <PriceInput id="price" label="Sales Price" value={form.list_price} onChange={v => set('list_price', v)} />
                 <SelectField id="type" label="Product Type" value={form.type} onChange={v => set('type', v)} options={PRODUCT_TYPES} />
                 <div className="space-y-2">
                   <Label htmlFor="ref">Internal Reference</Label>
@@ -384,7 +429,7 @@ export default function ProductEditor() {
 
         <TabsContent value="general">
           <Card className="rounded-2xl mt-4">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="barcode">Barcode</Label>
@@ -437,7 +482,7 @@ export default function ProductEditor() {
 
         <TabsContent value="inventory">
           <Card className="rounded-2xl mt-4">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="grid gap-5 md:grid-cols-2">
                 <SelectField id="tracking" label="Tracking" value={form.tracking} onChange={v => set('tracking', v)} options={TRACKING_OPTIONS} hint="Lot/serial traceability" />
                 <div className="space-y-2">
@@ -458,7 +503,7 @@ export default function ProductEditor() {
 
         <TabsContent value="notes">
           <Card className="rounded-2xl mt-4">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="space-y-2">
                 <Label htmlFor="desc_internal">Internal Notes</Label>
                 <Textarea id="desc_internal" rows={6} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Internal notes about this product..." />

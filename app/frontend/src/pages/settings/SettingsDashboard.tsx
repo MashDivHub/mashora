@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@mashora/design-system'
-import { Settings, Users, Building2, Globe, Shield, Database, Key, Bell } from 'lucide-react'
+import { Settings, Users, Building2, Globe, Shield, Database, Key, Bell, Lock } from 'lucide-react'
 import { PageHeader, StatCards, type StatCardData } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -35,6 +35,9 @@ export default function SettingsDashboard() {
       items: [
         { label: 'Users', desc: 'Manage user accounts and access', icon: <Users className="h-5 w-5" />, path: '/admin/settings/users' },
         { label: 'Companies', desc: 'Multi-company configuration', icon: <Building2 className="h-5 w-5" />, path: '/admin/settings/companies' },
+        { label: 'Groups & Roles', desc: 'Manage user groups and roles', icon: <Shield className="h-5 w-5" />, path: '/admin/settings/groups' },
+        { label: 'Access Rights', desc: 'Model-level CRUD permissions', icon: <Lock className="h-5 w-5" />, path: '/admin/settings/access-rights' },
+        { label: 'Record Rules', desc: 'Row-level access rules', icon: <Key className="h-5 w-5" />, path: '/admin/settings/record-rules' },
       ],
     },
     {

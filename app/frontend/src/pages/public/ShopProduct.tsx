@@ -18,13 +18,13 @@ export default function ShopProduct() {
     enabled: !!id && !isNaN(id),
   })
 
-  if (isLoading) return <div className="mx-auto max-w-7xl px-6 py-10 text-muted-foreground">Loading...</div>
-  if (!product) return <div className="mx-auto max-w-7xl px-6 py-10">Product not found.</div>
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 text-muted-foreground">Loading...</div>
+  if (!product) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">Product not found.</div>
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
       <Link to="/shop" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"><ArrowLeft className="size-4" /> Back to shop</Link>
-      <div className="grid gap-10 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         <div className="aspect-square rounded-2xl bg-muted overflow-hidden">
           {product.image_1920 && <img src={`data:image/png;base64,${product.image_1920}`} className="h-full w-full object-cover" alt={product.name} />}
         </div>

@@ -49,7 +49,7 @@ export default function BankReconciliation() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />

@@ -29,14 +29,14 @@ export default function Home() {
   })
 
   if (homepage?.content) {
-    return <article className="prose dark:prose-invert max-w-none mx-auto px-6 py-12" dangerouslySetInnerHTML={sanitizedHtml(homepage.content)} />
+    return <article className="prose dark:prose-invert max-w-none mx-auto px-4 sm:px-6 py-12" dangerouslySetInnerHTML={sanitizedHtml(homepage.content)} />
   }
 
   return (
     <div>
       <section className="relative overflow-hidden border-b border-border/60">
-        <div className="mx-auto max-w-7xl px-6 py-24 text-center">
-          <h1 className="text-5xl font-semibold tracking-tight md:text-6xl">Your entire business, one platform.</h1>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-24 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl md:text-6xl">Your entire business, one platform.</h1>
           <p className="mt-6 max-w-2xl mx-auto text-lg text-muted-foreground">Operations, finance, sales, inventory, and more — unified under a single, focused interface.</p>
           <div className="mt-8 flex justify-center gap-3">
             <Button asChild><Link to="/shop">Browse products <ArrowRight className="ml-1 size-4" /></Link></Button>
@@ -44,9 +44,9 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-6 py-16">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
         <h2 className="text-2xl font-semibold tracking-tight mb-8">Featured Products</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           {(products || []).map((p: any) => (
             <Link key={p.id} to={`/shop/${p.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">

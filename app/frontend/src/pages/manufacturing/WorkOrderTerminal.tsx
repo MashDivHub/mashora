@@ -60,12 +60,12 @@ export default function WorkOrderTerminal() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-12 w-72 rounded-2xl" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
         </div>
         <Skeleton className="h-48 rounded-2xl" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Skeleton className="h-16 rounded-2xl" />
           <Skeleton className="h-16 rounded-2xl" />
         </div>
@@ -130,7 +130,7 @@ export default function WorkOrderTerminal() {
           <Timer className="h-4 w-4 text-muted-foreground" />
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duration</p>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <p className="text-[11px] text-muted-foreground mb-1">Expected</p>
             <p className="text-2xl font-semibold tabular-nums">{fmtDur(wo.duration_expected)}</p>

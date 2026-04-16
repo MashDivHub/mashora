@@ -67,7 +67,7 @@ function WorkCenterCard({ wc }: { wc: WorkCenter }) {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
         <div className="flex flex-col gap-0.5">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">OEE</span>
           <span className={cn('text-sm font-semibold tabular-nums', oeeColor(wc.oee))}>

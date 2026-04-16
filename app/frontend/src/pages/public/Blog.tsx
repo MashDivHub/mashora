@@ -15,7 +15,7 @@ export default function Blog() {
   })
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <h1 className="text-4xl font-semibold tracking-tight mb-10">Blog</h1>
       <div className="space-y-6">
         {(data || []).map((post: any) => (

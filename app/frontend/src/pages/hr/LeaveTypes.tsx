@@ -112,7 +112,7 @@ export default function LeaveTypes() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-muted/40 px-2 py-2">
                     <p className="text-xs text-muted-foreground mb-0.5">Max Days</p>
                     <p className="text-lg font-semibold text-foreground">

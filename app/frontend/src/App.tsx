@@ -127,6 +127,7 @@ const CategoryManager = lazy(() => import('./pages/website/CategoryManager'))
 const ProductsDashboard = lazy(() => import('./pages/products/ProductsDashboard'))
 const PricelistManager = lazy(() => import('./pages/products/PricelistManager'))
 const VariantList = lazy(() => import('./pages/products/VariantList'))
+const BundleList = lazy(() => import('./pages/products/BundleList'))
 const BlogList = lazy(() => import('./pages/website/BlogList'))
 const BlogDetail = lazy(() => import('./pages/website/BlogDetail'))
 const EcomOrders = lazy(() => import('./pages/website/EcomOrders'))
@@ -201,6 +202,9 @@ const GoogleCalendarSync = lazy(() => import('./pages/settings/GoogleCalendarSyn
 const MicrosoftCalendarSync = lazy(() => import('./pages/settings/MicrosoftCalendarSync'))
 const StripeConfig = lazy(() => import('./pages/settings/StripeConfig'))
 const SmsConfig = lazy(() => import('./pages/settings/SmsConfig'))
+const GroupsManager = lazy(() => import('./pages/settings/GroupsManager'))
+const AccessRights = lazy(() => import('./pages/settings/AccessRights'))
+const RecordRules = lazy(() => import('./pages/settings/RecordRules'))
 
 // ---------------------------------------------------------------------------
 // Boneyard skeleton descriptors for page-level loading
@@ -385,6 +389,10 @@ export default function App() {
           <Route path="settings/users" element={<UserList />} />
           <Route path="settings/users/:id" element={<UserForm />} />
           <Route path="settings/companies" element={<CompanyList />} />
+          <Route path="settings/groups" element={<GroupsManager />} />
+          <Route path="settings/groups/:id" element={<GroupsManager />} />
+          <Route path="settings/access-rights" element={<AccessRights />} />
+          <Route path="settings/record-rules" element={<RecordRules />} />
           <Route path="settings/integrations/google" element={<GoogleCalendarSync />} />
           <Route path="settings/integrations/microsoft" element={<MicrosoftCalendarSync />} />
           <Route path="settings/integrations/stripe" element={<StripeConfig />} />
@@ -404,6 +412,7 @@ export default function App() {
           <Route path="products/categories" element={<CategoryManager />} />
           <Route path="products/pricelists" element={<PricelistManager />} />
           <Route path="products/variants" element={<VariantList />} />
+          <Route path="products/bundles" element={<BundleList />} />
           <Route path="products/new" element={<ProductEditor />} />
           <Route path="products/:id" element={<ProductEditor />} />
 

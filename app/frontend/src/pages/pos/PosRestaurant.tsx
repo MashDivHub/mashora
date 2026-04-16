@@ -156,7 +156,7 @@ export default function PosRestaurant() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-48 rounded-xl" />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-24 rounded-2xl" />
           ))}
@@ -208,7 +208,7 @@ export default function PosRestaurant() {
             {activeFloor}
           </h2>
         )}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {visibleTables.map(table => (
             <TableCard key={table.id} table={table} onClick={() => openTerminal(table.id)} />
           ))}

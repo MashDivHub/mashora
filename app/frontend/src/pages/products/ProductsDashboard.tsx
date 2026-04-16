@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@mashora/design-system'
 import {
-  Package, Tag, Layers, DollarSign, BarChart3, Box,
+  Package, Tag, Layers, DollarSign, BoxesIcon,
 } from 'lucide-react'
 import { PageHeader, StatCards, type StatCardData } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -29,6 +29,7 @@ export default function ProductsDashboard() {
   const actions = [
     { label: 'All Products', desc: 'Browse and manage product catalog', icon: <Package className="h-5 w-5" />, path: '/admin/products/list' },
     { label: 'Categories', desc: 'Organize products into categories', icon: <Tag className="h-5 w-5" />, path: '/admin/products/categories' },
+    { label: 'Bundles / Kits', desc: 'Combine products into packages', icon: <BoxesIcon className="h-5 w-5" />, path: '/admin/products/bundles' },
     { label: 'Pricelists', desc: 'Manage pricing rules and discounts', icon: <DollarSign className="h-5 w-5" />, path: '/admin/products/pricelists' },
     { label: 'Variants', desc: 'View all product variants', icon: <Layers className="h-5 w-5" />, path: '/admin/products/variants' },
   ]

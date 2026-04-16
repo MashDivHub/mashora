@@ -222,7 +222,7 @@ export default function EmployeeDetail() {
       onDiscard={() => { if (isNew) navigate(-1); else { setForm({ ...record }); setEditing(false) } }}
       backTo="/admin/hr/employees"
       topContent={
-        <div className="flex gap-4 items-start mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
           {form.image_128 ? (
             <img src={`data:image/png;base64,${form.image_128}`} alt="" className="h-24 w-24 rounded-2xl object-cover shrink-0" />
           ) : (

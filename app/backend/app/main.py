@@ -105,6 +105,7 @@ from app.routers.settings import router as settings_router
 from app.routers.attachments import router as attachments_router
 from app.routers.email import router as email_router
 from app.routers.calendar_sync import router as calendar_sync_router
+from app.routers.permissions import router as permissions_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(generic_router, prefix="/api/v1")
@@ -133,6 +134,7 @@ app.include_router(settings_router, prefix="/api/v1")
 app.include_router(attachments_router, prefix="/api/v1")
 app.include_router(email_router, prefix="/api/v1")
 app.include_router(calendar_sync_router, prefix="/api/v1")
+app.include_router(permissions_router, prefix="/api/v1")
 
 
 @app.get("/")

@@ -17,7 +17,7 @@ export default function ContactUs() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
       <h1 className="text-4xl font-semibold tracking-tight mb-3">Contact us</h1>
       <p className="text-muted-foreground mb-8">Tell us about your project. We typically reply within one business day.</p>
       <Card>

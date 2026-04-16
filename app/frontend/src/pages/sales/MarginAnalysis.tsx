@@ -45,7 +45,7 @@ export default function MarginAnalysis() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
@@ -74,7 +74,7 @@ export default function MarginAnalysis() {
       />
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Revenue */}
         <div className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Revenue</p>

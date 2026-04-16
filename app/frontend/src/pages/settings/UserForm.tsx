@@ -175,7 +175,7 @@ export default function UserForm() {
         : form.share ? <Badge variant="secondary" className="rounded-full text-xs">Portal User</Badge> : undefined
       }
       topContent={
-        <div className="flex gap-4 items-start mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
           {form.image_128 ? (
             <img src={`data:image/png;base64,${form.image_128}`} alt="" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           ) : (

@@ -317,7 +317,7 @@ export default function ContactForm() {
       backTo="/admin/contacts"
       smartButtons={smartButtons}
       topContent={
-        <div className="flex gap-4 items-start mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
           {/* Avatar */}
           <div className="shrink-0">
             {form.image_128 || form.image_1920 ? (
