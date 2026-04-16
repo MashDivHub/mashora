@@ -21,57 +21,73 @@ interface NotificationState {
   addNotification: (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void
 }
 
+// Persist read IDs in localStorage
+const READ_KEY = 'mashora_read_notifications'
+
+function getReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(READ_KEY)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch { return new Set() }
+}
+
+function saveReadIds(ids: Set<string>) {
+  try {
+    // Keep last 200 IDs to avoid unbounded growth
+    const arr = [...ids].slice(-200)
+    localStorage.setItem(READ_KEY, JSON.stringify(arr))
+  } catch { /* localStorage full or unavailable */ }
+}
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  notifications: [
-    {
-      id: 'system_1',
-      title: 'System Ready',
-      body: 'Mashora ERP backend is connected and operational.',
-      timestamp: new Date(),
-      read: false,
-    },
-    {
-      id: 'system_2',
-      title: 'View Engine Active',
-      body: 'Dynamic view rendering engine is loaded with form, list, kanban, calendar, graph, and pivot views.',
-      timestamp: new Date(),
-      read: false,
-    },
-  ],
-  unreadCount: 2,
+  notifications: [],
+  unreadCount: 0,
   loading: false,
 
   fetchNotifications: async () => {
     set({ loading: true })
     try {
-      // Fetch activities via generic model endpoint
       const { data } = await erpClient.raw.post('/model/mail.activity', {
         fields: ['id', 'activity_type_id', 'summary', 'note', 'date_deadline', 'res_model', 'res_id', 'res_name', 'user_id', 'state'],
         limit: 20,
         order: 'date_deadline asc',
       }).catch(() => ({ data: { records: [] } }))
 
-      const activities = (data.records || []).map((a: any) => ({
-        id: `activity_${a.id}`,
-        title: a.activity_type_id?.[1] || 'Activity',
-        body: a.summary || a.note || '',
-        model: a.res_model,
-        resId: a.res_id,
-        timestamp: new Date(a.date_deadline || a.create_date),
-        read: false,
-      }))
+      const readIds = getReadIds()
 
-      set(prev => ({
-        notifications: [...prev.notifications.filter(n => n.id.startsWith('system_')), ...activities],
-        unreadCount: prev.notifications.filter(n => !n.read && n.id.startsWith('system_')).length + activities.length,
+      const activities: Notification[] = (data.records || []).map((a: any) => {
+        const id = `activity_${a.id}`
+        return {
+          id,
+          title: a.activity_type_id?.[1] || 'Activity',
+          body: a.summary || a.note || '',
+          model: a.res_model,
+          resId: a.res_id,
+          timestamp: new Date(a.date_deadline || a.create_date),
+          read: readIds.has(id),
+        }
+      })
+
+      // Keep any live WebSocket notifications already in state
+      const existing = get().notifications.filter(n => n.id.startsWith('notif_'))
+
+      const all = [...existing, ...activities]
+
+      set({
+        notifications: all,
+        unreadCount: all.filter(n => !n.read).length,
         loading: false,
-      }))
+      })
     } catch {
       set({ loading: false })
     }
   },
 
   markRead: (id) => set((state) => {
+    const readIds = getReadIds()
+    readIds.add(id)
+    saveReadIds(readIds)
+
     const notifications = state.notifications.map(n =>
       n.id === id ? { ...n, read: true } : n
     )
@@ -81,10 +97,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }
   }),
 
-  markAllRead: () => set(prev => ({
-    notifications: prev.notifications.map(n => ({ ...n, read: true })),
-    unreadCount: 0,
-  })),
+  markAllRead: () => set(prev => {
+    const readIds = getReadIds()
+    prev.notifications.forEach(n => readIds.add(n.id))
+    saveReadIds(readIds)
+
+    return {
+      notifications: prev.notifications.map(n => ({ ...n, read: true })),
+      unreadCount: 0,
+    }
+  }),
 
   addNotification: (notif) => set(prev => {
     const newNotif: Notification = {

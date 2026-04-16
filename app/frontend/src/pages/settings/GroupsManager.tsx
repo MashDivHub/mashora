@@ -59,7 +59,11 @@ function m2oName(val: [number, string] | number | null | undefined): string {
 
 function GroupList() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [search, setSearch] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newComment, setNewComment] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['permission-groups'],
@@ -67,6 +71,26 @@ function GroupList() {
       const { data } = await erpClient.raw.get('/permissions/groups')
       return data as { records: Group[] }
     },
+  })
+
+  const createMut = useMutation({
+    mutationFn: async () => {
+      await erpClient.raw.post('/permissions/groups', { name: newName.trim(), comment: newComment.trim() || null })
+    },
+    onSuccess: () => {
+      toast.success(`Group "${newName}" created`)
+      setNewName(''); setNewComment(''); setShowCreate(false)
+      qc.invalidateQueries({ queryKey: ['permission-groups'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Create failed'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      await erpClient.raw.delete(`/permissions/groups/${id}`)
+    },
+    onSuccess: () => { toast.success('Group deleted'); qc.invalidateQueries({ queryKey: ['permission-groups'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Delete failed'),
   })
 
   const groups = (data?.records || []).filter(
@@ -77,15 +101,34 @@ function GroupList() {
     <div className="space-y-4">
       <PageHeader title="Groups & Roles" subtitle="settings" backTo="/admin/settings" />
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search groups..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search groups..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Button className="rounded-xl" onClick={() => setShowCreate(true)}>
+          <Plus className="h-4 w-4 mr-1.5" /> New Group
+        </Button>
       </div>
+
+      {showCreate && (
+        <Card className="rounded-2xl border-primary/30 shadow-lg">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">New Group</h3>
+              <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+              <Input placeholder="Group name" value={newName} onChange={e => setNewName(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) createMut.mutate() }} />
+              <Input placeholder="Description (optional)" value={newComment} onChange={e => setNewComment(e.target.value)} />
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button onClick={() => createMut.mutate()} disabled={!newName.trim() || createMut.isPending} className="rounded-xl">Create</Button>
+              <Button variant="ghost" onClick={() => setShowCreate(false)} className="rounded-xl">Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="rounded-2xl">
         <CardContent className="p-0">
@@ -95,32 +138,31 @@ function GroupList() {
                 <th className="text-left px-4 py-3 font-medium">Group</th>
                 <th className="text-left px-4 py-3 font-medium">Description</th>
                 <th className="text-right px-4 py-3 font-medium">Users</th>
+                <th className="text-right px-4 py-3 font-medium w-16"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
               ) : groups.length === 0 ? (
-                <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No groups found</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No groups found</td></tr>
               ) : (
                 groups.map(g => (
-                  <tr
-                    key={g.id}
-                    onClick={() => navigate(`/admin/settings/groups/${g.id}`)}
-                    className="border-b last:border-0 hover:bg-muted/10 cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3">
+                  <tr key={g.id} className="border-b last:border-0 hover:bg-muted/10 transition-colors group">
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => navigate(`/admin/settings/groups/${g.id}`)}>
                       <div className="flex items-center gap-2">
                         <Shield className="h-4 w-4 text-primary shrink-0" />
                         <span className="font-medium">{g.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground truncate max-w-[300px]">{g.comment || '-'}</td>
+                    <td className="px-4 py-3 text-muted-foreground truncate max-w-[300px] cursor-pointer" onClick={() => navigate(`/admin/settings/groups/${g.id}`)}>{g.comment || '-'}</td>
+                    <td className="px-4 py-3 text-right cursor-pointer" onClick={() => navigate(`/admin/settings/groups/${g.id}`)}>
+                      <Badge variant="secondary" className="rounded-full text-xs gap-1"><Users className="h-3 w-3" />{g.user_count}</Badge>
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <Badge variant="secondary" className="rounded-full text-xs gap-1">
-                        <Users className="h-3 w-3" />
-                        {g.user_count}
-                      </Badge>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive" onClick={() => { if (confirm(`Delete group "${g.name}"?`)) deleteMut.mutate(g.id) }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </td>
                   </tr>
                 ))
