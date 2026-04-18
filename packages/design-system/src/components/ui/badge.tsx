@@ -30,4 +30,35 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />
 }
 
+export type BadgeVariant =
+  | 'default'
+  | 'secondary'
+  | 'outline'
+  | 'destructive'
+  | 'success'
+  | 'warning'
+  | 'info'
+
+const KNOWN_BADGE_VARIANTS: ReadonlySet<string> = new Set([
+  'default',
+  'secondary',
+  'outline',
+  'destructive',
+  'success',
+  'warning',
+  'info',
+])
+
+/**
+ * Maps an arbitrary status/variant string to a typed BadgeVariant, falling
+ * back to 'secondary' for unknown values. Use at call sites where `variant`
+ * originates from dynamic state maps so we avoid `as any` casts.
+ */
+export function statusToBadgeVariant(status: string | null | undefined): BadgeVariant {
+  if (status && KNOWN_BADGE_VARIANTS.has(status)) {
+    return status as BadgeVariant
+  }
+  return 'secondary'
+}
+
 export { Badge, badgeVariants }

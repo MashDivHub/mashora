@@ -85,7 +85,7 @@ export default function FleetCosts() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-border/70 bg-muted/20 hover:bg-muted/20">

@@ -1,25 +1,48 @@
 import { erpClient } from '@/lib/erp-api'
 
+export type DomainTerm = [string, string, unknown] | string
+export type Domain = DomainTerm[]
+
+interface ArchNode {
+  tag?: string
+  name?: string
+  date_start?: string
+  date_stop?: string
+  date_end?: string
+  all_day?: string
+  color?: string
+  children?: ArchNode[]
+  [key: string]: unknown
+}
+
+interface CalendarRecord {
+  id: number
+  display_name?: string
+  name?: string
+  [key: string]: unknown
+}
+
 export interface CalendarEvent {
   id: number
   title: string
   start: string
   end?: string
   allDay?: boolean
-  record: Record<string, any>
+  record: Record<string, unknown>
 }
 
-export function extractCalendarConfig(arch: any): {
+export function extractCalendarConfig(arch: ArchNode | string | null | undefined): {
   dateStartField: string
   dateStopField: string | null
   allDayField: string | null
   colorField: string | null
   displayFields: string[]
 } {
-  const dateStartField = arch?.date_start || 'date_start'
-  const dateStopField = arch?.date_stop || arch?.date_end || null
-  const allDayField = arch?.all_day || null
-  const colorField = arch?.color || null
+  const archNode: ArchNode | null = typeof arch === 'string' || !arch ? null : arch
+  const dateStartField = archNode?.date_start || 'date_start'
+  const dateStopField = archNode?.date_stop || archNode?.date_end || null
+  const allDayField = archNode?.all_day || null
+  const colorField = archNode?.color || null
 
   const displayFields: string[] = [dateStartField]
   if (dateStopField) displayFields.push(dateStopField)
@@ -27,8 +50,8 @@ export function extractCalendarConfig(arch: any): {
   if (colorField) displayFields.push(colorField)
 
   // Collect field names from arch children
-  if (arch?.children) {
-    for (const child of arch.children) {
+  if (archNode?.children) {
+    for (const child of archNode.children) {
       if (child.tag === 'field' && child.name && !displayFields.includes(child.name)) {
         displayFields.push(child.name)
       }
@@ -48,9 +71,9 @@ export async function loadCalendarEvents(
   fields: string[],
   rangeStart: string,
   rangeEnd: string,
-  domain: any[] = [],
+  domain: Domain = [],
 ): Promise<CalendarEvent[]> {
-  const dateDomain: any[] = [
+  const dateDomain: Domain = [
     [dateStartField, '>=', rangeStart],
     [dateStartField, '<=', rangeEnd],
   ]
@@ -62,14 +85,17 @@ export async function loadCalendarEvents(
     order: `${dateStartField} asc`,
   })
 
-  return (data.records || []).map((rec: any) => ({
-    id: rec.id,
-    title: rec.display_name || rec.name || `#${rec.id}`,
-    start: rec[dateStartField],
-    end: dateStopField ? rec[dateStopField] : undefined,
-    allDay: !rec[dateStartField]?.includes(' '),
-    record: rec,
-  }))
+  return ((data.records || []) as CalendarRecord[]).map((rec) => {
+    const start = String(rec[dateStartField] ?? '')
+    return {
+      id: rec.id,
+      title: rec.display_name || rec.name || `#${rec.id}`,
+      start,
+      end: dateStopField ? String(rec[dateStopField] ?? '') || undefined : undefined,
+      allDay: !start.includes(' '),
+      record: rec,
+    }
+  })
 }
 
 export async function rescheduleEvent(
@@ -80,7 +106,7 @@ export async function rescheduleEvent(
   dateStopField?: string | null,
   newEnd?: string,
 ): Promise<void> {
-  const vals: Record<string, any> = { [dateStartField]: newStart }
+  const vals: Record<string, unknown> = { [dateStartField]: newStart }
   if (dateStopField && newEnd) vals[dateStopField] = newEnd
   await erpClient.raw.put(`/model/${model}/${recordId}`, { vals })
 }

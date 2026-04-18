@@ -2,10 +2,10 @@ import { lazy, type ComponentType } from 'react'
 
 export interface ViewProps {
   model: string
-  action?: any
-  viewDef?: any
-  domain?: any[]
-  context?: Record<string, any>
+  action?: Record<string, unknown>
+  viewDef?: Record<string, unknown>
+  domain?: Array<string | [string, string, unknown]>
+  context?: Record<string, unknown>
   recordId?: number | null
 }
 

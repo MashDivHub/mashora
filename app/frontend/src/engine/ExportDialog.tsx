@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Download, Loader2 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 import { downloadBase64 } from './ActionResultHandler'
+import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface ExportDialogProps {
   open: boolean
   onClose: () => void
   model: string
-  domain?: any[]
+  domain?: Array<string | [string, string, unknown]>
   recordIds?: number[]
 }
 
@@ -27,8 +29,9 @@ export default function ExportDialog({ open, onClose, model, domain, recordIds }
     staleTime: 5 * 60 * 1000,
   })
 
-  const fieldList = fields
-    ? Object.entries(fields as Record<string, any>)
+  interface FieldMeta { string?: string; type?: string; name?: string; [k: string]: unknown }
+  const fieldList: Array<[string, FieldMeta]> = fields
+    ? Object.entries(fields as Record<string, FieldMeta>)
         .filter(([, meta]) => meta.type !== 'one2many' && meta.type !== 'binary' && !meta.name?.startsWith('_'))
         .sort(([, a], [, b]) => (a.string || '').localeCompare(b.string || ''))
     : []
@@ -63,8 +66,8 @@ export default function ExportDialog({ open, onClose, model, domain, recordIds }
         downloadBase64(data.content, data.filename || `${model}_export.csv`, 'text/csv')
       }
       onClose()
-    } catch (e) {
-      console.error('Export failed:', e)
+    } catch (e: unknown) {
+      toast.error('Export Failed', extractErrorMessage(e, 'Could not export records'))
     } finally {
       setExporting(false)
     }
@@ -96,8 +99,8 @@ export default function ExportDialog({ open, onClose, model, domain, recordIds }
                     checked={selectedFields.includes(name)}
                     onCheckedChange={() => toggleField(name)}
                   />
-                  <span className="text-sm flex-1">{(meta as any).string || name}</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">{(meta as any).type}</span>
+                  <span className="text-sm flex-1">{meta.string || name}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{meta.type}</span>
                 </label>
               ))
             )}

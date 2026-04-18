@@ -80,6 +80,13 @@ async def update_existing_order(order_id: int, body: PurchaseOrderUpdate, user: 
     return await update_order(order_id=order_id, vals=vals)
 
 
+@router.post("/orders/{order_id}/send")
+async def send_rfq(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Send RFQ to vendor by email. Sets state to 'sent'."""
+    from app.services.base import async_update
+    return await async_update("purchase.order", order_id, {"state": "sent"}, uid=user.uid if user else 1)
+
+
 @router.post("/orders/{order_id}/confirm")
 async def confirm_existing_order(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Confirm RFQ. Goes to 'to approve' or directly to 'purchase'."""

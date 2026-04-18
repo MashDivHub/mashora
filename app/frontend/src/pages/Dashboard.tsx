@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { PageHeader, Card, CardContent, CardHeader, CardTitle } from '@mashora/design-system'
+import { Card, CardContent, CardHeader, CardTitle } from '@mashora/design-system'
+import { PageHeader } from '@/components/shared'
 import {
   Users,
   ShoppingCart,
@@ -13,6 +14,7 @@ import {
   Warehouse,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,37 +64,37 @@ interface QuickAction {
 
 const quickActions: QuickAction[] = [
   {
-    to: '/sales',
+    to: '/admin/sales',
     label: 'Sales',
     description: 'Manage quotations, sales orders, and revenue pipeline from one place.',
     icon: ShoppingCart,
   },
   {
-    to: '/accounting',
+    to: '/admin/accounting',
     label: 'Accounting',
     description: 'Invoices, payments, and chart of accounts at a glance.',
     icon: Calculator,
   },
   {
-    to: '/crm',
+    to: '/admin/crm',
     label: 'CRM',
     description: 'Track leads, opportunities, and your sales funnel progression.',
     icon: Target,
   },
   {
-    to: '/inventory',
+    to: '/admin/inventory',
     label: 'Inventory',
     description: 'Stock levels, transfers, and warehouse operations in one view.',
     icon: Warehouse,
   },
   {
-    to: '/projects',
+    to: '/admin/projects',
     label: 'Projects',
     description: 'Tasks, milestones, and team workload across all active projects.',
     icon: FolderKanban,
   },
   {
-    to: '/contacts',
+    to: '/admin/contacts',
     label: 'Contacts',
     description: 'Customers, vendors, and all partner relationships in one registry.',
     icon: Users,
@@ -140,6 +142,7 @@ function OrmHealthCard({ data }: { data: OrmHealth }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  useDocumentTitle('Dashboard')
   const { data: healthData } = useQuery<OrmHealth>({
     queryKey: ['health'],
     queryFn: () => erpClient.raw.get('/health/orm').then((r) => r.data),
@@ -181,9 +184,8 @@ export default function Dashboard() {
     <div className="space-y-10">
       {/* Header */}
       <PageHeader
-        eyebrow="Overview"
+        subtitle="Overview"
         title="Welcome back"
-        description="Run operations, track performance, and manage your entire business from one focused workspace."
       />
 
       {/* Stat cards */}

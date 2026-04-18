@@ -28,28 +28,20 @@ class StockQuant(Base, TimestampMixin, CompanyMixin):
     product_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("product_product.id", ondelete="SET NULL"), nullable=True
     )
-    product_tmpl_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("product_template.id", ondelete="SET NULL"), nullable=True
-    )
-    product_uom_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("uom_uom.id", ondelete="SET NULL"), nullable=True
-    )
     location_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("stock_location.id", ondelete="SET NULL"), nullable=True
     )
     lot_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("stock_lot.id", ondelete="SET NULL"), nullable=True
     )
-    package_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("stock_quant_package.id", ondelete="SET NULL"), nullable=True
-    )
+    # stock_quant_package model is not registered; keep as plain FK-less column
+    package_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     owner_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("res_partner.id", ondelete="SET NULL"), nullable=True
     )
     quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
     reserved_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
     inventory_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
-    inventory_quantity_count: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
     inventory_diff_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(16, 4), nullable=True)
     inventory_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     user_id: Mapped[Optional[int]] = mapped_column(

@@ -6,7 +6,58 @@ import { Building2, User, Star, BarChart3, FileText, Calendar, CheckSquare, Shop
 import { RecordForm, FormField, FormSection, ReadonlyField, StatusBar, toast, type SmartButton, type FormTab } from '@/components/shared'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 import { sanitizedHtml } from '@/lib/sanitize'
+
+interface ContactFormState {
+  id?: number | null
+  name?: string
+  display_name?: string
+  email?: string
+  phone?: string
+  mobile?: string
+  website?: string
+  street?: string
+  street2?: string
+  city?: string
+  zip?: string
+  is_company?: boolean
+  company_type?: string
+  function?: string
+  vat?: string
+  comment?: string
+  barcode?: string
+  lang?: string
+  image_1920?: string
+  image_128?: string
+  customer_rank?: number
+  supplier_rank?: number
+  active?: boolean
+  parent_id?: [number, string] | false | number
+  state_id?: [number, string] | false | number
+  country_id?: [number, string] | false | number
+  title?: [number, string] | false | number
+  property_payment_term_id?: [number, string] | false | number
+  property_supplier_payment_term_id?: [number, string] | false | number
+  property_account_position_id?: [number, string] | false | number
+  property_product_pricelist?: [number, string] | false | number
+  property_purchase_currency_id?: [number, string] | false | number
+  opportunity_count?: number
+  sale_order_count?: number
+  meeting_count?: number
+  task_count?: number
+  purchase_order_count?: number
+  supplier_invoice_count?: number
+  credit?: number
+  debit?: number
+  total_invoiced?: number
+  bank_account_count?: number
+  category_id?: TagValue[]
+  child_ids?: Array<{ id?: number; name?: string; display_name?: string; email?: string; phone?: string; function?: string } | number>
+  [key: string]: unknown
+}
+interface NameSearchResult { id: number; display_name: string }
+type TagValue = [number, string] | { id?: number; display_name?: string } | number
 
 const FORM_FIELDS = [
   'id', 'name', 'display_name', 'email', 'phone', 'mobile', 'website',
@@ -24,6 +75,83 @@ const FORM_FIELDS = [
   'child_ids',
 ]
 
+// ─── Module-scoped helpers ──────────────────────────────────────────────────
+// These MUST live outside ContactForm: defining them inside the parent would
+// give them a new component identity on every render, re-mounting the <Input>
+// elements and stealing focus after each keystroke.
+
+function _m2oDisplay(val: unknown): string {
+  return Array.isArray(val) ? String(val[1]) : ''
+}
+
+function TextField({
+  field, label, required, type = 'text', hint,
+  editing, form, setField,
+}: {
+  field: string; label: string; required?: boolean; type?: string; hint?: string
+  editing: boolean
+  form: ContactFormState
+  setField: (field: string, value: unknown) => void
+}) {
+  const fv = form[field]
+  if (!editing) return <ReadonlyField label={label} value={(typeof fv === 'string' || typeof fv === 'number') ? fv : undefined} />
+  return (
+    <FormField label={label} required={required}>
+      <Input type={type} value={(typeof fv === 'string' || typeof fv === 'number') ? fv : ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" />
+      {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
+    </FormField>
+  )
+}
+
+function M2OField({
+  field, model, label, required, hint,
+  editing, form, setField,
+  m2oResults, searchM2o,
+}: {
+  field: string; model: string; label: string; required?: boolean; hint?: string
+  editing: boolean
+  form: ContactFormState
+  setField: (field: string, value: unknown) => void
+  m2oResults: Record<string, NameSearchResult[]>
+  searchM2o: (model: string, query: string, field: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const results = m2oResults[field] || []
+
+  if (!editing) return <ReadonlyField label={label} value={_m2oDisplay(form[field])} />
+  return (
+    <FormField label={label} required={required}>
+      <div className="relative">
+        <Input
+          value={open ? q : _m2oDisplay(form[field])}
+          onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
+          onFocus={() => { setQ(_m2oDisplay(form[field])); setOpen(true) }}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
+          placeholder="Search..."
+          className="rounded-xl h-9"
+          autoComplete="off"
+        />
+        {open && results.length > 0 && (
+          <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
+            {results.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors first:rounded-t-xl last:rounded-b-xl"
+                onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}
+              >
+                {r.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {hint && <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>}
+    </FormField>
+  )
+}
+
 export default function ContactForm() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -31,7 +159,7 @@ export default function ContactForm() {
   const isNew = !id || id === 'new'
   const recordId = isNew ? null : parseInt(id || '0')
   const [editing, setEditing] = useState(isNew)
-  const [form, setForm] = useState<Record<string, any>>({})
+  const [form, setForm] = useState<ContactFormState>({})
   const [dirty, setDirty] = useState(false)
 
   // Load record
@@ -51,7 +179,7 @@ export default function ContactForm() {
     if (record) { setForm({ ...record }); setDirty(false) }
   }, [record])
 
-  const setField = useCallback((name: string, value: any) => {
+  const setField = useCallback((name: string, value: unknown) => {
     setForm(prev => ({ ...prev, [name]: value }))
     setDirty(true)
   }, [])
@@ -61,7 +189,7 @@ export default function ContactForm() {
 
   const validate = useCallback((): boolean => {
     const errs: Record<string, string> = {}
-    if (!form.name?.trim()) errs.name = 'Name is required'
+    if (!(typeof form.name === 'string' && form.name.trim())) errs.name = 'Name is required'
     setErrors(errs)
     if (Object.keys(errs).length > 0) {
       toast.error('Validation Error', Object.values(errs).join(', '))
@@ -74,7 +202,7 @@ export default function ContactForm() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error('Validation failed')
-      const vals: Record<string, any> = {}
+      const vals: Record<string, unknown> = {}
       const editableFields = [
         'name', 'email', 'phone', 'mobile', 'website', 'street', 'street2',
         'city', 'zip', 'is_company', 'company_type', 'function', 'vat',
@@ -94,7 +222,7 @@ export default function ContactForm() {
       }
       // Tags
       if (JSON.stringify(form.category_id) !== JSON.stringify(record?.category_id)) {
-        const ids = (form.category_id || []).map((t: any) => Array.isArray(t) ? t[0] : typeof t === 'object' ? t.id : t)
+        const ids = (form.category_id || []).map((t) => Array.isArray(t) ? t[0] : typeof t === 'object' ? t.id : t)
         vals.category_id = [[6, 0, ids]]
       }
 
@@ -117,15 +245,16 @@ export default function ContactForm() {
         navigate(`/admin/contacts/${data.id}`, { replace: true })
       }
     },
-    onError: (e: any) => {
-      if (e.message !== 'Validation failed') {
-        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    onError: (e: unknown) => {
+      const msg = extractErrorMessage(e)
+      if (msg !== 'Validation failed') {
+        toast.error('Save Failed', msg)
       }
     },
   })
 
   // Many2one search helper
-  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const [m2oResults, setM2oResults] = useState<Record<string, NameSearchResult[]>>({})
   const searchM2o = useCallback(async (model: string, query: string, field: string) => {
     if (!query) { setM2oResults(prev => ({ ...prev, [field]: [] })); return }
     try {
@@ -146,64 +275,18 @@ export default function ContactForm() {
 
   const isCompany = form.is_company || form.company_type === 'company'
   const displayName = form.name || 'New Contact'
-  const m2oDisplay = (val: any) => Array.isArray(val) ? val[1] : ''
+  const m2oDisplay = (val: unknown) => Array.isArray(val) ? String(val[1]) : ''
 
   // Smart buttons
   const smartButtons: SmartButton[] = [
-    form.opportunity_count > 0 && { label: 'Opportunities', value: form.opportunity_count, icon: <Star className="h-5 w-5" /> },
-    form.sale_order_count > 0 && { label: 'Sales', value: form.sale_order_count, icon: <BarChart3 className="h-5 w-5" /> },
-    form.total_invoiced > 0 && { label: 'Invoiced', value: `$${(form.total_invoiced || 0).toFixed(0)}`, icon: <FileText className="h-5 w-5" /> },
-    form.meeting_count > 0 && { label: 'Meetings', value: form.meeting_count, icon: <Calendar className="h-5 w-5" /> },
-    form.task_count > 0 && { label: 'Tasks', value: form.task_count, icon: <CheckSquare className="h-5 w-5" /> },
-    form.purchase_order_count > 0 && { label: 'Purchases', value: form.purchase_order_count, icon: <ShoppingCart className="h-5 w-5" /> },
+    (form.opportunity_count ?? 0) > 0 && { label: 'Opportunities', value: form.opportunity_count!, icon: <Star className="h-5 w-5" /> },
+    (form.sale_order_count ?? 0) > 0 && { label: 'Sales', value: form.sale_order_count!, icon: <BarChart3 className="h-5 w-5" /> },
+    (form.total_invoiced ?? 0) > 0 && { label: 'Invoiced', value: `$${(form.total_invoiced || 0).toFixed(0)}`, icon: <FileText className="h-5 w-5" /> },
+    (form.meeting_count ?? 0) > 0 && { label: 'Meetings', value: form.meeting_count!, icon: <Calendar className="h-5 w-5" /> },
+    (form.task_count ?? 0) > 0 && { label: 'Tasks', value: form.task_count!, icon: <CheckSquare className="h-5 w-5" /> },
+    (form.purchase_order_count ?? 0) > 0 && { label: 'Purchases', value: form.purchase_order_count!, icon: <ShoppingCart className="h-5 w-5" /> },
   ].filter(Boolean) as SmartButton[]
 
-  // M2O field component
-  const M2OField = ({ field, model, label, required }: { field: string; model: string; label: string; required?: boolean }) => {
-    const [open, setOpen] = useState(false)
-    const [q, setQ] = useState('')
-    const results = m2oResults[field] || []
-
-    if (!editing) return <ReadonlyField label={label} value={m2oDisplay(form[field])} />
-    return (
-      <FormField label={label} required={required}>
-        <div className="relative">
-          <Input
-            value={open ? q : m2oDisplay(form[field])}
-            onChange={e => { setQ(e.target.value); searchM2o(model, e.target.value, field) }}
-            onFocus={() => { setQ(m2oDisplay(form[field])); setOpen(true) }}
-            onBlur={() => setTimeout(() => setOpen(false), 200)}
-            placeholder="Search..."
-            className="rounded-xl h-9"
-            autoComplete="off"
-          />
-          {open && results.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
-              {results.map((r: any) => (
-                <button
-                  key={r.id}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors first:rounded-t-xl last:rounded-b-xl"
-                  onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}
-                >
-                  {r.display_name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </FormField>
-    )
-  }
-
-  // Editable input helper
-  const TextField = ({ field, label, required, type = 'text' }: { field: string; label: string; required?: boolean; type?: string }) => {
-    if (!editing) return <ReadonlyField label={label} value={form[field]} />
-    return (
-      <FormField label={label} required={required}>
-        <Input type={type} value={form[field] || ''} onChange={e => setField(field, e.target.value)} className="rounded-xl h-9" />
-      </FormField>
-    )
-  }
 
   // Tabs
   const tabs: FormTab[] = [
@@ -214,8 +297,9 @@ export default function ContactForm() {
         <div className="space-y-3">
           {Array.isArray(form.child_ids) && form.child_ids.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {form.child_ids.slice(0, 12).map((child: any) => {
-                const c = typeof child === 'object' ? child : { id: child }
+              {form.child_ids.slice(0, 12).map((child) => {
+                const c: { id?: number; name?: string; display_name?: string; email?: string; phone?: string; function?: string } =
+                  typeof child === 'object' ? child : { id: child }
                 return (
                   <div
                     key={c.id}
@@ -248,14 +332,14 @@ export default function ContactForm() {
         <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
           <div className="space-y-2">
             <FormSection title="Sales">
-              <M2OField field="property_payment_term_id" model="account.payment.term" label="Payment Terms" />
-              <M2OField field="property_product_pricelist" model="product.pricelist" label="Pricelist" />
+              <M2OField field="property_payment_term_id" model="account.payment.term" label="Payment Terms" hint="Default payment terms when selling to this customer (e.g. 'Net 30'). Applied automatically to new sales orders/invoices." editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
+              <M2OField field="property_product_pricelist" model="product.pricelist" label="Pricelist" hint="Apply special pricing rules for this customer (e.g. 10% off, wholesale pricing). Overrides default product prices on their orders." editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
             </FormSection>
           </div>
           <div className="space-y-2">
             <FormSection title="Purchase">
-              <M2OField field="property_supplier_payment_term_id" model="account.payment.term" label="Vendor Payment Terms" />
-              <M2OField field="property_purchase_currency_id" model="res.currency" label="Supplier Currency" />
+              <M2OField field="property_supplier_payment_term_id" model="account.payment.term" label="Vendor Payment Terms" hint="Default payment terms when buying from this vendor. Applied to new purchase orders/bills." editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
+              <M2OField field="property_purchase_currency_id" model="res.currency" label="Supplier Currency" hint="Currency the vendor invoices in. Leave empty to use your company's default currency." editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
             </FormSection>
           </div>
         </div>
@@ -373,8 +457,8 @@ export default function ContactForm() {
 
             {/* Company / Job position */}
             <div className="flex items-center gap-3 flex-wrap">
-              {!isCompany && <M2OField field="parent_id" model="res.partner" label="Company" />}
-              {!isCompany && <TextField field="function" label="Job Position" />}
+              {!isCompany && <M2OField field="parent_id" model="res.partner" label="Company" hint="If this person works for a company, pick it here. Leave empty for a freelancer or individual." editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />}
+              {!isCompany && <TextField field="function" label="Job Position" hint="e.g. Sales Manager, Purchasing Agent" editing={editing} form={form} setField={setField} />}
             </div>
           </div>
         </div>
@@ -382,25 +466,25 @@ export default function ContactForm() {
       leftFields={
         <>
           {/* Address block */}
-          <TextField field="street" label="Street" />
-          <TextField field="street2" label="Street 2" />
+          <TextField field="street" label="Street" editing={editing} form={form} setField={setField} />
+          <TextField field="street2" label="Street 2" editing={editing} form={form} setField={setField} />
           <div className="grid grid-cols-2 gap-2">
-            <TextField field="city" label="City" />
-            <M2OField field="state_id" model="res.country.state" label="State" />
+            <TextField field="city" label="City" editing={editing} form={form} setField={setField} />
+            <M2OField field="state_id" model="res.country.state" label="State" editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <TextField field="zip" label="Zip" />
-            <M2OField field="country_id" model="res.country" label="Country" />
+            <TextField field="zip" label="Zip" editing={editing} form={form} setField={setField} />
+            <M2OField field="country_id" model="res.country" label="Country" editing={editing} form={form} setField={setField} m2oResults={m2oResults} searchM2o={searchM2o} />
           </div>
         </>
       }
       rightFields={
         <>
-          <TextField field="vat" label="Tax ID" />
-          <TextField field="phone" label="Phone" type="tel" />
-          <TextField field="mobile" label="Mobile" type="tel" />
-          <TextField field="email" label="Email" type="email" />
-          <TextField field="website" label="Website" type="url" />
+          <TextField field="vat" label="Tax ID" hint="VAT / tax identification number. Printed on invoices, required in most countries for B2B transactions." editing={editing} form={form} setField={setField} />
+          <TextField field="phone" label="Phone" type="tel" editing={editing} form={form} setField={setField} />
+          <TextField field="mobile" label="Mobile" type="tel" editing={editing} form={form} setField={setField} />
+          <TextField field="email" label="Email" type="email" editing={editing} form={form} setField={setField} />
+          <TextField field="website" label="Website" type="url" editing={editing} form={form} setField={setField} />
           {/* Tags */}
           {!editing ? (
             <ReadonlyField
@@ -408,9 +492,11 @@ export default function ContactForm() {
               value={
                 Array.isArray(form.category_id) && form.category_id.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {form.category_id.map((t: any, i: number) => (
-                      <Badge key={i} variant="secondary" className="rounded-full text-xs">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>
-                    ))}
+                    {form.category_id!.map((t, i) => {
+                      const tagKey = Array.isArray(t) ? t[0] : (typeof t === 'object' && t !== null ? (t.id ?? i) : i)
+                      const tagLabel = Array.isArray(t) ? t[1] : (typeof t === 'object' && t !== null ? (t.display_name || '') : String(t))
+                      return <Badge key={tagKey} variant="secondary" className="rounded-full text-xs">{tagLabel}</Badge>
+                    })}
                   </div>
                 ) : undefined
               }
@@ -418,16 +504,20 @@ export default function ContactForm() {
           ) : (
             <FormField label="Tags">
               <div className="flex flex-wrap gap-1">
-                {(form.category_id || []).map((t: any, i: number) => (
-                  <Badge key={i} variant="secondary" className="rounded-full text-xs gap-1">
-                    {Array.isArray(t) ? t[1] : t?.display_name || t}
-                    <button onClick={() => {
-                      const newTags = [...(form.category_id || [])]
-                      newTags.splice(i, 1)
-                      setField('category_id', newTags)
-                    }} className="text-muted-foreground hover:text-foreground">&times;</button>
-                  </Badge>
-                ))}
+                {(form.category_id || []).map((t, i) => {
+                  const tagKey = Array.isArray(t) ? t[0] : (typeof t === 'object' && t !== null ? (t.id ?? i) : i)
+                  const tagLabel = Array.isArray(t) ? t[1] : (typeof t === 'object' && t !== null ? (t.display_name || '') : String(t))
+                  return (
+                    <Badge key={tagKey} variant="secondary" className="rounded-full text-xs gap-1">
+                      {tagLabel}
+                      <button onClick={() => {
+                        const newTags = [...(form.category_id || [])]
+                        newTags.splice(i, 1)
+                        setField('category_id', newTags)
+                      }} className="text-muted-foreground hover:text-foreground">&times;</button>
+                    </Badge>
+                  )
+                })}
               </div>
             </FormField>
           )}

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.services.base import async_search_read, async_create, async_update, async_delete, async_get
+from app.services.bus_events import broadcast
 
 router = APIRouter(prefix="/chatter", tags=["chatter"])
 
@@ -161,11 +162,28 @@ async def get_messages(
 @router.post("/{model_name}/{res_id}/messages")
 async def post_message(model_name: str, res_id: int, body: MessagePost, user: CurrentUser | None = Depends(get_optional_user)):
     """Post a message on a record's chatter."""
-    return await _post_message(
+    uid = _uid(user)
+    result = await _post_message(
         model=model_name, res_id=res_id,
         body=body.body, message_type=body.message_type, subtype_xmlid=body.subtype_xmlid,
-        uid=_uid(user),
+        uid=uid,
     )
+    # Broadcast to bus for realtime updates (Discuss + Chatter live invalidation).
+    new_msg_id = result.get("id") if isinstance(result, dict) else None
+    if model_name == "discuss.channel":
+        await broadcast("discuss.message", {
+            "channel_id": res_id,
+            "message_id": new_msg_id,
+            "author_id": uid,
+        })
+    else:
+        await broadcast("chatter.message", {
+            "model": model_name,
+            "res_id": res_id,
+            "message_id": new_msg_id,
+            "author_id": uid,
+        })
+    return result
 
 
 @router.get("/{model_name}/{res_id}/followers")

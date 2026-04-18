@@ -6,7 +6,7 @@ Handles file uploads/downloads for any model via ir.attachment.
 import base64
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 import io
 
@@ -56,6 +56,31 @@ async def upload_attachment(
     }
     result = await async_create("ir.attachment", vals=vals, uid=_uid(user), fields=ATTACHMENT_FIELDS)
     return result
+
+
+@router.post("/upload")
+async def upload_unbound(
+    file: UploadFile = File(...),
+    res_model: Optional[str] = Form(None),
+    res_id: Optional[int] = Form(None),
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Upload a file without (or optionally with) record context.
+
+    Used by the email composer (which needs an attachment ID before the
+    record context exists) and any other generic-uploader UIs.
+    """
+    content = await file.read()
+    vals = {
+        "name": file.filename or "uploaded_file",
+        "datas": base64.b64encode(content).decode(),
+        "mimetype": file.content_type or "application/octet-stream",
+    }
+    if res_model:
+        vals["res_model"] = res_model
+    if res_id:
+        vals["res_id"] = res_id
+    return await async_create("ir.attachment", vals=vals, uid=_uid(user), fields=ATTACHMENT_FIELDS)
 
 
 @router.delete("/{attachment_id}")

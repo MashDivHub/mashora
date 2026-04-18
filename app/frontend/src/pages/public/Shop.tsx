@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { erpClient } from '@/lib/erp-api'
 import { Card, CardContent, Input } from '@mashora/design-system'
 import { Search } from 'lucide-react'
+import { LoadingState } from '@/components/shared'
 
 export default function Shop() {
   const [search, setSearch] = useState('')
@@ -44,12 +45,12 @@ export default function Shop() {
         </div>
         <select value={categoryId || ''} onChange={e => setCategoryId(e.target.value ? Number(e.target.value) : null)} className="rounded-md border border-input bg-background px-3 py-2 text-sm">
           <option value="">All categories</option>
-          {(categories || []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {(categories || []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
-      {isLoading ? <div className="text-muted-foreground">Loading...</div> : (
+      {isLoading ? <LoadingState label="Loading products..." /> : (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {(data?.records || []).map((p: any) => (
+          {(data?.records || []).map((p: { id: number; name: string; image_1920?: string | false; list_price?: number }) => (
             <Link key={p.id} to={`/shop/${p.id}`}>
               <Card className="h-full hover:shadow-md transition-shadow">
                 <CardContent className="p-5">

@@ -20,14 +20,14 @@ export default function CmsPages() {
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push('|', ['name', 'ilike', search], ['url', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
     if (f?.domain) domain.push(...f.domain)
   }
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['website-pages', domain, page],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/website.page', {
@@ -72,6 +72,7 @@ export default function CmsPages() {
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={40}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+        isError={isError} error={error} onRetry={() => refetch()}
         emptyMessage="No pages found" emptyIcon={<Globe className="h-10 w-10" />} />
     </div>
   )

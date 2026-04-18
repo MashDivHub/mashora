@@ -20,7 +20,7 @@ export default function InventoryAdjustment() {
   const [search, setSearch] = useState('')
   const [modifiedIds, setModifiedIds] = useState<Set<number>>(new Set())
 
-  const domain: any[] = [['location_id.usage', '=', 'internal']]
+  const domain: unknown[] = [['location_id.usage', '=', 'internal']]
   if (search) domain.push(['product_id', 'ilike', search])
 
   const { data, isLoading } = useQuery({

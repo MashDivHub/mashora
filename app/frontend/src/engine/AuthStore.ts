@@ -42,11 +42,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       authStorage.storeTokens(data.access_token, data.refresh_token)
       set({ user: data.user, isAuthenticated: true, loading: false, error: null })
       return true
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        'Invalid credentials'
+    } catch (err: unknown) {
+      let message = 'Invalid credentials'
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const resp = (err as { response?: { data?: { detail?: string; message?: string } } }).response
+        message = resp?.data?.detail || resp?.data?.message || message
+      }
       set({ loading: false, error: message })
       return false
     }

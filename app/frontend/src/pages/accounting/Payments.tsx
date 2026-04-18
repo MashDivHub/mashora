@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
 import { CreditCard } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -11,7 +11,7 @@ const LIST_FIELDS = [
   'partner_type', 'journal_id', 'currency_id', 'payment_method_line_id',
 ]
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'Draft', variant: 'secondary' },
   posted: { label: 'Posted', variant: 'success' },
   cancel: { label: 'Cancelled', variant: 'destructive' },
@@ -33,7 +33,7 @@ export default function Payments() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push('|', ['name', 'ilike', search], ['partner_id', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -64,8 +64,8 @@ export default function Payments() {
       </Badge>
     )},
     { key: 'state', label: 'Status', render: v => {
-      const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
-      return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+      const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
+      return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
     }},
     { key: 'amount', label: 'Amount', align: 'right' as const, format: v => v ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '' },
   ]

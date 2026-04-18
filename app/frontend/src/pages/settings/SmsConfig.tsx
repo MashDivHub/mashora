@@ -1,127 +1,109 @@
 import { useQuery } from '@tanstack/react-query'
-import { Skeleton } from '@mashora/design-system'
-import { MessageSquare, Info } from 'lucide-react'
-import { PageHeader, FormSection, ReadonlyField } from '@/components/shared'
+import { Badge, Card, CardContent, Skeleton } from '@mashora/design-system'
+import { MessageSquare, Info, Phone, BellRing } from 'lucide-react'
+import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-function maskSecret(val: string | null | undefined): string {
-  if (!val) return 'Not configured'
-  return val.slice(0, 4) + '••••••••'
+interface IapAccount {
+  id: number
+  account_token: string | null
+  service_name: string
 }
 
 const SMS_USAGES = [
-  'CRM notifications',
-  'HR leave alerts',
-  'Event reminders',
-  'Survey invitations',
+  { label: 'CRM lead notifications', model: 'crm.lead' },
+  { label: 'HR leave alerts', model: 'hr.leave' },
+  { label: 'Event reminders', model: 'event.event' },
+  { label: 'Survey invitations', model: 'survey.user_input' },
+  { label: 'Marketing campaigns', model: 'mailing.mailing (SMS type)' },
 ]
 
 export default function SmsConfig() {
   const { data, isLoading } = useQuery({
-    queryKey: ['settings', 'sms'],
+    queryKey: ['settings', 'sms-iap'],
     queryFn: async () => {
       try {
         const { data } = await erpClient.raw.post('/model/iap.account', {
-          domain: [['provider', '=', 'sms']],
-          fields: ['id', 'account_token', 'company_id'],
+          domain: [['service_name', '=', 'sms']],
+          fields: ['id', 'account_token', 'service_name'],
           limit: 1,
         })
-        return (data?.data?.[0] ?? data?.[0]) || null
+        return (data?.records?.[0] || null) as IapAccount | null
       } catch {
         return null
       }
     },
   })
 
-  const accountToken: string | undefined = data?.account_token
-  const isConfigured = !!accountToken
+  const configured = !!data?.account_token
 
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-3xl">
         <Skeleton className="h-10 w-64 rounded-xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
         <Skeleton className="h-48 w-full rounded-2xl" />
-        <Skeleton className="h-36 w-full rounded-2xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <PageHeader
-        title="SMS Configuration"
-        subtitle="Twilio SMS gateway"
-        backTo="/admin/settings"
-      />
+      <PageHeader title="SMS Gateway" subtitle="Mashora IAP" backTo="/admin/settings" />
 
-      {/* Status card */}
-      <div className="rounded-2xl border border-border/30 bg-card/50 p-6 space-y-4">
-        <FormSection title="Integration Status">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-primary/10 p-2.5">
-              <MessageSquare className="h-5 w-5 text-primary" />
+      <Card className="rounded-2xl">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-primary/10 p-3 shrink-0">
+              <MessageSquare className="h-6 w-6 text-primary" />
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground mb-1.5">
-                Twilio SMS gateway for automated notifications and alerts
-              </p>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  isConfigured
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-muted text-muted-foreground border border-border/30'
-                }`}
-              >
-                {isConfigured ? 'Configured' : 'Not Configured'}
-              </span>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold mb-1">SMS Service</h3>
+              <p className="text-sm text-muted-foreground mb-3">Send transactional SMS messages from any module via Mashora's IAP gateway.</p>
+              <Badge className={configured ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-xs' : 'bg-muted text-muted-foreground border-border/30 text-xs'}>
+                {configured ? 'Account active' : 'Not configured'}
+              </Badge>
             </div>
           </div>
-        </FormSection>
-      </div>
 
-      {/* Configuration card */}
-      <div className="rounded-2xl border border-border/30 bg-card/50 p-6 space-y-4">
-        <FormSection title="Twilio Credentials">
-          <div className="space-y-3 divide-y divide-border/20">
-            <ReadonlyField label="Account SID" value={maskSecret(accountToken)} />
-            <div className="pt-3">
-              <ReadonlyField label="Auth Token" value={maskSecret(undefined)} />
+          {!configured && (
+            <div className="mt-5 pt-5 border-t border-border/40">
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-600 dark:text-amber-400">
+                No SMS account found. Set up an <code className="font-mono">iap.account</code> with <code className="font-mono">service_name='sms'</code> and credits to enable SMS sending.
+              </div>
             </div>
-            <div className="pt-3">
-              <ReadonlyField label="Phone Number" value="Not configured" />
-            </div>
-          </div>
-        </FormSection>
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Usage info card */}
-      <div className="rounded-2xl border border-border/30 bg-card/50 p-6 space-y-4">
-        <FormSection title="SMS is used for">
-          <div className="space-y-0 divide-y divide-border/20">
-            {SMS_USAGES.map(usage => (
-              <div key={usage} className="flex items-center gap-2.5 py-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
-                <span className="text-sm">{usage}</span>
+      <Card className="rounded-2xl">
+        <CardContent className="p-4 sm:p-6">
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2"><BellRing className="h-4 w-4" /> Used by modules</h4>
+          <div className="space-y-1">
+            {SMS_USAGES.map(u => (
+              <div key={u.model} className="flex items-center justify-between py-2 border-b border-border/20 last:border-0">
+                <span className="text-sm">{u.label}</span>
+                <code className="text-xs text-muted-foreground font-mono">{u.model}</code>
               </div>
             ))}
           </div>
-        </FormSection>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Note card */}
-      <div className="rounded-2xl border border-border/30 bg-card/50 p-6">
-        <div className="flex items-start gap-3">
-          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-          <p className="text-sm text-muted-foreground">
-            SMS credits are managed through the{' '}
-            <span className="text-foreground font-medium">
-              Mashora IAP (In-App Purchase)
-            </span>{' '}
-            service. Configure Twilio credentials in your backend IAP account settings.
-          </p>
-        </div>
-      </div>
+      <Card className="rounded-2xl">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start gap-3">
+            <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>SMS uses Mashora's IAP (In-App Purchase) credit system. To send SMS:</p>
+              <ol className="list-decimal pl-4 space-y-1 text-xs">
+                <li>Create an <code className="font-mono">iap.account</code> with <code className="font-mono">service_name='sms'</code></li>
+                <li>Top up credits via the IAP portal</li>
+                <li>Optionally configure a custom SMS provider (Twilio, AWS SNS) via environment variables</li>
+              </ol>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

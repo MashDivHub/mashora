@@ -27,10 +27,13 @@ export function formatMonetary(value: number | null | false, currencySymbol: str
   return `${currencySymbol}\u00a0${Number(value).toFixed(precision)}`
 }
 
-export function formatMany2one(value: any): { id: number; name: string } | null {
+export function formatMany2one(value: unknown): { id: number; name: string } | null {
   if (!value) return null
-  if (Array.isArray(value)) return { id: value[0], name: value[1] || '' }
-  if (typeof value === 'object' && value.id) return { id: value.id, name: value.display_name || value.name || '' }
+  if (Array.isArray(value)) return { id: Number(value[0]), name: String(value[1] ?? '') }
+  if (typeof value === 'object' && value !== null && 'id' in value) {
+    const r = value as { id: number; display_name?: string; name?: string }
+    return { id: r.id, name: r.display_name || r.name || '' }
+  }
   return null
 }
 
@@ -40,6 +43,6 @@ export function formatSelection(value: string | false, options: [string, string]
   return found ? found[1] : String(value)
 }
 
-export function formatBoolean(value: any): boolean {
+export function formatBoolean(value: unknown): boolean {
   return Boolean(value)
 }

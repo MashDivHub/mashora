@@ -219,6 +219,11 @@ async def get_product(product_id: int, uid: int = 1, context: Optional[dict] = N
     else:
         data["variants"] = []
 
+    # Image is stored in ir_attachment, not on the template itself.
+    # Expose a flag so the UI knows whether to show the image via the dedicated endpoint.
+    img = await get_product_image(product_tmpl_id=product_id)
+    data["has_image"] = img is not None
+
     return data
 
 
@@ -530,3 +535,164 @@ async def publish_product(product_id: int, publish: bool, uid: int = 1, context:
         "product.template", product_id, {"website_published": publish}, uid,
         ["id", "name", "website_published"],
     )
+
+
+async def get_product_stats(product_tmpl_id: int) -> dict:
+    """Aggregate counts/totals for the product-detail smart buttons."""
+    pending_move_states = ["waiting", "confirmed", "assigned", "partially_available"]
+
+    # On hand / reserved — stock_quant uses product_id (variant), traverse via product.product_tmpl_id
+    on_hand_total = await async_sum(
+        "stock.quant", "quantity",
+        domain=[["product.product_tmpl_id", "=", product_tmpl_id]],
+    )
+    reserved_total = await async_sum(
+        "stock.quant", "reserved_quantity",
+        domain=[["product.product_tmpl_id", "=", product_tmpl_id]],
+    )
+
+    # Incoming/outgoing pending stock moves (by variant → template)
+    incoming_qty = await async_sum(
+        "stock.move", "product_uom_qty",
+        domain=[
+            ["product.product_tmpl_id", "=", product_tmpl_id],
+            ["state", "in", pending_move_states],
+            ["picking_type.code", "=", "incoming"],
+        ],
+    )
+    outgoing_qty = await async_sum(
+        "stock.move", "product_uom_qty",
+        domain=[
+            ["product.product_tmpl_id", "=", product_tmpl_id],
+            ["state", "in", pending_move_states],
+            ["picking_type.code", "=", "outgoing"],
+        ],
+    )
+    forecasted = float(on_hand_total or 0) + float(incoming_qty or 0) - float(outgoing_qty or 0)
+
+    sold_qty = await async_sum(
+        "sale.order.line", "qty_delivered",
+        domain=[
+            ["product.product_tmpl_id", "=", product_tmpl_id],
+            ["order.state", "in", ["sale", "done"]],
+        ],
+    )
+    purchased_qty = await async_sum(
+        "purchase.order.line", "product_qty",
+        domain=[
+            ["product.product_tmpl_id", "=", product_tmpl_id],
+            ["order.state", "in", ["purchase", "done"]],
+        ],
+    )
+
+    in_transfers = await async_count(
+        "stock.picking",
+        domain=[
+            ["move_lines.product.product_tmpl_id", "=", product_tmpl_id],
+            ["picking_type.code", "=", "incoming"],
+            ["state", "in", pending_move_states],
+        ],
+    )
+    out_transfers = await async_count(
+        "stock.picking",
+        domain=[
+            ["move_lines.product.product_tmpl_id", "=", product_tmpl_id],
+            ["picking_type.code", "=", "outgoing"],
+            ["state", "in", pending_move_states],
+        ],
+    )
+
+    reordering_count = await async_count(
+        "stock.warehouse.orderpoint",
+        domain=[["product.product_tmpl_id", "=", product_tmpl_id]],
+    )
+
+    return {
+        "on_hand": float(on_hand_total or 0),
+        "reserved": float(reserved_total or 0),
+        "forecasted": forecasted,
+        "sold": float(sold_qty or 0),
+        "purchased": float(purchased_qty or 0),
+        "in_count": int(in_transfers or 0),
+        "out_count": int(out_transfers or 0),
+        "reordering_count": int(reordering_count or 0),
+    }
+
+
+# ─── Product image (backed by ir_attachment) ─────────────────────────────────
+# In Odoo, product.template.image_1920 is a stored-on-attachment field: bytes
+# live in ir_attachment rows keyed by (res_model='product.template', res_id,
+# res_field='image_1920'). There's no image_1920 column on product_template
+# itself, so plain ORM updates silently lose the data.
+
+async def get_product_image(product_tmpl_id: int, field: str = "image_1920") -> Optional[bytes]:
+    """Return the raw image bytes for a product template (or None if unset)."""
+    from sqlalchemy import select
+    from app.models.base.ir_attachment import IrAttachment
+    from app.services.base import get_session
+
+    async with await get_session() as session:
+        row = (
+            await session.execute(
+                select(IrAttachment.db_datas).where(
+                    IrAttachment.res_model == "product.template",
+                    IrAttachment.res_id == product_tmpl_id,
+                    IrAttachment.res_field == field,
+                )
+            )
+        ).first()
+        return bytes(row[0]) if row and row[0] is not None else None
+
+
+async def set_product_image(
+    product_tmpl_id: int, image_bytes: Optional[bytes], field: str = "image_1920",
+) -> None:
+    """Upsert (or delete) the product-template image via ir_attachment.
+
+    - If image_bytes is None or empty, the attachment is deleted (image cleared).
+    - Otherwise, an attachment is created/updated with type=binary and db_datas.
+    """
+    from sqlalchemy import select, delete as sql_delete
+    from app.models.base.ir_attachment import IrAttachment
+    from app.services.base import get_session
+
+    async with await get_session() as session:
+        existing = (
+            await session.execute(
+                select(IrAttachment).where(
+                    IrAttachment.res_model == "product.template",
+                    IrAttachment.res_id == product_tmpl_id,
+                    IrAttachment.res_field == field,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if not image_bytes:
+            if existing is not None:
+                await session.execute(
+                    sql_delete(IrAttachment).where(IrAttachment.id == existing.id)
+                )
+                await session.commit()
+            return
+
+        if existing is not None:
+            existing.db_datas = image_bytes
+            existing.type = "binary"
+            existing.mimetype = existing.mimetype or "image/png"
+            existing.file_size = len(image_bytes)
+            existing.store_fname = None  # stored inline in DB
+            await session.commit()
+            return
+
+        new_row = IrAttachment(
+            name=field,
+            type="binary",
+            res_model="product.template",
+            res_id=product_tmpl_id,
+            res_field=field,
+            db_datas=image_bytes,
+            mimetype="image/png",
+            file_size=len(image_bytes),
+        )
+        session.add(new_row)
+        await session.commit()

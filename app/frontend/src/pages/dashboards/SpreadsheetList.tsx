@@ -4,26 +4,33 @@ import { FileSpreadsheet } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-function fmt(dateStr: string | undefined) {
-  if (!dateStr) return '—'
+interface SpreadsheetRow {
+  id: number
+  name: string
+  create_date?: string
+  write_date?: string
+}
+
+function fmt(dateStr: unknown) {
+  if (!dateStr || typeof dateStr !== 'string') return '—'
   return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const columns: Column[] = [
+const columns: Column<SpreadsheetRow>[] = [
   {
     key: 'name',
     label: 'Name',
-    render: (_: any, row: any) => <span className="text-sm font-bold">{row.name}</span>,
+    render: (_, row) => <span className="text-sm font-bold">{row.name}</span>,
   },
   {
     key: 'create_date',
     label: 'Created',
-    render: (v: any) => <span className="text-sm text-muted-foreground">{fmt(v)}</span>,
+    render: (v) => <span className="text-sm text-muted-foreground">{fmt(v)}</span>,
   },
   {
     key: 'write_date',
     label: 'Last Modified',
-    render: (v: any) => <span className="text-sm text-muted-foreground">{fmt(v)}</span>,
+    render: (v) => <span className="text-sm text-muted-foreground">{fmt(v)}</span>,
   },
 ]
 
@@ -56,7 +63,7 @@ export default function SpreadsheetList() {
         loading={isLoading}
         emptyMessage="No spreadsheets found"
         emptyIcon={<FileSpreadsheet className="h-10 w-10" />}
-        onRowClick={(row: any) => navigate(`/admin/spreadsheets/${row.id}`)}
+        onRowClick={(row) => navigate(`/admin/model/documents.document/${row.id}`)}
       />
     </div>
   )

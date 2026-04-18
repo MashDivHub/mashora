@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button, Input, Label, Badge, Card, CardContent, cn,
@@ -7,6 +8,9 @@ import { DollarSign, Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 import { PageHeader, SearchBar } from '@/components/shared'
 import { toast } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+
+type DomainTerm = [string, string, unknown]
 
 interface Pricelist {
   id: number
@@ -22,6 +26,7 @@ const FIELDS = ['id', 'name', 'active', 'currency_id', 'sequence']
 function PricelistRow({ pl, onSaved, onDeleted }: {
   pl: Pricelist; onSaved: () => void; onDeleted: () => void
 }) {
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(pl.name)
   const [busy, setBusy] = useState(false)
@@ -34,8 +39,8 @@ function PricelistRow({ pl, onSaved, onDeleted }: {
       toast.success('Pricelist updated')
       setEditing(false)
       onSaved()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Update failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Update failed'))
     } finally { setBusy(false) }
   }
 
@@ -46,8 +51,8 @@ function PricelistRow({ pl, onSaved, onDeleted }: {
       await erpClient.raw.delete(`/model/product.pricelist/${pl.id}`)
       toast.success('Pricelist deleted')
       onDeleted()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Delete failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Delete failed'))
     } finally { setBusy(false) }
   }
 
@@ -55,7 +60,7 @@ function PricelistRow({ pl, onSaved, onDeleted }: {
 
   if (editing) {
     return (
-      <tr className="border-b border-border/40 bg-accent/30">
+      <tr className="border-b border-border/40 bg-accent/30" onClick={e => e.stopPropagation()}>
         <td className="px-4 py-3" colSpan={3}>
           <div className="flex items-center gap-3">
             <Input value={name} onChange={e => setName(e.target.value)} className="max-w-xs" autoFocus onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false) }} />
@@ -72,7 +77,10 @@ function PricelistRow({ pl, onSaved, onDeleted }: {
   }
 
   return (
-    <tr className="border-b border-border/40 hover:bg-muted/30 transition-colors group">
+    <tr
+      className="border-b border-border/40 hover:bg-muted/30 transition-colors group cursor-pointer"
+      onClick={() => navigate(`/admin/products/pricelists/${pl.id}`)}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -85,7 +93,7 @@ function PricelistRow({ pl, onSaved, onDeleted }: {
       <td className="px-4 py-3">
         <Badge variant={pl.active ? 'success' : 'secondary'} className="text-xs">{pl.active ? 'Active' : 'Archived'}</Badge>
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /></Button>
           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive" onClick={handleDelete} disabled={busy}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -109,8 +117,8 @@ function CreatePricelist({ onCreated }: { onCreated: () => void }) {
       setName('')
       setOpen(false)
       onCreated()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Create failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Create failed'))
     } finally { setBusy(false) }
   }
 
@@ -143,7 +151,7 @@ export default function PricelistManager() {
   const { data, isLoading } = useQuery({
     queryKey: ['pricelists', search],
     queryFn: async () => {
-      const domain: any[] = []
+      const domain: DomainTerm[] = []
       if (search) domain.push(['name', 'ilike', search])
       const { data } = await erpClient.raw.post('/model/product.pricelist', { domain, fields: FIELDS, limit: 100, order: 'sequence asc' })
       return data as { records: Pricelist[]; total: number }

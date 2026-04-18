@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Input, Badge, Skeleton } from '@mashora/design-system'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { Search, Package, MapPin, User, Calendar } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
@@ -123,7 +123,7 @@ export default function EquipmentList() {
         subtitle={`${data?.total ?? '—'} items`}
       />
 
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-4">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
@@ -140,12 +140,11 @@ export default function EquipmentList() {
           {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
         </div>
       ) : records.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-24">
-          <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-            <Package className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">No equipment found.</p>
-        </div>
+        <EmptyState
+          icon={<Package className="h-12 w-12" />}
+          title="No equipment yet"
+          description="Register equipment to track maintenance and assignments."
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {records.map(eq => <EquipmentCard key={eq.id} eq={eq} />)}

@@ -35,6 +35,8 @@ class PurchaseOrderCreate(BaseModel):
     dest_address_id: Optional[int] = None
     note: Optional[str] = None
     priority: Optional[str] = None
+    user_id: Optional[int] = None
+    picking_type_id: Optional[int] = None
     lines: list[PurchaseOrderLineCreate] = Field(default_factory=list)
 
 
@@ -50,6 +52,8 @@ class PurchaseOrderUpdate(BaseModel):
     dest_address_id: Optional[int] = None
     note: Optional[str] = None
     priority: Optional[str] = None
+    user_id: Optional[int] = None
+    picking_type_id: Optional[int] = None
 
 
 class PurchaseOrderListParams(BaseModel):

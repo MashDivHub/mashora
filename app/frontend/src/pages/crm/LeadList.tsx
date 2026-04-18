@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge, cn } from '@mashora/design-system'
-import { Star, Target } from 'lucide-react'
-import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
+import { Star, Target, Trophy, ThumbsDown, Archive, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import {
+  DataTable, PageHeader, SearchBar, BulkActionBar,
+  toast,
+  type Column, type FilterOption, type BulkAction,
+} from '@/components/shared'
+import { useBulkSelect } from '@/hooks/useBulkSelect'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 const LIST_FIELDS = [
   'id', 'name', 'partner_id', 'partner_name', 'contact_name', 'email_from', 'phone',
@@ -21,15 +28,18 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function LeadList() {
+  useDocumentTitle('Leads')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>('create_date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
+  const { selected, clear, setSelected } = useBulkSelect()
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push('|', '|', ['name', 'ilike', search], ['partner_name', 'ilike', search], ['email_from', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -38,7 +48,7 @@ export default function LeadList() {
 
   const order = sortField ? `${sortField} ${sortDir}` : 'create_date desc'
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['crm-leads', domain, page, order],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/crm.lead', {
@@ -48,6 +58,42 @@ export default function LeadList() {
       return data
     },
   })
+
+  async function bulkAction(ids: number[], action: (id: number) => Promise<unknown>, successMsg: string) {
+    try {
+      await Promise.all(ids.map(action))
+      toast.success(`${successMsg} (${ids.length})`)
+      queryClient.invalidateQueries({ queryKey: ['crm-leads'] })
+      clear()
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Action failed'))
+    }
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: 'won',
+      label: 'Mark as Won',
+      icon: <Trophy className="h-3.5 w-3.5" />,
+      confirm: 'Mark {count} lead(s) as Won?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/crm/leads/${id}/won`), 'Leads won'),
+    },
+    {
+      key: 'lost',
+      label: 'Mark as Lost',
+      icon: <ThumbsDown className="h-3.5 w-3.5" />,
+      confirm: 'Mark {count} lead(s) as Lost?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/crm/leads/${id}/lost`, { lost_reason_id: 1 }), 'Leads lost'),
+    },
+    {
+      key: 'archive',
+      label: 'Archive',
+      icon: <Archive className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      confirm: 'Archive {count} lead(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.put(`/model/crm.lead/${id}`, { vals: { active: false } }), 'Leads archived'),
+    },
+  ]
 
   const columns: Column[] = [
     {
@@ -95,8 +141,13 @@ export default function LeadList() {
       render: (v, row) => {
         if (!v) return ''
         const as = row.activity_state
+        const Icon = as === 'overdue' ? AlertCircle : as === 'today' ? Clock : as === 'planned' ? CheckCircle2 : null
         return (
-          <span className={cn('text-xs', as === 'overdue' && 'text-red-400', as === 'today' && 'text-amber-400', as === 'planned' && 'text-emerald-400')}>
+          <span
+            className={cn('text-xs inline-flex items-center gap-1', as === 'overdue' && 'text-red-400', as === 'today' && 'text-amber-400', as === 'planned' && 'text-emerald-400')}
+            aria-label={as ? `${as} ${v}` : undefined}
+          >
+            {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
             {v}
           </span>
         )
@@ -104,16 +155,25 @@ export default function LeadList() {
     },
   ]
 
+  const records = data?.records || []
+  const selectedSet = new Set(selected)
+
   return (
     <div className="space-y-4">
       <PageHeader title="Leads & Opportunities" subtitle="CRM" onNew={() => navigate('/admin/crm/leads/new')} />
       <SearchBar placeholder="Search leads..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
-      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
+      <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
+      <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/admin/crm/leads/${row.id}`} emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
+        isError={isError} error={error} onRetry={() => refetch()}
+        rowLink={row => `/admin/crm/leads/${row.id}`}
+        selectable
+        selectedIds={selectedSet}
+        onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+        emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
     </div>
   )
 }

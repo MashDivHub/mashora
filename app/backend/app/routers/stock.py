@@ -52,6 +52,9 @@ from app.services.stock_service import (
     get_lot,
     create_lot,
     update_lot,
+    list_quants_for_template,
+    upsert_product_quantity,
+    replenish_product,
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
@@ -331,3 +334,65 @@ async def update_lot_record(
     """Update an existing lot/serial number."""
     vals = body.model_dump(exclude_none=True)
     return await update_lot(lot_id=lot_id, vals=vals)
+
+
+# ============================================
+# Per-product stock actions (Update Qty, Replenish)
+# ============================================
+
+from pydantic import BaseModel
+
+
+class QuantUpdate(BaseModel):
+    product_id: int
+    location_id: int
+    inventory_quantity: float
+    lot_id: int | None = None
+
+
+class ProductReplenish(BaseModel):
+    product_id: int
+    warehouse_id: int | None = None
+    qty: float
+    min_qty: float | None = None
+    max_qty: float | None = None
+
+
+@router.get("/products/{product_tmpl_id}/quants")
+async def get_product_quants(
+    product_tmpl_id: int,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Return all internal-location quants across variants of a product template."""
+    return await list_quants_for_template(product_tmpl_id=product_tmpl_id)
+
+
+@router.post("/products/update-quantity")
+async def update_product_quantity(
+    body: QuantUpdate,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Create or update a quant with a counted inventory quantity and apply the adjustment."""
+    return await upsert_product_quantity(
+        product_id=body.product_id,
+        location_id=body.location_id,
+        inventory_quantity=body.inventory_quantity,
+        lot_id=body.lot_id,
+        uid=_uid(user),
+    )
+
+
+@router.post("/products/replenish")
+async def replenish_product_endpoint(
+    body: ProductReplenish,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Create or update a reordering rule (orderpoint) to replenish the product."""
+    return await replenish_product(
+        product_id=body.product_id,
+        warehouse_id=body.warehouse_id,
+        qty=body.qty,
+        min_qty=body.min_qty,
+        max_qty=body.max_qty,
+        uid=_uid(user),
+    )

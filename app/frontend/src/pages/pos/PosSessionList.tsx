@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
-import { Badge } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
 import { Monitor } from 'lucide-react'
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   opening_control: { label: 'Opening', variant: 'info' },
   opened:          { label: 'Open',    variant: 'success' },
   closing_control: { label: 'Closing', variant: 'warning' },
@@ -85,9 +85,9 @@ export default function PosSessionList() {
       key: 'state',
       label: 'Status',
       render: v => {
-        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
+        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
         return (
-          <Badge variant={s.variant as any} className="rounded-full text-xs">
+          <Badge variant={s.variant} className="rounded-full text-xs">
             {s.label}
           </Badge>
         )

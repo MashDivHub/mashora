@@ -12,7 +12,7 @@ export default function DepartmentList() {
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  const domain: any[] = search ? [['name', 'ilike', search]] : []
+  const domain: unknown[] = search ? [['name', 'ilike', search]] : []
 
   const { data, isLoading } = useQuery({
     queryKey: ['departments', domain, page, sortField, sortDir],

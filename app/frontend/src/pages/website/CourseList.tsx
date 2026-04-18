@@ -12,7 +12,7 @@ interface SlideChannel {
   total_slides: number
   total_views: number
   nbr_participants: number
-  slide_category_data: any
+  slide_category_data: unknown
 }
 
 interface ChannelResponse {

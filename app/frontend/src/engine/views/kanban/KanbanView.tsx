@@ -5,7 +5,7 @@ import { Skeleton, Button } from '@mashora/design-system'
 import { Plus } from 'lucide-react'
 import type { ViewProps } from '../../ViewRegistry'
 import { fetchViewDefinition } from '../../ActionService'
-import { loadKanbanData, moveRecord, extractKanbanFields } from './KanbanController'
+import { loadKanbanData, moveRecord, extractKanbanFields, type KanbanGroupValue } from './KanbanController'
 import { erpClient } from '@/lib/erp-api'
 import KanbanColumn from './KanbanColumn'
 import KanbanCard from './KanbanCard'
@@ -40,7 +40,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
         fields: cardFields.length ? cardFields : undefined,
         limit: 80,
       })
-      return data.records || []
+      return (data.records || []) as Array<Record<string, unknown> & { id: number }>
     },
     enabled: !!viewDef && !groupByField,
   })
@@ -53,7 +53,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
   )
 
   const handleDrop = useCallback(
-    async (recordId: number, newGroupValue: any) => {
+    async (recordId: number, newGroupValue: KanbanGroupValue) => {
       if (!groupByField) return
       await moveRecord(model, recordId, groupByField, newGroupValue)
       queryClient.invalidateQueries({ queryKey: ['kanban', model] })
@@ -92,7 +92,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
             {model.replace(/\./g, ' ')}
           </p>
           <h1 className="text-xl font-semibold tracking-tight capitalize">
-            {action?.name || modelLabel}
+            {(typeof action?.name === 'string' ? action.name : '') || modelLabel}
           </h1>
         </div>
         <Button
@@ -126,7 +126,7 @@ export default function KanbanView({ model, action, domain: actionDomain }: View
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {(flatRecords || []).map((rec: any) => (
+          {(flatRecords || []).map((rec) => (
             <KanbanCard
               key={rec.id}
               record={rec}

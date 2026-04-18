@@ -37,8 +37,6 @@ async def lifespan(app: FastAPI):
     set_bus_manager(bus_manager)
     _logger.info("WebSocket bus manager registered.")
 
-    _register_exception_handlers()
-
     yield
 
     from app.db.engine import dispose_engine
@@ -67,14 +65,25 @@ from app.middleware.security import SecurityAuditMiddleware
 app.add_middleware(SecurityAuditMiddleware)
 
 
+# Register exception handlers at module-load time so uvicorn --reload picks them up
+# (lifespan events don't re-fire on module reload).
 def _register_exception_handlers():
     """Register exception handlers."""
     from app.services.base import RecordNotFoundError
     from app.core.exceptions import mashora_exception_handler
+    from sqlalchemy.exc import IntegrityError, NoResultFound, DataError, ProgrammingError
 
     app.add_exception_handler(RecordNotFoundError, mashora_exception_handler)
     app.add_exception_handler(ValueError, mashora_exception_handler)
     app.add_exception_handler(RuntimeError, mashora_exception_handler)
+    app.add_exception_handler(IntegrityError, mashora_exception_handler)
+    app.add_exception_handler(NoResultFound, mashora_exception_handler)
+    app.add_exception_handler(DataError, mashora_exception_handler)
+    app.add_exception_handler(ProgrammingError, mashora_exception_handler)
+    app.add_exception_handler(AttributeError, mashora_exception_handler)
+
+
+_register_exception_handlers()
 
 
 # --- Routers ---
@@ -106,9 +115,13 @@ from app.routers.attachments import router as attachments_router
 from app.routers.email import router as email_router
 from app.routers.calendar_sync import router as calendar_sync_router
 from app.routers.permissions import router as permissions_router
+from app.routers.saved_searches import router as saved_searches_router
+from app.routers.daily_activity import router as daily_activity_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(generic_router, prefix="/api/v1")
+app.include_router(saved_searches_router, prefix="/api/v1")
+app.include_router(daily_activity_router, prefix="/api/v1")
 app.include_router(partner_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(onchange_router, prefix="/api/v1")

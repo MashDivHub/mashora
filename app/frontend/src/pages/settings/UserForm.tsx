@@ -5,7 +5,11 @@ import { Input, Badge, Skeleton } from '@mashora/design-system'
 import { Shield, User } from 'lucide-react'
 import { RecordForm, FormField, FormSection, ReadonlyField, toast, type FormTab } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 import { sanitizedHtml } from '@/lib/sanitize'
+
+interface NameSearchResult { id: number; display_name: string }
+type CompanyValue = [number, string] | { id: number; display_name?: string } | number
 
 const FORM_FIELDS = [
   'id', 'name', 'login', 'email', 'image_128', 'active', 'share',
@@ -19,7 +23,7 @@ export default function UserForm() {
   const isNew = !id || id === 'new'
   const recordId = isNew ? null : parseInt(id || '0')
   const [editing, setEditing] = useState(isNew)
-  const [form, setForm] = useState<Record<string, any>>({})
+  const [form, setForm] = useState<Record<string, unknown>>({})
 
   const { data: record, isLoading } = useQuery({
     queryKey: ['user', recordId],
@@ -31,15 +35,16 @@ export default function UserForm() {
   })
 
   useEffect(() => { if (record) setForm({ ...record }) }, [record])
-  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+  const setField = useCallback((n: string, v: unknown) => { setForm(p => ({ ...p, [n]: v })) }, [])
+  const asStr = (v: unknown): string => (v == null || v === false ? '' : String(v))
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const validate = useCallback((): boolean => {
     const errs: Record<string, string> = {}
-    if (!form.name?.trim()) errs.name = 'Name is required'
-    if (!form.login?.trim()) errs.login = 'Login is required'
+    if (typeof form.name !== 'string' || !form.name.trim()) errs.name = 'Name is required'
+    if (typeof form.login !== 'string' || !form.login.trim()) errs.login = 'Login is required'
     setErrors(errs)
     if (Object.keys(errs).length > 0) {
       toast.error('Validation Error', Object.values(errs).join(', '))
@@ -51,13 +56,15 @@ export default function UserForm() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error('Validation failed')
-      const vals: Record<string, any> = {}
+      const vals: Record<string, unknown> = {}
+      const rec = (record ?? {}) as Record<string, unknown>
       for (const f of ['name', 'login', 'email', 'lang', 'tz']) {
-        if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
+        if (form[f] !== rec[f]) vals[f] = form[f] ?? false
       }
       for (const f of ['company_id']) {
-        const nv = Array.isArray(form[f]) ? form[f][0] : form[f]
-        const ov = Array.isArray(record?.[f]) ? record[f][0] : record?.[f]
+        const fv = form[f]; const rv = rec[f]
+        const nv = Array.isArray(fv) ? fv[0] : fv
+        const ov = Array.isArray(rv) ? rv[0] : rv
         if (nv !== ov) vals[f] = nv || false
       }
       if (isNew) {
@@ -76,14 +83,14 @@ export default function UserForm() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       if (isNew && data?.id) navigate(`/admin/settings/users/${data.id}`, { replace: true })
     },
-    onError: (e: any) => {
-      if (e.message !== 'Validation failed') {
-        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    onError: (e: unknown) => {
+      if (!(e instanceof Error && e.message === 'Validation failed')) {
+        toast.error('Save Failed', extractErrorMessage(e))
       }
     },
   })
 
-  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const [m2oResults, setM2oResults] = useState<Record<string, NameSearchResult[]>>({})
   const searchM2o = useCallback(async (model: string, q: string, field: string) => {
     if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
     try {
@@ -96,7 +103,7 @@ export default function UserForm() {
     return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
   }
 
-  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const m2oVal = (v: unknown): string => (Array.isArray(v) ? String(v[1] ?? '') : '')
 
   const M2O = ({ field, model, label }: { field: string; model: string; label: string }) => {
     const [open, setOpen] = useState(false)
@@ -111,7 +118,7 @@ export default function UserForm() {
             onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
           {open && (m2oResults[field] || []).length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
-              {(m2oResults[field] || []).map((r: any) => (
+              {(m2oResults[field] || []).map((r) => (
                 <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
                   onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false) }}>{r.display_name}</button>
               ))}
@@ -123,10 +130,10 @@ export default function UserForm() {
   }
 
   const TF = ({ field, label, type = 'text', required, errorMsg, onClearError }: { field: string; label: string; type?: string; required?: boolean; errorMsg?: string; onClearError?: () => void }) => {
-    if (!editing) return <ReadonlyField label={label} value={form[field]} />
+    if (!editing) return <ReadonlyField label={label} value={asStr(form[field])} />
     return (
       <FormField label={label} required={required}>
-        <Input type={type} value={form[field] || ''} onChange={e => { setField(field, e.target.value); onClearError?.() }} className={`rounded-xl h-9${errorMsg ? ' ring-2 ring-red-500/50' : ''}`} />
+        <Input type={type} value={asStr(form[field])} onChange={e => { setField(field, e.target.value); onClearError?.() }} className={`rounded-xl h-9${errorMsg ? ' ring-2 ring-red-500/50' : ''}`} />
         {errorMsg && <p className="text-xs text-destructive mt-1">{errorMsg}</p>}
       </FormField>
     )
@@ -148,7 +155,13 @@ export default function UserForm() {
               <ReadonlyField label="Allowed Companies" value={
                 Array.isArray(form.company_ids) && form.company_ids.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
-                    {form.company_ids.map((c: any, i: number) => <Badge key={i} variant="secondary" className="rounded-full text-xs">{Array.isArray(c) ? c[1] : c?.display_name || c}</Badge>)}
+                    {(form.company_ids as CompanyValue[]).map((c, i: number) => {
+                      const key = Array.isArray(c) ? c[0] : (typeof c === 'object' && c !== null ? c.id : i)
+                      const label = Array.isArray(c)
+                        ? c[1]
+                        : (typeof c === 'object' && c !== null ? (c.display_name ?? String(c.id)) : String(c))
+                      return <Badge key={key} variant="secondary" className="rounded-full text-xs">{label}</Badge>
+                    })}
                   </div>
                 ) : undefined
               } />
@@ -160,8 +173,8 @@ export default function UserForm() {
     {
       key: 'signature', label: 'Email Signature',
       content: editing
-        ? <FormField label="Signature"><Input value={form.signature || ''} onChange={e => setField('signature', e.target.value)} className="rounded-xl h-9" /></FormField>
-        : form.signature ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(form.signature)} /> : <ReadonlyField label="Signature" value={undefined} />,
+        ? <FormField label="Signature"><Input value={asStr(form.signature)} onChange={e => setField('signature', e.target.value)} className="rounded-xl h-9" /></FormField>
+        : form.signature ? <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={sanitizedHtml(String(form.signature))} /> : <ReadonlyField label="Signature" value={undefined} />,
     },
   ]
 
@@ -177,23 +190,23 @@ export default function UserForm() {
       topContent={
         <div className="flex flex-col sm:flex-row gap-4 items-start mb-4">
           {form.image_128 ? (
-            <img src={`data:image/png;base64,${form.image_128}`} alt="" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
+            <img src={`data:image/png;base64,${String(form.image_128)}`} alt="" className="h-20 w-20 rounded-2xl object-cover shrink-0" />
           ) : (
             <div className="h-20 w-20 rounded-2xl bg-primary/15 flex items-center justify-center text-2xl font-bold text-primary shrink-0">
-              {(form.name?.[0] || '?').toUpperCase()}
+              {(asStr(form.name)[0] || '?').toUpperCase()}
             </div>
           )}
           <div className="flex-1 space-y-2 min-w-0">
             {editing ? (
               <div>
-                <Input value={form.name || ''} onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }} placeholder="Full Name"
+                <Input value={asStr(form.name)} onChange={e => { setField('name', e.target.value); setErrors(er => { const n = { ...er }; delete n.name; return n }) }} placeholder="Full Name"
                   className={`text-xl font-bold border-0 border-b rounded-none px-0 h-auto py-1 focus-visible:ring-0 ${errors.name ? 'border-red-500 focus-visible:border-red-500' : 'border-border/40 focus-visible:border-primary'}`} />
                 {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
               </div>
             ) : (
-              <h2 className="text-2xl font-bold tracking-tight">{form.name || 'New User'}</h2>
+              <h2 className="text-2xl font-bold tracking-tight">{asStr(form.name) || 'New User'}</h2>
             )}
-            <ReadonlyField label="Login" value={form.login} />
+            <ReadonlyField label="Login" value={asStr(form.login)} />
           </div>
         </div>
       }

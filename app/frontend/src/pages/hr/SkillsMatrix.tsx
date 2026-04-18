@@ -67,9 +67,12 @@ export default function SkillsMatrix() {
   })
 
   // If the model doesn't exist the API will return an error
-  const notInstalled =
-    isError ||
-    (error != null && typeof error === 'object' && 'message' in error && String((error as any).message).toLowerCase().includes('model'))
+  const errMessage = error instanceof Error
+    ? error.message
+    : (error != null && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string'
+        ? (error as { message: string }).message
+        : '')
+  const notInstalled = isError || errMessage.toLowerCase().includes('model')
 
   if (notInstalled) {
     return (

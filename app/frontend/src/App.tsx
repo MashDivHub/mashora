@@ -4,6 +4,7 @@ import { Skeleton as BoneSkeleton } from 'boneyard-js/react'
 import { computeLayout } from 'boneyard-js/layout'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import { ErrorBoundary } from './components/shared'
 import { useAuthStore } from './engine/AuthStore'
 
 // Engine router
@@ -44,6 +45,9 @@ const LoyaltyProgramDetail = lazy(() => import('./pages/sales/LoyaltyProgramDeta
 const MarginAnalysis = lazy(() => import('./pages/sales/MarginAnalysis'))
 const SalesTeams = lazy(() => import('./pages/sales/SalesTeams'))
 const SalesCommission = lazy(() => import('./pages/sales/SalesCommission'))
+const SubscriptionList = lazy(() => import('./pages/sales/SubscriptionList'))
+const SubscriptionDetail = lazy(() => import('./pages/sales/SubscriptionDetail'))
+const SubscriptionTemplateList = lazy(() => import('./pages/sales/SubscriptionTemplateList'))
 
 // Module pages — Purchase
 const PurchaseOrderList = lazy(() => import('./pages/purchase/PurchaseOrderList'))
@@ -70,6 +74,7 @@ const TransferList = lazy(() => import('./pages/inventory/TransferList'))
 const TransferDetail = lazy(() => import('./pages/inventory/TransferDetail'))
 const StockLevels = lazy(() => import('./pages/inventory/StockLevels'))
 const LotSerialList = lazy(() => import('./pages/inventory/LotSerialList'))
+const LotSerialDetail = lazy(() => import('./pages/inventory/LotSerialDetail'))
 const ScrapOrders = lazy(() => import('./pages/inventory/ScrapOrders'))
 const InventoryAdjustment = lazy(() => import('./pages/inventory/InventoryAdjustment'))
 const WarehouseConfig = lazy(() => import('./pages/inventory/WarehouseConfig'))
@@ -99,14 +104,25 @@ const AttendanceList = lazy(() => import('./pages/hr/AttendanceList'))
 const LeaveList = lazy(() => import('./pages/hr/LeaveList'))
 const LeaveDetail = lazy(() => import('./pages/hr/LeaveDetail'))
 const AllocationList = lazy(() => import('./pages/hr/AllocationList'))
+const AllocationDetail = lazy(() => import('./pages/hr/AllocationDetail'))
 const ExpenseList = lazy(() => import('./pages/hr/ExpenseList'))
+const ExpenseDetail = lazy(() => import('./pages/hr/ExpenseDetail'))
 const ExpenseSheetList = lazy(() => import('./pages/hr/ExpenseSheetList'))
+const ExpenseSheetDetail = lazy(() => import('./pages/hr/ExpenseSheetDetail'))
 const JobList = lazy(() => import('./pages/hr/JobList'))
 const LeaveTypes = lazy(() => import('./pages/hr/LeaveTypes'))
 const OrgChart = lazy(() => import('./pages/hr/OrgChart'))
 const SkillsMatrix = lazy(() => import('./pages/hr/SkillsMatrix'))
 const WorkEntries = lazy(() => import('./pages/hr/WorkEntries'))
 const HomeworkingSchedule = lazy(() => import('./pages/hr/HomeworkingSchedule'))
+const ContractList = lazy(() => import('./pages/hr/ContractList'))
+const ContractDetail = lazy(() => import('./pages/hr/ContractDetail'))
+const PayslipBatchList = lazy(() => import('./pages/hr/PayslipBatchList'))
+const PayslipBatchDetail = lazy(() => import('./pages/hr/PayslipBatchDetail'))
+const PayslipList = lazy(() => import('./pages/hr/PayslipList'))
+const PayslipDetail = lazy(() => import('./pages/hr/PayslipDetail'))
+const RecruitmentList = lazy(() => import('./pages/hr/RecruitmentList'))
+const ApplicantDetail = lazy(() => import('./pages/hr/ApplicantDetail'))
 
 // Module pages — Manufacturing
 const MrpDashboard = lazy(() => import('./pages/manufacturing/MrpDashboard'))
@@ -126,6 +142,7 @@ const WebsiteMenus = lazy(() => import('./pages/website/WebsiteMenus'))
 const CategoryManager = lazy(() => import('./pages/website/CategoryManager'))
 const ProductsDashboard = lazy(() => import('./pages/products/ProductsDashboard'))
 const PricelistManager = lazy(() => import('./pages/products/PricelistManager'))
+const PricelistDetail = lazy(() => import('./pages/products/PricelistDetail'))
 const VariantList = lazy(() => import('./pages/products/VariantList'))
 const BundleList = lazy(() => import('./pages/products/BundleList'))
 const BlogList = lazy(() => import('./pages/website/BlogList'))
@@ -141,6 +158,7 @@ const DiscussPage = lazy(() => import('./pages/discuss/DiscussPage'))
 // Module pages — Events
 const EventList = lazy(() => import('./pages/events/EventList'))
 const EventDetail = lazy(() => import('./pages/events/EventDetail'))
+const EventForm = lazy(() => import('./pages/events/EventForm'))
 const EventRegistrations = lazy(() => import('./pages/events/EventRegistrations'))
 const EventTracks = lazy(() => import('./pages/events/EventTracks'))
 
@@ -154,6 +172,7 @@ const DashboardListPage = lazy(() => import('./pages/dashboards/DashboardList'))
 const DashboardView = lazy(() => import('./pages/dashboards/DashboardView'))
 const SpreadsheetList = lazy(() => import('./pages/dashboards/SpreadsheetList'))
 const ReportCenter = lazy(() => import('./pages/dashboards/ReportCenter'))
+const DailyActivity = lazy(() => import('./pages/dashboards/DailyActivity'))
 
 // Module pages — Fleet & Maintenance
 const FleetList = lazy(() => import('./pages/fleet/FleetList'))
@@ -163,6 +182,11 @@ const MaintenanceRequests = lazy(() => import('./pages/fleet/MaintenanceRequests
 const EquipmentList = lazy(() => import('./pages/fleet/EquipmentList'))
 const MaintenanceCalendar = lazy(() => import('./pages/fleet/MaintenanceCalendar'))
 const FleetContracts = lazy(() => import('./pages/fleet/FleetContracts'))
+const FleetContractDetail = lazy(() => import('./pages/fleet/ContractDetail'))
+const OdometerList = lazy(() => import('./pages/fleet/OdometerList'))
+const OdometerForm = lazy(() => import('./pages/fleet/OdometerForm'))
+const AssignationList = lazy(() => import('./pages/fleet/AssignationList'))
+const AssignationForm = lazy(() => import('./pages/fleet/AssignationForm'))
 const MaintenanceDetail = lazy(() => import('./pages/fleet/MaintenanceDetail'))
 
 // Module pages — Email Marketing
@@ -173,6 +197,7 @@ const TemplateGallery = lazy(() => import('./pages/marketing/TemplateGallery'))
 
 // Module pages — Secondary (lazy-loaded, kept for fallback)
 const Repairs = lazy(() => import('./pages/secondary/Repairs'))
+const RepairDetail = lazy(() => import('./pages/secondary/RepairDetail'))
 
 // Module pages — POS (purpose-built)
 const PosDashboard = lazy(() => import('./pages/pos/PosDashboard'))
@@ -354,8 +379,9 @@ export default function App() {
   }, [])
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
         <Route path="/login" element={<Login />} />
 
         {/* Public website */}
@@ -411,6 +437,7 @@ export default function App() {
           <Route path="products/list" element={<ProductCatalog />} />
           <Route path="products/categories" element={<CategoryManager />} />
           <Route path="products/pricelists" element={<PricelistManager />} />
+          <Route path="products/pricelists/:id" element={<PricelistDetail />} />
           <Route path="products/variants" element={<VariantList />} />
           <Route path="products/bundles" element={<BundleList />} />
           <Route path="products/new" element={<ProductEditor />} />
@@ -433,6 +460,10 @@ export default function App() {
           <Route path="sales/teams" element={<SalesTeams />} />
           <Route path="sales/commission" element={<SalesCommission />} />
           <Route path="sales/products" element={<ProductCatalog />} />
+          <Route path="sales/subscriptions" element={<SubscriptionList />} />
+          <Route path="sales/subscriptions/:id" element={<SubscriptionDetail />} />
+          <Route path="sales/subscription-templates" element={<SubscriptionTemplateList />} />
+          <Route path="sales/subscription-templates/:id" element={<SubscriptionTemplateList />} />
 
           {/* Purchase module */}
           <Route path="purchase/orders" element={<PurchaseOrderList />} />
@@ -464,6 +495,7 @@ export default function App() {
           <Route path="inventory/deliveries" element={<Navigate to="/admin/inventory/transfers?filter=deliveries" replace />} />
           <Route path="inventory/internal" element={<Navigate to="/admin/inventory/transfers?filter=internal" replace />} />
           <Route path="inventory/lots" element={<LotSerialList />} />
+          <Route path="inventory/lots/:id" element={<LotSerialDetail />} />
           <Route path="inventory/scrap" element={<ScrapOrders />} />
           <Route path="inventory/adjustments" element={<InventoryAdjustment />} />
           <Route path="inventory/warehouses" element={<WarehouseConfig />} />
@@ -494,14 +526,25 @@ export default function App() {
           <Route path="hr/leaves" element={<LeaveList />} />
           <Route path="hr/leaves/:id" element={<LeaveDetail />} />
           <Route path="hr/allocations" element={<AllocationList />} />
+          <Route path="hr/allocations/:id" element={<AllocationDetail />} />
           <Route path="hr/expenses" element={<ExpenseList />} />
+          <Route path="hr/expenses/:id" element={<ExpenseDetail />} />
           <Route path="hr/expense-sheets" element={<ExpenseSheetList />} />
+          <Route path="hr/expense-sheets/:id" element={<ExpenseSheetDetail />} />
           <Route path="hr/jobs" element={<JobList />} />
           <Route path="hr/leave-types" element={<LeaveTypes />} />
           <Route path="hr/org-chart" element={<OrgChart />} />
           <Route path="hr/skills" element={<SkillsMatrix />} />
           <Route path="hr/work-entries" element={<WorkEntries />} />
           <Route path="hr/homeworking" element={<HomeworkingSchedule />} />
+          <Route path="hr/contracts" element={<ContractList />} />
+          <Route path="hr/contracts/:id" element={<ContractDetail />} />
+          <Route path="hr/payslip-batches" element={<PayslipBatchList />} />
+          <Route path="hr/payslip-batches/:id" element={<PayslipBatchDetail />} />
+          <Route path="hr/payslips" element={<PayslipList />} />
+          <Route path="hr/payslips/:id" element={<PayslipDetail />} />
+          <Route path="hr/recruitment" element={<RecruitmentList />} />
+          <Route path="hr/recruitment/:id" element={<ApplicantDetail />} />
 
           {/* Calendar, Website, Discuss */}
           <Route path="calendar" element={<CalendarPage />} />
@@ -524,6 +567,8 @@ export default function App() {
           <Route path="fleet/:id" element={<FleetDetail />} />
           <Route path="fleet/:id/costs" element={<FleetCosts />} />
           <Route path="repairs" element={<Repairs />} />
+          <Route path="repairs/new" element={<RepairDetail />} />
+          <Route path="repairs/:id" element={<RepairDetail />} />
 
           {/* Maintenance module */}
           <Route path="maintenance" element={<MaintenanceRequests />} />
@@ -531,6 +576,11 @@ export default function App() {
           <Route path="maintenance/calendar" element={<MaintenanceCalendar />} />
           <Route path="maintenance/:id" element={<MaintenanceDetail />} />
           <Route path="fleet/contracts" element={<FleetContracts />} />
+          <Route path="fleet/contracts/:id" element={<FleetContractDetail />} />
+          <Route path="fleet/odometer" element={<OdometerList />} />
+          <Route path="fleet/odometer/:id" element={<OdometerForm />} />
+          <Route path="fleet/assignations" element={<AssignationList />} />
+          <Route path="fleet/assignations/:id" element={<AssignationForm />} />
           {/* Manufacturing module */}
           <Route path="manufacturing" element={<MrpDashboard />} />
           <Route path="manufacturing/orders" element={<ProductionList />} />
@@ -543,7 +593,9 @@ export default function App() {
           <Route path="manufacturing/subcontracting" element={<SubcontractingList />} />
           {/* Events module */}
           <Route path="events" element={<EventList />} />
+          <Route path="events/new" element={<EventForm />} />
           <Route path="events/:id" element={<EventDetail />} />
+          <Route path="events/:id/edit" element={<EventForm />} />
           <Route path="events/:id/registrations" element={<EventRegistrations />} />
           <Route path="events/:id/tracks" element={<EventTracks />} />
 
@@ -570,6 +622,7 @@ export default function App() {
           {/* Dashboards & Spreadsheets */}
           <Route path="dashboards" element={<DashboardListPage />} />
           <Route path="dashboards/:id" element={<DashboardView />} />
+          <Route path="daily-activity" element={<DailyActivity />} />
           <Route path="spreadsheets" element={<SpreadsheetList />} />
           <Route path="reports" element={<ReportCenter />} />
 
@@ -595,7 +648,8 @@ export default function App() {
             </div>
           } />
         </Route>
-      </Routes>
-    </Suspense>
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
 }

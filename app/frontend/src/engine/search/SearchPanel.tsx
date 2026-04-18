@@ -10,7 +10,7 @@ import { createSearchState, loadFavorites, saveFavorites } from './SearchControl
 
 interface SearchPanelProps {
   model: string
-  searchViewDef?: any  // parsed search view arch + fields
+  searchViewDef?: unknown  // parsed search view arch + fields (shape varies; consumers narrow internally)
   onSearchChange: (state: SearchState) => void
   className?: string
 }
@@ -28,12 +28,15 @@ export default function SearchPanel({ model, searchViewDef, onSearchChange, clas
   const predefinedFilters: SearchFilter[] = []
   const predefinedGroupBys: SearchGroupBy[] = []
 
-  if (searchViewDef?.arch?.children) {
+  interface SearchArchChild { tag?: string; name?: string; string?: string; domain?: string | unknown[]; context?: string; children?: SearchArchChild[] }
+  interface SearchViewShape { arch?: { children?: SearchArchChild[] } }
+  const svd = searchViewDef as SearchViewShape | undefined
+  if (svd?.arch?.children) {
     let filterIndex = 0
     let groupByIndex = 0
     let currentGroup = ''
 
-    for (const child of searchViewDef.arch.children) {
+    for (const child of svd.arch.children) {
       if (child.tag === 'filter' && child.name && child.domain) {
         try {
           const domain = typeof child.domain === 'string'
@@ -46,7 +49,9 @@ export default function SearchPanel({ model, searchViewDef, onSearchChange, clas
             isActive: false,
             group: currentGroup || undefined,
           })
-        } catch {}
+        } catch {
+          /* ignore: malformed predefined-filter domain — skip this filter entry */
+        }
       }
       if (child.tag === 'filter' && child.context && child.context.includes('group_by')) {
         const match = child.context.match(/group_by['"]\s*:\s*['"](\w+)/)
@@ -153,6 +158,7 @@ export default function SearchPanel({ model, searchViewDef, onSearchChange, clas
           <input
             type="text"
             placeholder="Search..."
+            aria-label="Filter search"
             value={state.searchText}
             onChange={e => handleSearchText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') handleSearchText('') }}

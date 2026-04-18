@@ -57,6 +57,10 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
+
+  /* Elevation — panel surfaces (cards, list containers, filter bars).
+     Exposed as `shadow-panel` via Tailwind v4 `--shadow-*` theme naming. */
+  --shadow-panel: 0 20px 80px -48px rgba(15, 23, 42, 0.45);
 }
 
 /* ============================================ */

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
 import { ClipboardList } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -26,7 +26,7 @@ interface WorkOrderListResponse {
   total: number
 }
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   pending:  { label: 'Pending',     variant: 'secondary' },
   waiting:  { label: 'Waiting',     variant: 'info' },
   ready:    { label: 'Ready',       variant: 'warning' },
@@ -116,9 +116,9 @@ export default function WorkOrderList() {
       key: 'state',
       label: 'Status',
       render: (v) => {
-        const s = STATE_BADGE[v] ?? { label: v, variant: 'secondary' }
+        const s = STATE_BADGE[v] ?? { label: v, variant: 'secondary' as BadgeVariant }
         return (
-          <Badge variant={s.variant as any} className="rounded-full text-xs">
+          <Badge variant={s.variant} className="rounded-full text-xs">
             {s.label}
           </Badge>
         )

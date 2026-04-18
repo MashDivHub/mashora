@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
 import { ShoppingBag } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
-const INVOICE_STATUS_BADGE: Record<string, { label: string; variant: string }> = {
+const INVOICE_STATUS_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   nothing: { label: 'Nothing to Invoice', variant: 'secondary' },
   'to invoice': { label: 'To Invoice', variant: 'warning' },
   invoiced: { label: 'Invoiced', variant: 'success' },
   upselling: { label: 'Upselling', variant: 'info' },
 }
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'Quotation', variant: 'secondary' },
   sent: { label: 'Sent', variant: 'info' },
   sale: { label: 'Confirmed', variant: 'success' },
@@ -34,7 +34,7 @@ export default function EcomOrders() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
 
-  const domain: any[] = [['state', '=', 'sale']]
+  const domain: unknown[] = [['state', '=', 'sale']]
   if (search) domain.push('|', ['name', 'ilike', search], ['partner_id', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -87,16 +87,16 @@ export default function EcomOrders() {
       key: 'invoice_status',
       label: 'Invoice Status',
       render: v => {
-        const s = INVOICE_STATUS_BADGE[v] || { label: v, variant: 'secondary' }
-        return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+        const s = INVOICE_STATUS_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
+        return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
       },
     },
     {
       key: 'state',
       label: 'Status',
       render: v => {
-        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
-        return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
+        return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
       },
     },
   ]

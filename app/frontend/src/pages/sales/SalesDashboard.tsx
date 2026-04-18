@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@mashora/design-system'
 import {
-  ShoppingCart, Plus, Gift, Users, DollarSign, TrendingUp, FileText, Clock,
+  ShoppingCart, Plus, Gift, Users, DollarSign, TrendingUp, FileText, Clock, RefreshCcw,
 } from 'lucide-react'
 import { PageHeader, StatCards, type StatCardData } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -69,6 +69,7 @@ export default function SalesDashboard() {
   const quickActions = [
     { label: 'Orders', desc: 'Browse all sales orders', icon: ShoppingCart, path: '/admin/sales/orders' },
     { label: 'New Quotation', desc: 'Create a new quotation', icon: Plus, path: '/admin/sales/orders/new' },
+    { label: 'Subscriptions', desc: 'Recurring sales orders', icon: RefreshCcw, path: '/admin/sales/subscriptions' },
     { label: 'Loyalty Programs', desc: 'Manage reward programs', icon: Gift, path: '/admin/sales/loyalty' },
     { label: 'Sales Teams', desc: 'Manage your sales teams', icon: Users, path: '/admin/sales/teams' },
     { label: 'Commission', desc: 'Track sales commissions', icon: DollarSign, path: '/admin/sales/commission' },

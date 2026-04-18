@@ -3,8 +3,8 @@ export { cn } from './lib/utils'
 
 // UI Components
 export { Button, buttonVariants, type ButtonProps } from './components/ui/button'
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './components/ui/card'
-export { Badge, badgeVariants } from './components/ui/badge'
+export { Card, CardHeader, CardTitle, CardContent } from './components/ui/card'
+export { Badge, badgeVariants, statusToBadgeVariant, type BadgeVariant } from './components/ui/badge'
 export { Input } from './components/ui/input'
 export { Label } from './components/ui/label'
 export { Separator } from './components/ui/separator'
@@ -20,12 +20,3 @@ export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './comp
 export { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu'
 export { Checkbox } from './components/ui/checkbox'
 export { Switch } from './components/ui/switch'
-export { ScrollArea, ScrollBar } from './components/ui/scroll-area'
-export { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover'
-
-// ERP Components
-export { StatusBar } from './components/erp/status-bar'
-export { PageHeader } from './components/erp/page-header'
-export { StatCard } from './components/erp/stat-card'
-export { EmptyState } from './components/erp/empty-state'
-export { DataTable, type Column, type DataTableProps } from './components/erp/data-table'

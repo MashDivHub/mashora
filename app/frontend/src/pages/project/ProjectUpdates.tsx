@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Activity } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 const LIST_FIELDS = ['id', 'name', 'project_id', 'status', 'date', 'description', 'user_id', 'create_date']
 
-const STATUS_CONFIG: Record<string, { label: string; variant: string }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant }> = {
   on_track:  { label: 'On Track',  variant: 'success' },
   at_risk:   { label: 'At Risk',   variant: 'warning' },
   off_track: { label: 'Off Track', variant: 'destructive' },
@@ -60,7 +60,7 @@ export default function ProjectUpdates() {
       {!isLoading && records.length > 0 && (
         <div className="space-y-3">
           {records.map(update => {
-            const statusCfg = STATUS_CONFIG[update.status] || { label: update.status, variant: 'secondary' }
+            const statusCfg = STATUS_CONFIG[update.status] || { label: update.status, variant: 'secondary' as BadgeVariant }
             const projectName = Array.isArray(update.project_id) ? update.project_id[1] : 'Unknown Project'
             const authorName = Array.isArray(update.user_id) ? update.user_id[1] : ''
             const formattedDate = update.date ? new Date(update.date).toLocaleDateString() : ''
@@ -69,7 +69,7 @@ export default function ProjectUpdates() {
               <div key={update.id} className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-muted-foreground">{projectName}</span>
-                  <Badge variant={statusCfg.variant as any} className="rounded-full text-xs">
+                  <Badge variant={statusCfg.variant} className="rounded-full text-xs">
                     {statusCfg.label}
                   </Badge>
                 </div>

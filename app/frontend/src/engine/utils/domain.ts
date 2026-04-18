@@ -62,5 +62,8 @@ export function evaluateDomain(domain: Domain, record: Record<string, any>): boo
 
 export function domainToReadable(domain: Domain): string {
   // Simple human-readable conversion
-  return domain.filter(Array.isArray).map((leaf: any) => `${leaf[0]} ${leaf[1]} ${JSON.stringify(leaf[2])}`).join(' AND ')
+  return domain.filter(Array.isArray).map((leaf) => {
+    const l = leaf as [unknown, unknown, unknown]
+    return `${String(l[0])} ${String(l[1])} ${JSON.stringify(l[2])}`
+  }).join(' AND ')
 }

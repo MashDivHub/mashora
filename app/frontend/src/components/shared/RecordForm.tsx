@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, Separator, cn } from '@mashora/design-system'
 import { ChevronLeft, Save, X, Pencil, Printer } from 'lucide-react'
+import FieldHelp from './FieldHelp'
 
 /* ── Smart Button ── */
 export interface SmartButton {
@@ -184,12 +185,12 @@ export interface FormFieldProps {
 export function FormField({ label, required, help, className, children }: FormFieldProps) {
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="flex items-center gap-1.5 mb-1">
+      <div className="flex items-center gap-1 mb-1">
         <label className="text-[13px] font-medium text-foreground/70">
           {label}
           {required && <span className="text-destructive ml-0.5">*</span>}
         </label>
-        {help && <span className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-help">(?)</span>}
+        {help && <FieldHelp text={help} />}
       </div>
       {children}
     </div>

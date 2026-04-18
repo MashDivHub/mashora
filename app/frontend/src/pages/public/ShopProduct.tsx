@@ -4,6 +4,7 @@ import { erpClient } from '@/lib/erp-api'
 import { Button } from '@mashora/design-system'
 import { ArrowLeft } from 'lucide-react'
 import { sanitizedHtml } from '@/lib/sanitize'
+import { LoadingState } from '@/components/shared'
 
 export default function ShopProduct() {
   const { slug } = useParams<{ slug: string }>()
@@ -18,7 +19,7 @@ export default function ShopProduct() {
     enabled: !!id && !isNaN(id),
   })
 
-  if (isLoading) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 text-muted-foreground">Loading...</div>
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10"><LoadingState label="Loading product..." /></div>
   if (!product) return <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10">Product not found.</div>
 
   return (

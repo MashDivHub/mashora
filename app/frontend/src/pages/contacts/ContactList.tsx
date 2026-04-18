@@ -1,10 +1,37 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge, cn } from '@mashora/design-system'
-import { Users, Building2, User, LayoutGrid, List } from 'lucide-react'
-import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
+import { Users, Building2, Archive, Mail } from 'lucide-react'
+import {
+  DataTable, PageHeader, SearchBar, BulkActionBar, ViewToggle,
+  toast,
+  type Column, type FilterOption, type BulkAction, type ViewMode,
+} from '@/components/shared'
+import { useBulkSelect } from '@/hooks/useBulkSelect'
 import { erpClient } from '@/lib/erp-api'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { extractErrorMessage } from '@/lib/errors'
+
+type DomainLeaf = unknown
+
+interface ContactRecord {
+  id: number
+  name?: string
+  display_name?: string
+  email?: string | false
+  phone?: string | false
+  city?: string | false
+  country_id?: [number, string] | false
+  company_name?: string | false
+  is_company?: boolean
+  parent_id?: [number, string] | false
+  category_id?: Array<[number, string] | { id: number; display_name?: string } | number>
+  image_128?: string | false
+  customer_rank?: number
+  supplier_rank?: number
+  active?: boolean
+}
 
 const LIST_FIELDS = [
   'id', 'name', 'display_name', 'email', 'phone', 'city', 'country_id',
@@ -20,13 +47,17 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function ContactList() {
+  useDocumentTitle('Contacts')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [view, setView] = useState<ViewMode>('list')
   const pageSize = 40
+  const { selected, clear, setSelected } = useBulkSelect()
 
   const handleFilterToggle = useCallback((key: string) => {
     setActiveFilters(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
@@ -34,7 +65,7 @@ export default function ContactList() {
   }, [])
 
   // Build domain from search + filters
-  const domain: any[] = []
+  const domain: DomainLeaf[] = []
   if (search) {
     domain.push('|', '|', ['name', 'ilike', search], ['email', 'ilike', search], ['phone', 'ilike', search])
   }
@@ -45,7 +76,7 @@ export default function ContactList() {
 
   const order = sortField ? `${sortField} ${sortDir}` : 'name asc'
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['contacts', 'list', domain, page, order],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/res.partner', {
@@ -61,6 +92,39 @@ export default function ContactList() {
 
   const records = data?.records || []
   const total = data?.total || 0
+  const selectedSet = new Set(selected)
+
+  async function bulkAction(ids: number[], action: (id: number) => Promise<unknown>, successMsg: string) {
+    try {
+      await Promise.all(ids.map(action))
+      toast.success(`${successMsg} (${ids.length})`)
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
+      clear()
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Action failed'))
+    }
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: 'archive',
+      label: 'Archive',
+      icon: <Archive className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      confirm: 'Archive {count} contact(s)?',
+      onClick: ids => bulkAction(
+        ids,
+        id => erpClient.raw.put(`/model/res.partner/${id}`, { vals: { active: false } }),
+        'Contacts archived',
+      ),
+    },
+    {
+      key: 'email',
+      label: 'Send Email',
+      icon: <Mail className="h-3.5 w-3.5" />,
+      onClick: () => { toast.info('Email composer coming soon') },
+    },
+  ]
 
   const columns: Column[] = [
     {
@@ -111,11 +175,21 @@ export default function ContactList() {
         if (!Array.isArray(val) || val.length === 0) return ''
         return (
           <div className="flex flex-wrap gap-1">
-            {val.slice(0, 3).map((tag: any, i: number) => (
-              <Badge key={i} variant="secondary" className="text-[10px] rounded-full px-2 py-0">
-                {Array.isArray(tag) ? tag[1] : typeof tag === 'object' ? tag.display_name : tag}
-              </Badge>
-            ))}
+            {val.slice(0, 3).map((tag: unknown, i: number) => {
+              const key = Array.isArray(tag)
+                ? (tag as [number, string])[0]
+                : (typeof tag === 'object' && tag !== null && 'id' in tag ? (tag as { id: number }).id : i)
+              const label = Array.isArray(tag)
+                ? (tag as [number, string])[1]
+                : (typeof tag === 'object' && tag !== null && 'display_name' in tag
+                  ? String((tag as { display_name?: unknown }).display_name ?? '')
+                  : String(tag))
+              return (
+                <Badge key={key} variant="secondary" className="text-[10px] rounded-full px-2 py-0">
+                  {label}
+                </Badge>
+              )
+            })}
             {val.length > 3 && <Badge variant="secondary" className="text-[10px] rounded-full px-2 py-0">+{val.length - 3}</Badge>}
           </div>
         )
@@ -129,16 +203,7 @@ export default function ContactList() {
         title="Contacts"
         subtitle="contacts"
         onNew="/admin/contacts/new"
-        actions={
-          <div className="flex items-center gap-1 rounded-lg bg-muted/40 p-0.5">
-            <button className="rounded-md p-1.5 bg-background shadow-sm">
-              <List className="h-4 w-4" />
-            </button>
-            <button className="rounded-md p-1.5 text-muted-foreground hover:text-foreground">
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
-        }
+        actions={<ViewToggle value={view} onChange={setView} available={['list', 'kanban']} />}
       />
 
       <SearchBar
@@ -149,21 +214,96 @@ export default function ContactList() {
         onFilterToggle={handleFilterToggle}
       />
 
-      <DataTable
-        columns={columns}
-        data={records}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        rowLink={(row) => `/admin/contacts/${row.id}`}
-        emptyMessage="No contacts found"
-        emptyIcon={<Users className="h-10 w-10" />}
-      />
+      <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
+
+      {view === 'list' ? (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          isError={isError} error={error} onRetry={() => refetch()}
+          rowLink={(row) => `/admin/contacts/${row.id}`}
+          selectable
+          selectedIds={selectedSet}
+          onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+          emptyMessage="No contacts found"
+          emptyIcon={<Users className="h-10 w-10" />}
+        />
+      ) : (
+        <ContactsGrid records={records} loading={isLoading} onOpen={(id) => navigate(`/admin/contacts/${id}`)} />
+      )}
+    </div>
+  )
+}
+
+// ─── Kanban / card grid view ────────────────────────────────────────────────
+
+function ContactsGrid({ records, loading, onOpen }: { records: ContactRecord[]; loading: boolean; onOpen: (id: number) => void }) {
+  if (loading) {
+    return (
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="h-28 rounded-xl border border-border/40 bg-card animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+  if (records.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
+          <Users className="size-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium">No contacts found</p>
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {records.map(c => {
+        const name = c.display_name || c.name || `#${c.id}`
+        const initial = (name[0] || '?').toUpperCase()
+        const country = Array.isArray(c.country_id) ? c.country_id[1] : ''
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onOpen(c.id)}
+            className="group text-left rounded-xl border border-border/40 bg-card hover:border-border hover:shadow-md transition-all p-4 flex gap-3 items-start"
+          >
+            <div className={cn(
+              'shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold',
+              c.is_company ? 'bg-blue-500/15 text-blue-500' : 'bg-primary/10 text-primary'
+            )}>
+              {c.is_company ? <Building2 className="h-5 w-5" /> : initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold truncate">{name}</p>
+                {!c.active && <Badge variant="destructive" className="text-[10px]">Archived</Badge>}
+              </div>
+              {c.email && <p className="text-xs text-muted-foreground truncate mt-0.5">{c.email}</p>}
+              {c.phone && <p className="text-xs text-muted-foreground truncate">{c.phone}</p>}
+              {(c.city || country) && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {[c.city, country].filter(Boolean).join(', ')}
+                </p>
+              )}
+              <div className="mt-2 flex gap-1 flex-wrap">
+                {(c.customer_rank ?? 0) > 0 && <Badge variant="outline" className="text-[10px]">Customer</Badge>}
+                {(c.supplier_rank ?? 0) > 0 && <Badge variant="outline" className="text-[10px]">Vendor</Badge>}
+              </div>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

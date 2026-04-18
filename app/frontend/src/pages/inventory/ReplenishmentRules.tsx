@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
@@ -16,10 +18,18 @@ interface OrderPoint {
 }
 
 export default function ReplenishmentRules() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const productTmplId = searchParams.get('product_tmpl_id')
+  const productName = searchParams.get('product_name') || ''
+
+  const domain: unknown[] = []
+  if (productTmplId) domain.push(['product.product_tmpl_id', '=', parseInt(productTmplId)])
+
   const { data, isLoading } = useQuery<OrderPoint[]>({
-    queryKey: ['replenishment-rules'],
+    queryKey: ['replenishment-rules', domain],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/stock.warehouse.orderpoint', {
+        domain: domain.length ? domain : undefined,
         fields: ['id', 'name', 'product_id', 'warehouse_id', 'location_id', 'product_min_qty', 'product_max_qty', 'qty_to_order', 'trigger'],
         order: 'product_id asc',
         limit: 100,
@@ -27,6 +37,13 @@ export default function ReplenishmentRules() {
       return data.records ?? data
     },
   })
+
+  const clearProductFilter = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('product_tmpl_id')
+    next.delete('product_name')
+    setSearchParams(next)
+  }
 
   const records = data ?? []
 
@@ -42,6 +59,15 @@ export default function ReplenishmentRules() {
   return (
     <div className="space-y-6">
       <PageHeader title="Replenishment Rules" />
+
+      {productTmplId && (
+        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">
+          <span>Product: <strong>{productName || `#${productTmplId}`}</strong></span>
+          <button type="button" onClick={clearProductFilter} className="hover:text-destructive" title="Clear product filter" aria-label="Clear product filter">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border/30 overflow-hidden">
         <Table>

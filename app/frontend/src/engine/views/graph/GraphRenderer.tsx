@@ -1,5 +1,5 @@
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import type { GraphConfig } from './GraphController'
+import type { GraphConfig, GraphRow } from './GraphController'
 
 const CHART_COLORS = [
   'hsl(220, 70%, 55%)',  // blue
@@ -13,7 +13,7 @@ const CHART_COLORS = [
 ]
 
 interface GraphRendererProps {
-  data: any[]
+  data: GraphRow[]
   config: GraphConfig
   height?: number
 }

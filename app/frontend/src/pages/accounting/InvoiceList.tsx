@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { FileText } from 'lucide-react'
-import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
+import { FileText, CheckCircle2, XCircle, Mail, Printer, Clock } from 'lucide-react'
+import {
+  DataTable, PageHeader, SearchBar, BulkActionBar,
+  toast,
+  type Column, type FilterOption, type BulkAction,
+} from '@/components/shared'
+import { useBulkSelect } from '@/hooks/useBulkSelect'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 const LIST_FIELDS = [
   'id', 'name', 'partner_id', 'move_type', 'state', 'date', 'invoice_date',
@@ -12,7 +19,7 @@ const LIST_FIELDS = [
   'payment_state', 'invoice_user_id', 'invoice_origin', 'ref',
 ]
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'Draft', variant: 'secondary' },
   posted: { label: 'Posted', variant: 'success' },
   cancel: { label: 'Cancelled', variant: 'destructive' },
@@ -36,14 +43,10 @@ const FILTERS: FilterOption[] = [
   { key: 'overdue', label: 'Overdue', domain: [['invoice_date_due', '<', new Date().toISOString().split('T')[0]], ['payment_state', '!=', 'paid']] },
 ]
 
-const TYPE_LABELS: Record<string, string> = {
-  out_invoice: 'Invoice', out_refund: 'Credit Note',
-  in_invoice: 'Bill', in_refund: 'Refund',
-  entry: 'Entry', out_receipt: 'Receipt', in_receipt: 'Receipt',
-}
-
 export default function InvoiceList() {
+  useDocumentTitle('Invoices')
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const initialFilter = searchParams.get('filter')
   const [search, setSearch] = useState('')
@@ -52,8 +55,9 @@ export default function InvoiceList() {
   const [sortField, setSortField] = useState<string | null>('invoice_date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
+  const { selected, clear, setSelected } = useBulkSelect()
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push('|', ['name', 'ilike', search], ['partner_id', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -62,7 +66,7 @@ export default function InvoiceList() {
 
   const order = sortField ? `${sortField} ${sortDir}` : 'invoice_date desc, id desc'
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['invoices', domain, page, order],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/account.move', {
@@ -77,6 +81,51 @@ export default function InvoiceList() {
     activeFilters.includes('credit_notes') ? 'Credit Notes' :
     activeFilters.includes('refunds') ? 'Vendor Refunds' : 'Invoices'
 
+  async function bulkAction(ids: number[], action: (id: number) => Promise<unknown>, successMsg: string) {
+    try {
+      await Promise.all(ids.map(action))
+      toast.success(`${successMsg} (${ids.length})`)
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      clear()
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Action failed'))
+    }
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: 'post',
+      label: 'Post',
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      confirm: 'Post {count} invoice(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/accounting/invoices/${id}/post`), 'Invoices posted'),
+    },
+    {
+      key: 'cancel',
+      label: 'Cancel',
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      confirm: 'Cancel {count} invoice(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/accounting/invoices/${id}/cancel`), 'Invoices cancelled'),
+    },
+    {
+      key: 'send',
+      label: 'Send by Email',
+      icon: <Mail className="h-3.5 w-3.5" />,
+      onClick: ids => bulkAction(
+        ids,
+        id => erpClient.raw.post('/model/account.move/call', { method: 'action_invoice_sent', ids: [id] }),
+        'Sent emails',
+      ),
+    },
+    {
+      key: 'print',
+      label: 'Print',
+      icon: <Printer className="h-3.5 w-3.5" />,
+      onClick: () => { toast.info('Use individual print for now') },
+    },
+  ]
+
   const columns: Column[] = [
     { key: 'name', label: 'Number', render: (_, row) => <span className="font-mono text-sm">{row.name || 'Draft'}</span> },
     { key: 'partner_id', label: 'Partner', format: v => Array.isArray(v) ? v[1] : '' },
@@ -84,11 +133,19 @@ export default function InvoiceList() {
     { key: 'invoice_date_due', label: 'Due Date', render: (v, row) => {
       if (!v) return ''
       const overdue = row.payment_state !== 'paid' && new Date(v) < new Date()
-      return <span className={cn('text-sm', overdue && 'text-red-400 font-medium')}>{new Date(v).toLocaleDateString()}</span>
+      return (
+        <span
+          className={cn('text-sm inline-flex items-center gap-1', overdue && 'text-red-400 font-medium')}
+          aria-label={overdue ? `overdue ${new Date(v).toLocaleDateString()}` : undefined}
+        >
+          {overdue && <Clock className="h-3 w-3" aria-hidden="true" />}
+          {new Date(v).toLocaleDateString()}
+        </span>
+      )
     }},
     { key: 'state', label: 'Status', render: v => {
-      const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
-      return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+      const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
+      return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
     }},
     { key: 'payment_state', label: 'Payment', render: v => {
       if (!v || v === 'invoicing_legacy') return ''
@@ -103,16 +160,25 @@ export default function InvoiceList() {
     { key: 'invoice_origin', label: 'Source' },
   ]
 
+  const records = data?.records || []
+  const selectedSet = new Set(selected)
+
   return (
     <div className="space-y-4">
       <PageHeader title={title} subtitle="invoicing" onNew={() => navigate('/admin/invoicing/invoices/new')} />
       <SearchBar placeholder="Search invoices..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
-      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
+      <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
+      <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/admin/invoicing/invoices/${row.id}`} emptyMessage="No invoices found" emptyIcon={<FileText className="h-10 w-10" />} />
+        isError={isError} error={error} onRetry={() => refetch()}
+        rowLink={row => `/admin/invoicing/invoices/${row.id}`}
+        selectable
+        selectedIds={selectedSet}
+        onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+        emptyMessage="No invoices found" emptyIcon={<FileText className="h-10 w-10" />} />
     </div>
   )
 }

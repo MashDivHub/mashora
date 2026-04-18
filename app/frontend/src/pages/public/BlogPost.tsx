@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { erpClient } from '@/lib/erp-api'
 import { ArrowLeft } from 'lucide-react'
 import { sanitizedHtml } from '@/lib/sanitize'
+import { LoadingState } from '@/components/shared'
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>()
@@ -17,7 +18,7 @@ export default function BlogPost() {
     enabled: !!id && !isNaN(id),
   })
 
-  if (isLoading) return <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 text-muted-foreground">Loading...</div>
+  if (isLoading) return <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10"><LoadingState label="Loading post..." /></div>
   if (!post) return <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">Post not found.</div>
 
   return (

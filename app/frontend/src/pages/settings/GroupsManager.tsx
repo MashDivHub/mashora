@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Badge, Button, Card, CardContent, Input, Tabs, TabsList, TabsTrigger, TabsContent } from '@mashora/design-system'
 import { Shield, Users, Search, X, Plus, Trash2 } from 'lucide-react'
-import { PageHeader, SearchBar, toast } from '@/components/shared'
+import { PageHeader, SearchBar, toast, LoadingState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 
 // ── Types ──
 
@@ -82,7 +83,7 @@ function GroupList() {
       setNewName(''); setNewComment(''); setShowCreate(false)
       qc.invalidateQueries({ queryKey: ['permission-groups'] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Create failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Create failed')),
   })
 
   const deleteMut = useMutation({
@@ -90,7 +91,7 @@ function GroupList() {
       await erpClient.raw.delete(`/permissions/groups/${id}`)
     },
     onSuccess: () => { toast.success('Group deleted'); qc.invalidateQueries({ queryKey: ['permission-groups'] }) },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Delete failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Delete failed')),
   })
 
   const groups = (data?.records || []).filter(
@@ -143,7 +144,7 @@ function GroupList() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center"><LoadingState label="Loading groups..." /></td></tr>
               ) : groups.length === 0 ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No groups found</td></tr>
               ) : (
@@ -248,7 +249,7 @@ function GroupDetail({ groupId }: { groupId: number }) {
   })
 
   if (isLoading || !group) {
-    return <div className="space-y-4"><PageHeader title="Loading..." backTo="/admin/settings/groups" /></div>
+    return <div className="space-y-4"><PageHeader title="Loading group..." backTo="/admin/settings/groups" /><LoadingState /></div>
   }
 
   const aclRecords = aclData?.records || []

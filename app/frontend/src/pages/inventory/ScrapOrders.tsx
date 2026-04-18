@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
-import { Badge } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
 import { Trash2 } from 'lucide-react'
 
@@ -11,7 +11,7 @@ const LIST_FIELDS = [
   'location_id', 'scrap_location_id', 'state', 'date_done', 'create_date',
 ]
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'Draft', variant: 'secondary' },
   done:  { label: 'Done',  variant: 'success' },
 }
@@ -29,7 +29,7 @@ export default function ScrapOrders() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push(['name', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -94,8 +94,8 @@ export default function ScrapOrders() {
       key: 'state',
       label: 'Status',
       render: v => {
-        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }
-        return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+        const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
+        return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
       },
     },
   ]

@@ -41,8 +41,8 @@ export const useI18n = create<I18nState>((set, get) => ({
       } else {
         set({ loading: false })
       }
-    } catch (error) {
-      console.warn('Failed to load translations for', lang, error)
+    } catch {
+      // Translations are best-effort; falling back to source strings is safe.
       set({ loading: false })
     }
   },

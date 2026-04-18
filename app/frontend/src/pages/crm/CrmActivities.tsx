@@ -6,7 +6,7 @@ import type { Column } from '@/components/shared/DataTable'
 import type { FilterOption } from '@/components/shared/SearchBar'
 import { Badge, cn } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
-import { CalendarCheck } from 'lucide-react'
+import { CalendarCheck, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
 
 type ActivityState = 'overdue' | 'today' | 'planned'
 
@@ -44,7 +44,7 @@ export default function CrmActivities() {
   const [sortField, setSortField] = useState<string | null>('date_deadline')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push(['summary', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -68,7 +68,7 @@ export default function CrmActivities() {
       } catch {
         // Fallback: fetch via generic model endpoint
         try {
-          const d: any[] = [['res_model', '=', 'crm.lead']]
+          const d: unknown[] = [['res_model', '=', 'crm.lead']]
           if (search) d.push(['summary', 'ilike', search])
           domain.forEach(item => d.push(item))
           const { data } = await erpClient.raw.post('/model/mail.activity', {
@@ -124,16 +124,23 @@ export default function CrmActivities() {
       key: 'date_deadline',
       label: 'Deadline',
       sortable: true,
-      render: (v: string, row: Activity) => (
-        <span className={cn(
-          'text-xs',
-          row.state === 'overdue' && 'text-red-400',
-          row.state === 'today' && 'text-amber-400',
-          row.state === 'planned' && 'text-emerald-400',
-        )}>
-          {v || '—'}
-        </span>
-      ),
+      render: (v: string, row: Activity) => {
+        const Icon = row.state === 'overdue' ? AlertCircle : row.state === 'today' ? Clock : row.state === 'planned' ? CheckCircle2 : null
+        return (
+          <span
+            className={cn(
+              'text-xs inline-flex items-center gap-1',
+              row.state === 'overdue' && 'text-red-400',
+              row.state === 'today' && 'text-amber-400',
+              row.state === 'planned' && 'text-emerald-400',
+            )}
+            aria-label={row.state ? `${row.state} ${v || ''}` : undefined}
+          >
+            {Icon && <Icon className="h-3 w-3" aria-hidden="true" />}
+            {v || '—'}
+          </span>
+        )
+      },
     },
     {
       key: 'state',

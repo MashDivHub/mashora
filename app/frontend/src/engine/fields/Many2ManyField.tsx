@@ -11,8 +11,12 @@ export default function Many2ManyField({ value, readonly, className }: FieldProp
 
   return (
     <div className={cn('flex flex-wrap gap-1.5', className)}>
-      {items.map((item: any, i: number) => {
-        const label = Array.isArray(item) ? item[1] : typeof item === 'object' ? item.display_name || item.name : String(item)
+      {items.map((item: unknown, i: number) => {
+        const label = Array.isArray(item)
+          ? String(item[1] ?? '')
+          : typeof item === 'object' && item !== null
+            ? String((item as { display_name?: unknown; name?: unknown }).display_name ?? (item as { name?: unknown }).name ?? '')
+            : String(item)
         return (
           <Badge key={i} variant="secondary" className="rounded-full">
             {label}

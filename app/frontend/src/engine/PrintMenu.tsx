@@ -29,11 +29,11 @@ export default function PrintMenu({ model, recordIds: _recordIds, onSelectReport
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        {reports.map((report: any) => (
+        {(reports as Array<{ id?: number; name?: string; report_name?: string }>).map((report) => (
           <DropdownMenuItem
             key={report.report_name || report.id}
             className="cursor-pointer rounded-lg"
-            onClick={() => onSelectReport(report.report_name || report.name)}
+            onClick={() => onSelectReport(report.report_name || report.name || '')}
           >
             {report.name || report.report_name}
           </DropdownMenuItem>

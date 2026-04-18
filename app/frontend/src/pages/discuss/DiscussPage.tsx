@@ -1,13 +1,30 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Input, Button, Badge, Skeleton, cn } from '@mashora/design-system'
-import { Hash, MessageSquare, Plus, Send, Users } from 'lucide-react'
+import { Hash, MessageSquare, Plus, Send, Users, Circle } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 import { sanitizedHtml } from '@/lib/sanitize'
+import { useBusSubscription } from '@/lib/websocket'
 
 const CHANNEL_FIELDS = ['id', 'name', 'channel_type', 'description']
 const MSG_FIELDS = ['id', 'body', 'author_id', 'date', 'message_type', 'subtype_id']
+
+interface Channel {
+  id: number
+  name: string
+  channel_type?: string
+  description?: string | false
+}
+
+interface ChannelMessage {
+  id: number
+  body: string
+  author_id?: [number, string] | false
+  date?: string | false
+  message_type?: string
+  subtype_id?: [number, string] | false
+}
 
 export default function DiscussPage() {
   const queryClient = useQueryClient()
@@ -44,7 +61,30 @@ export default function DiscussPage() {
       return data.records || []
     },
     enabled: !!activeChannel,
-    refetchInterval: 10_000,
+    // Polling fallback (30s) — WebSocket subscription invalidates instantly when connected.
+    refetchInterval: 30_000,
+  })
+
+  // Realtime: invalidate the active channel's messages when a discuss.message event arrives.
+  useBusSubscription('discuss.message', (msg: unknown) => {
+    const m = (msg ?? {}) as { channel_id?: number; payload?: { channel_id?: number } }
+    const cid = m.channel_id ?? m.payload?.channel_id
+    if (!activeChannel) return
+    if (cid && cid !== activeChannel) return
+    queryClient.invalidateQueries({ queryKey: ['discuss-messages', activeChannel] })
+  })
+
+  // Typing indicator
+  const [typingUser, setTypingUser] = useState<string | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useBusSubscription('discuss.typing', (msg: unknown) => {
+    const m = (msg ?? {}) as { channel_id?: number; author?: string; payload?: { channel_id?: number; author?: string } }
+    const cid = m.channel_id ?? m.payload?.channel_id
+    const author = m.author ?? m.payload?.author
+    if (!activeChannel || cid !== activeChannel || !author) return
+    setTypingUser(author)
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+    typingTimerRef.current = setTimeout(() => setTypingUser(null), 3000)
   })
 
   // Scroll to bottom on new messages
@@ -71,7 +111,7 @@ export default function DiscussPage() {
     sendMut.mutate(newMsg.trim())
   }
 
-  const activeCh = channels?.find((c: any) => c.id === activeChannel)
+  const activeCh = (channels as Channel[] | undefined)?.find((c) => c.id === activeChannel)
 
   return (
     <div className="space-y-4">
@@ -88,7 +128,7 @@ export default function DiscussPage() {
               <div className="p-2 space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9 rounded-lg" />)}</div>
             ) : (
               <div className="p-1.5 space-y-0.5">
-                {(channels || []).map((ch: any) => (
+                {((channels as Channel[] | undefined) || []).map((ch) => (
                   <button
                     key={ch.id}
                     onClick={() => setActiveChannel(ch.id)}
@@ -136,7 +176,7 @@ export default function DiscussPage() {
               </div>
             ) : (
               <>
-                {(messages || []).map((msg: any) => {
+                {((messages as ChannelMessage[] | undefined) || []).map((msg) => {
                   const author = Array.isArray(msg.author_id) ? msg.author_id[1] : 'System'
                   const time = msg.date ? new Date(msg.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''
                   const isNotif = msg.message_type === 'notification'
@@ -149,8 +189,12 @@ export default function DiscussPage() {
                   }
                   return (
                     <div key={msg.id} className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0 mt-0.5">
-                        {author[0]?.toUpperCase() || '?'}
+                      <div className="relative shrink-0 mt-0.5">
+                        <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
+                          {author[0]?.toUpperCase() || '?'}
+                        </div>
+                        {/* Online presence dot — current user only (v1) */}
+                        <Circle className="absolute bottom-0 right-0 h-2.5 w-2.5 fill-emerald-500 text-emerald-500" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
@@ -162,6 +206,9 @@ export default function DiscussPage() {
                     </div>
                   )
                 })}
+                {typingUser && (
+                  <div className="text-xs text-muted-foreground italic px-2 py-1">{typingUser} is typing...</div>
+                )}
                 <div ref={msgEndRef} />
               </>
             )}
@@ -176,7 +223,8 @@ export default function DiscussPage() {
                   onChange={e => setNewMsg(e.target.value)}
                   placeholder={`Message #${activeCh?.name || ''}...`}
                   className="rounded-xl h-9 flex-1"
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                  disabled={sendMut.isPending}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !sendMut.isPending) { e.preventDefault(); handleSend() } }}
                 />
                 <Button size="sm" className="rounded-xl h-9 px-3" onClick={handleSend} disabled={!newMsg.trim() || sendMut.isPending}>
                   <Send className="h-3.5 w-3.5" />

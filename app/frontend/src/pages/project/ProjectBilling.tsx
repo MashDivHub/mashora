@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
 import { DollarSign } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -19,9 +19,9 @@ interface ProjectResponse {
   total: number
 }
 
-function fmt(v: any): string {
-  if (Array.isArray(v)) return v[1] ?? ''
-  return v || '—'
+function fmt(v: unknown): string {
+  if (Array.isArray(v)) return String(v[1] ?? '')
+  return v == null || v === false ? '—' : String(v)
 }
 
 function fmtHours(h: number | null | undefined): string {
@@ -31,9 +31,9 @@ function fmtHours(h: number | null | undefined): string {
 
 function ProfitBadge({ pct }: { pct: number | null }) {
   if (pct === null) return <span className="text-muted-foreground text-sm">—</span>
-  const variant = pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'destructive'
+  const variant: BadgeVariant = pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'destructive'
   return (
-    <Badge variant={variant as any} className="rounded-full text-xs tabular-nums">
+    <Badge variant={variant} className="rounded-full text-xs tabular-nums">
       {pct.toFixed(0)}%
     </Badge>
   )

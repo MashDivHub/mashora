@@ -18,6 +18,7 @@ from .ir_ui_menu import IrUiMenu
 from .ir_actions import IrActions, IrActWindow, IrActServer
 from .ir_cron import IrCron
 from .ir_module import IrModuleModule
+from .ir_filters import IrFilters
 
 __all__ = [
     "ResPartner",
@@ -47,4 +48,5 @@ __all__ = [
     "IrActServer",
     "IrCron",
     "IrModuleModule",
+    "IrFilters",
 ]

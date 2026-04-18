@@ -5,7 +5,7 @@
  * management for real-time updates (record changes, chat messages, etc.)
  */
 
-type MessageHandler = (message: any) => void
+type MessageHandler = (message: unknown) => void
 
 interface BusOptions {
   url?: string
@@ -31,14 +31,15 @@ class WebSocketBus {
     }
   }
 
-  private safeSend(data: any): boolean {
+  private safeSend(data: unknown): boolean {
     try {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify(data))
         return true
       }
-    } catch (e) {
-      console.warn('[Bus] Send failed:', e)
+    } catch {
+      /* ignore: WebSocket send can fail if the socket closed mid-send;
+         reconnect logic will re-establish and replay pending subscriptions */
     }
     return false
   }

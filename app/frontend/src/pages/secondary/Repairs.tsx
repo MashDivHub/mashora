@@ -1,11 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  PageHeader, Input, Badge, Tabs, TabsList, TabsTrigger,
+  Input, Badge, Button, Tabs, TabsList, TabsTrigger,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Skeleton,
 } from '@mashora/design-system'
-import { Search, Wrench } from 'lucide-react'
+import { PageHeader } from '@/components/shared'
+import { Search, Wrench, Plus } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 interface Repair {
@@ -52,6 +54,7 @@ function TableSkeleton({ cols }: { cols: number }) {
 type TabFilter = 'all' | 'draft' | 'confirmed' | 'under_repair' | 'done'
 
 export default function Repairs() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<TabFilter>('all')
 
@@ -67,10 +70,18 @@ export default function Repairs() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Repairs" description={`${data?.total ?? '—'} repair orders`} />
+      <PageHeader
+        title="Repairs"
+        subtitle={`${data?.total ?? '—'} repair orders`}
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate('/admin/repairs/new')}>
+            <Plus className="h-3.5 w-3.5" /> New
+          </Button>
+        }
+      />
 
       {/* Filter bar */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-4">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -94,7 +105,7 @@ export default function Repairs() {
       </div>
 
       {/* Table card */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-border/70 bg-muted/20 hover:bg-muted/20">
@@ -121,7 +132,11 @@ export default function Repairs() {
               </TableRow>
             ) : (
               records.map(row => (
-                <TableRow key={row.id} className="border-border/40 hover:bg-muted/50 transition-colors">
+                <TableRow
+                  key={row.id}
+                  className="border-border/40 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/admin/repairs/${row.id}`)}
+                >
                   <TableCell>
                     <span className="font-mono font-medium text-sm">{row.name}</span>
                   </TableCell>

@@ -80,4 +80,10 @@ class PurchaseOrderLine(Base, TimestampMixin):
     propagate_cancel: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     date_planned: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     order: Mapped["PurchaseOrder"] = relationship("PurchaseOrder", back_populates="order_line")
+    product: Mapped[Optional["ProductProduct"]] = relationship(  # type: ignore[name-defined]
+        "ProductProduct",
+        primaryjoin="foreign(PurchaseOrderLine.product_id) == ProductProduct.id",
+        viewonly=True,
+        lazy="noload",
+    )
     def __repr__(self): return f"<PurchaseOrderLine(id={self.id}, order_id={self.order_id})>"

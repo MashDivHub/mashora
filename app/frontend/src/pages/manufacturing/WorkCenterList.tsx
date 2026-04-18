@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Skeleton, cn } from '@mashora/design-system'
 import { Wrench } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 interface WorkCenter {
@@ -101,10 +101,11 @@ export default function WorkCenterList() {
           ))}
         </div>
       ) : !data?.records?.length ? (
-        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
-          <Wrench className="h-10 w-10 opacity-30" />
-          <p className="text-sm">No work centers found</p>
-        </div>
+        <EmptyState
+          icon={<Wrench className="h-12 w-12" />}
+          title="No work centers yet"
+          description="Add a work center to track production capacity and efficiency."
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.records.map((wc) => (

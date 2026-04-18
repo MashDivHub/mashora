@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Badge, cn } from '@mashora/design-system'
-import { Milestone } from 'lucide-react'
+import { Milestone, Clock } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -42,11 +42,18 @@ export default function MilestoneList() {
     {
       key: 'deadline',
       label: 'Deadline',
-      render: v => (
-        <span className={cn('text-sm', v && new Date(v) < today ? 'text-red-400' : '')}>
-          {v ? new Date(v).toLocaleDateString() : 'No deadline'}
-        </span>
-      ),
+      render: v => {
+        const overdue = v && new Date(v) < today
+        return (
+          <span
+            className={cn('text-sm inline-flex items-center gap-1', overdue && 'text-red-400')}
+            aria-label={overdue ? `overdue ${new Date(v).toLocaleDateString()}` : undefined}
+          >
+            {overdue && <Clock className="h-3 w-3" aria-hidden="true" />}
+            {v ? new Date(v).toLocaleDateString() : 'No deadline'}
+          </span>
+        )
+      },
     },
     {
       key: 'is_reached',

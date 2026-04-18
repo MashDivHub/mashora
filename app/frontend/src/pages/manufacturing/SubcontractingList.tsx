@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Truck } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -19,7 +19,7 @@ interface PickingResponse {
   total: number
 }
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft:       { label: 'Draft',       variant: 'secondary' },
   waiting:     { label: 'Waiting',     variant: 'secondary' },
   confirmed:   { label: 'Confirmed',   variant: 'info' },
@@ -33,9 +33,9 @@ function fmtDate(v: string | false | null) {
   return new Date(v).toLocaleDateString()
 }
 
-function fmt(v: any): string {
-  if (Array.isArray(v)) return v[1] ?? ''
-  return v || ''
+function fmt(v: unknown): string {
+  if (Array.isArray(v)) return String(v[1] ?? '')
+  return v == null || v === false ? '' : String(v)
 }
 
 export default function SubcontractingList() {
@@ -92,8 +92,8 @@ export default function SubcontractingList() {
       key: 'state',
       label: 'Status',
       render: (v) => {
-        const s = STATE_BADGE[v] ?? { label: v, variant: 'secondary' }
-        return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge>
+        const s = STATE_BADGE[v] ?? { label: v, variant: 'secondary' as BadgeVariant }
+        return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge>
       },
     },
   ]

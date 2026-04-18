@@ -1,6 +1,6 @@
 """Product Template, Product, Category models."""
 from typing import Optional
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
@@ -41,6 +41,11 @@ class ProductTemplate(Base, TimestampMixin):
     active: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, server_default="true")
     is_storable: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     is_favorite: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    # eCommerce out-of-stock behavior (added via migration 2026_04_17_product_ecommerce_groupb.sql)
+    allow_out_of_stock_order: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, server_default="true")
+    out_of_stock_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    available_threshold: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    show_availability: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, server_default="false")
     product_variants: Mapped[list["ProductProduct"]] = relationship("ProductProduct", back_populates="product_tmpl", lazy="selectin")
 
 class ProductProduct(Base, TimestampMixin):

@@ -3,8 +3,11 @@ Async email sending service for Mashora ERP.
 Uses aiosmtplib for non-blocking email delivery.
 """
 import logging
+import mimetypes
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email import encoders
 from typing import Optional
 
 import aiosmtplib
@@ -23,8 +26,12 @@ async def send_email(
     cc: Optional[list[str]] = None,
     bcc: Optional[list[str]] = None,
     reply_to: Optional[str] = None,
+    attachments: Optional[list[tuple[str, bytes, str]]] = None,
 ) -> bool:
-    """Send an email via SMTP. Returns True on success."""
+    """Send an email via SMTP. Returns True on success.
+
+    `attachments` is a list of (filename, content_bytes, mimetype) tuples.
+    """
     settings = get_settings()
 
     sender_email = from_email or settings.smtp_from_email
@@ -34,7 +41,16 @@ async def send_email(
     if isinstance(to, str):
         to = [to]
 
-    msg = MIMEMultipart("alternative")
+    # If we have attachments, use a mixed root container with an
+    # alternative sub-part for the text/html body.
+    if attachments:
+        msg = MIMEMultipart("mixed")
+        body_container = MIMEMultipart("alternative")
+        msg.attach(body_container)
+    else:
+        msg = MIMEMultipart("alternative")
+        body_container = msg
+
     msg["From"] = sender
     msg["To"] = ", ".join(to)
     msg["Subject"] = subject
@@ -43,10 +59,21 @@ async def send_email(
     if reply_to:
         msg["Reply-To"] = reply_to
 
-    # Attach text and HTML parts
+    # Attach text and HTML parts to body container
     if body_text:
-        msg.attach(MIMEText(body_text, "plain"))
-    msg.attach(MIMEText(body_html, "html"))
+        body_container.attach(MIMEText(body_text, "plain"))
+    body_container.attach(MIMEText(body_html, "html"))
+
+    # Attach files
+    if attachments:
+        for filename, content, mimetype in attachments:
+            mt = mimetype or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            maintype, _, subtype = mt.partition("/")
+            part = MIMEBase(maintype or "application", subtype or "octet-stream")
+            part.set_payload(content)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", "attachment", filename=filename)
+            msg.attach(part)
 
     recipients = list(to)
     if cc:

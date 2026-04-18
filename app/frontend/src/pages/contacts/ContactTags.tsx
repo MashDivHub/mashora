@@ -109,7 +109,11 @@ export default function ContactTags() {
       sortable: false,
       width: '80px',
       render: (_, row) => (
-        <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
+        <div
+          className="flex items-center gap-1 justify-end"
+          role="presentation"
+          onClick={e => e.stopPropagation()}
+        >
           <Button
             variant="ghost"
             size="sm"

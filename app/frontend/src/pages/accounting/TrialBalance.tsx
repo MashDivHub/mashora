@@ -156,8 +156,9 @@ export default function TrialBalance() {
                         className={`font-mono text-right text-sm font-bold ${
                           row.balance < 0 ? 'text-red-400' : ''
                         }`}
+                        aria-label={row.balance < 0 ? `negative ${fmt(row.balance)}` : undefined}
                       >
-                        {row.balance < 0 ? '-' : ''}{fmt(row.balance)}
+                        {row.balance < 0 ? `(${fmt(row.balance)})` : fmt(row.balance)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -172,8 +173,9 @@ export default function TrialBalance() {
                       className={`font-mono text-right text-sm font-bold ${
                         totalBalance < 0 ? 'text-red-400' : ''
                       }`}
+                      aria-label={totalBalance < 0 ? `negative ${fmt(totalBalance)}` : undefined}
                     >
-                      {totalBalance < 0 ? '-' : ''}{fmt(totalBalance)}
+                      {totalBalance < 0 ? `(${fmt(totalBalance)})` : fmt(totalBalance)}
                     </TableCell>
                   </TableRow>
                 </>

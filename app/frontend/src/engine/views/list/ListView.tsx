@@ -17,12 +17,29 @@ import type { Domain } from '../../utils/domain'
 import { erpClient } from '@/lib/erp-api'
 import { formatDate, formatDateTime, formatFloat, formatInteger, formatMonetary, formatMany2one, formatSelection } from '../../utils/format'
 
-/** Extract visible columns from the list/tree arch */
-function extractListColumns(arch: any, fields: Record<string, any>): { name: string; label: string; type: string; width?: string }[] {
-  const columns: { name: string; label: string; type: string; width?: string }[] = []
-  const children = arch?.children || []
+interface ArchChild {
+  tag?: string
+  name?: string
+  string?: string
+  invisible?: string | number
+  attrs?: { name?: string; string?: string; invisible?: string | number; width?: string }
+  children?: ArchChild[]
+}
+interface FieldMetaLoose {
+  type: string
+  string?: string
+  digits?: [number, number]
+  selection?: [string, string][]
+  [key: string]: unknown
+}
 
-  for (const child of children) {
+/** Extract visible columns from the list/tree arch */
+function extractListColumns(arch: ArchChild | string | null | undefined, fields: Record<string, FieldMetaLoose>): { name: string; label: string; type: string; width?: string }[] {
+  const columns: { name: string; label: string; type: string; width?: string }[] = []
+  const archNode = typeof arch === 'object' && arch !== null ? arch : null
+  const children = archNode?.children || []
+
+  for (const child of children as ArchChild[]) {
     if (child.tag !== 'field') continue
     const name = child.name || child.attrs?.name
     if (!name) continue
@@ -49,8 +66,12 @@ function extractListColumns(arch: any, fields: Record<string, any>): { name: str
   return columns
 }
 
-/** Format a cell value based on field type */
-function formatCell(value: any, type: string, meta: any): string {
+/** Format a cell value based on field type.
+ * Value shape is type-dependent (string|number|tuple|array) — internal helpers
+ * each narrow their own input, so we pass through as any to avoid duplicate casts.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatCell(value: any, type: string, meta: FieldMetaLoose | undefined): string {
   if (value === null || value === undefined || value === false) return ''
   switch (type) {
     case 'many2one': return formatMany2one(value)?.name || ''
@@ -112,7 +133,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
   ])
 
   // Extract columns from view arch
-  const columns = viewDef ? extractListColumns(viewDef.arch, viewDef.fields || {}) : []
+  const columns = viewDef ? extractListColumns(viewDef.arch as ArchChild | string | null | undefined, (viewDef.fields || {}) as Record<string, FieldMetaLoose>) : []
   const fieldNames = columns.map(c => c.name)
 
   // Build sort order
@@ -137,7 +158,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
   const records = data?.records || []
   const total = data?.total || 0
   const totalPages = Math.ceil(total / pageSize)
-  const modelLabel = action?.name || model.split('.').pop()?.replace(/_/g, ' ') || model
+  const modelLabel = (typeof action?.name === 'string' ? action.name : '') || model.split('.').pop()?.replace(/_/g, ' ') || model
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -210,7 +231,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
                       </TableCell>
                     </TableRow>
                   ) : (
-                    records.map((rec: any) => (
+                    (records as Array<Record<string, unknown> & { id: number }>).map((rec) => (
                       <TableRow
                         key={rec.id}
                         className="border-border/30 hover:bg-muted/20 cursor-pointer transition-colors"
@@ -225,7 +246,7 @@ export default function ListView({ model, action, domain: actionDomain }: ViewPr
                               ['float', 'integer', 'monetary'].includes(col.type) && 'text-right tabular-nums font-mono',
                             )}
                           >
-                            {formatCell(rec[col.name], col.type, viewDef.fields?.[col.name])}
+                            {formatCell(rec[col.name], col.type, viewDef.fields?.[col.name] as FieldMetaLoose | undefined)}
                           </TableCell>
                         ))}
                       </TableRow>

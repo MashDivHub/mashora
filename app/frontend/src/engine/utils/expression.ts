@@ -5,7 +5,13 @@
 
 type TokenType = 'STRING' | 'NUMBER' | 'BOOL' | 'NAME' | 'OP' | 'COMPARE' | 'LOGIC' | 'NOT' | 'IN' | 'LPAREN' | 'RPAREN'
 
-interface Token { type: TokenType; value: any }
+/** Token value types by token kind. Names/ops carry strings, literals their runtime value. */
+type TokenValue = string | number | boolean | null
+
+interface Token { type: TokenType; value: TokenValue }
+
+/** Anything the expression can evaluate to. */
+type ExprValue = string | number | boolean | null | undefined | ExprValue[]
 
 function tokenize(expr: string): Token[] {
   const tokens: Token[] = []
@@ -72,7 +78,7 @@ function tokenize(expr: string): Token[] {
  * In Python: False == 0 is True, but False == '' is False.
  * For Mashora views we need: falsy values match each other for practical purposes.
  */
-function pyEq(a: any, b: any): boolean {
+function pyEq(a: ExprValue, b: ExprValue): boolean {
   if (a === b) return true
   // null/undefined/false/None equivalence
   if ((a === null || a === undefined || a === false) && (b === null || b === undefined || b === false)) return true
@@ -84,7 +90,7 @@ function pyEq(a: any, b: any): boolean {
   return false
 }
 
-export function evaluateExpression(expr: string, values: Record<string, any>): boolean {
+export function evaluateExpression(expr: string, values: Record<string, unknown>): boolean {
   if (!expr || expr.trim() === '') return false
   // Handle old-style domain format: [('field', '=', value)]
   if (expr.trim().startsWith('[')) {
@@ -98,11 +104,11 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
     const tokens = tokenize(expr)
     let pos = 0
 
-    function getValue(): any {
+    function getValue(): ExprValue {
       const t = tokens[pos]
       if (!t) return undefined
       if (t.type === 'STRING' || t.type === 'NUMBER' || t.type === 'BOOL') { pos++; return t.value }
-      if (t.type === 'NAME') { pos++; return values[t.value] }
+      if (t.type === 'NAME') { pos++; return values[String(t.value)] as ExprValue }
       if (t.type === 'NOT') { pos++; return !getValue() }
       if (t.type === 'LPAREN') {
         const bracket = t.value // '(' or '['
@@ -112,7 +118,7 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
           pos++ // empty tuple/list
           return []
         }
-        const items: any[] = [parseOr()]
+        const items: ExprValue[] = [parseOr()]
         let hasComma = false
         while (pos < tokens.length && tokens[pos]?.type === 'OP' && tokens[pos]?.value === ',') {
           hasComma = true
@@ -129,8 +135,8 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
       return undefined
     }
 
-    function parseComparison(): any {
-      let left = getValue()
+    function parseComparison(): ExprValue {
+      let left: ExprValue = getValue()
       while (pos < tokens.length) {
         const t = tokens[pos]
         if (t?.type === 'COMPARE') {
@@ -139,10 +145,11 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
           switch (t.value) {
             case '==': left = pyEq(left, right); break
             case '!=': left = left !== right; break
-            case '<': left = left < right; break
-            case '>': left = left > right; break
-            case '<=': left = left <= right; break
-            case '>=': left = left >= right; break
+            // Numeric/string ordering — compare via any-cast to preserve runtime semantics
+            case '<':  left = (left as number) < (right as number); break
+            case '>':  left = (left as number) > (right as number); break
+            case '<=': left = (left as number) <= (right as number); break
+            case '>=': left = (left as number) >= (right as number); break
           }
         } else if (t?.type === 'IN') {
           pos++
@@ -159,8 +166,8 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
       return left
     }
 
-    function parseAnd(): any {
-      let left = parseComparison()
+    function parseAnd(): ExprValue {
+      let left: ExprValue = parseComparison()
       while (pos < tokens.length && tokens[pos]?.type === 'LOGIC' && tokens[pos]?.value === 'and') {
         pos++
         const right = parseComparison()
@@ -169,8 +176,8 @@ export function evaluateExpression(expr: string, values: Record<string, any>): b
       return left
     }
 
-    function parseOr(): any {
-      let left = parseAnd()
+    function parseOr(): ExprValue {
+      let left: ExprValue = parseAnd()
       while (pos < tokens.length && tokens[pos]?.type === 'LOGIC' && tokens[pos]?.value === 'or') {
         pos++
         const right = parseAnd()

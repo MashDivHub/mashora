@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Badge, Button, Card, CardContent, Input, Label, Textarea } from '@mashora/design-system'
+import { Badge, Button, Card, CardContent, Input, Label, Textarea, cn } from '@mashora/design-system'
 import { Key, Search, Plus, Trash2, X } from 'lucide-react'
-import { PageHeader, toast } from '@/components/shared'
+import { PageHeader, toast, LoadingState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface RuleRecord {
   id: number
@@ -75,13 +76,13 @@ export default function RecordRules() {
       setNewName(''); setNewModelId(''); setNewDomain('[]'); setNewGlobal(true); setShowCreate(false)
       qc.invalidateQueries({ queryKey: ['permission-rules'] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Create failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Create failed')),
   })
 
   const deleteMut = useMutation({
     mutationFn: async (id: number) => { await erpClient.raw.delete(`/permissions/rules/${id}`) },
     onSuccess: () => { toast.success('Rule deleted'); qc.invalidateQueries({ queryKey: ['permission-rules'] }) },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Delete failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Delete failed')),
   })
 
   const records = data?.records || []
@@ -115,7 +116,7 @@ export default function RecordRules() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Model</Label>
-                <select value={newModelId} onChange={e => setNewModelId(Number(e.target.value))} className={selectCls + ' w-full'}>
+                <select value={newModelId} onChange={e => setNewModelId(Number(e.target.value))} className={cn(selectCls, 'w-full')}>
                   <option value="">Select model...</option>
                   {models.map(m => <option key={m.id} value={m.id}>{m.model}</option>)}
                 </select>
@@ -156,7 +157,7 @@ export default function RecordRules() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center"><LoadingState label="Loading record rules..." /></td></tr>
               ) : records.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No record rules found</td></tr>
               ) : (

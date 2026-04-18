@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Skeleton,
 } from '@mashora/design-system'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { Search, Car } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
@@ -56,7 +56,7 @@ export default function FleetList() {
     <div className="space-y-6">
       <PageHeader title="Fleet Vehicles" subtitle={`${data?.total ?? '—'} vehicles`} />
 
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] p-4">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
@@ -68,7 +68,7 @@ export default function FleetList() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-border/70 bg-muted/20 hover:bg-muted/20">
@@ -86,12 +86,11 @@ export default function FleetList() {
             ) : records.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="h-40 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-                      <Car className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">No vehicles found.</p>
-                  </div>
+                  <EmptyState
+                    icon={<Car className="h-12 w-12" />}
+                    title="No vehicles yet"
+                    description="Add vehicles to manage your fleet."
+                  />
                 </TableCell>
               </TableRow>
             ) : (

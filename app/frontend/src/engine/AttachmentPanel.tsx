@@ -1,8 +1,27 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button, Badge, cn } from '@mashora/design-system'
-import { Paperclip, Upload, Download, Trash2, Image, FileText, File as FileIcon, X } from 'lucide-react'
+import {
+  Button,
+  Badge,
+  cn,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@mashora/design-system'
+import { Paperclip, Upload, Download, Trash2, Image, FileText, File as FileIcon } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
+
+interface AttachmentRecord {
+  id: number
+  name: string
+  mimetype?: string | false
+  file_size?: number | false
+  create_date?: string | false
+  create_uid?: [number, string] | false
+}
 
 interface AttachmentPanelProps {
   model: string
@@ -57,8 +76,8 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
         })
       }
       queryClient.invalidateQueries({ queryKey: ['attachments', model, resId] })
-    } catch (e) {
-      console.error('Upload failed:', e)
+    } catch (e: unknown) {
+      toast.error('Upload Failed', extractErrorMessage(e, 'Could not upload attachment'))
     } finally {
       setUploading(false)
     }
@@ -68,7 +87,7 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
     window.open(`/api/v1/attachments/${attachmentId}/download`, '_blank')
   }
 
-  const handlePreview = (attachment: any) => {
+  const handlePreview = (attachment: AttachmentRecord) => {
     const mimetype = attachment.mimetype || ''
     if (mimetype.startsWith('image/') || mimetype.includes('pdf')) {
       setPreview({
@@ -82,7 +101,7 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
   const attachments = data?.records || []
 
   return (
-    <div className={cn('rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden', className)}>
+    <div className={cn('rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden', className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/70 bg-muted/20 px-6 py-3">
         <div className="flex items-center gap-2">
@@ -127,9 +146,10 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
           </div>
         ) : (
           <div className="space-y-1.5">
-            {attachments.map((att: any) => {
-              const Icon = getFileIcon(att.mimetype)
-              const canPreview = att.mimetype?.startsWith('image/') || att.mimetype?.includes('pdf')
+            {(attachments as AttachmentRecord[]).map((att) => {
+              const mt = typeof att.mimetype === 'string' ? att.mimetype : ''
+              const Icon = getFileIcon(mt)
+              const canPreview = mt.startsWith('image/') || mt.includes('pdf')
               return (
                 <div key={att.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted/30 transition-colors group">
                   <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -139,19 +159,23 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
                   >
                     {att.name}
                   </button>
-                  <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(att.file_size)}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(typeof att.file_size === 'number' ? att.file_size : 0)}</span>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
+                      type="button"
                       onClick={() => handleDownload(att.id, att.name)}
                       className="rounded-lg p-1 hover:bg-accent transition-colors"
                       title="Download"
+                      aria-label={`Download ${att.name}`}
                     >
                       <Download className="h-3 w-3" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => { if (window.confirm('Delete this attachment?')) deleteMut.mutate(att.id) }}
                       className="rounded-lg p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                       title="Delete"
+                      aria-label={`Delete ${att.name}`}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -164,21 +188,18 @@ export default function AttachmentPanel({ model, resId, className }: AttachmentP
       </div>
 
       {/* Preview modal */}
-      {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm" onClick={() => setPreview(null)}>
-          <div className="relative max-h-[90vh] max-w-[90vw] rounded-2xl bg-card overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-border/70 px-4 py-2">
-              <span className="text-sm font-medium truncate">{preview.name}</span>
-              <button onClick={() => setPreview(null)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button>
-            </div>
-            {preview.type.startsWith('image/') ? (
-              <img src={preview.url} alt={preview.name} className="max-h-[80vh] object-contain" />
-            ) : (
-              <iframe src={preview.url} className="h-[80vh] w-[70vw]" title={preview.name} />
-            )}
-          </div>
-        </div>
-      )}
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null) }}>
+        <DialogContent className="max-w-[90vw] w-auto p-0 overflow-hidden">
+          <DialogHeader className="px-4 py-2 border-b border-border/70 pr-10">
+            <DialogTitle className="text-sm font-medium truncate text-left">{preview?.name}</DialogTitle>
+          </DialogHeader>
+          {preview && (preview.type.startsWith('image/') ? (
+            <img src={preview.url} alt={preview.name} className="max-h-[80vh] object-contain" />
+          ) : (
+            <iframe src={preview.url} className="h-[80vh] w-[70vw]" title={preview.name} />
+          ))}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

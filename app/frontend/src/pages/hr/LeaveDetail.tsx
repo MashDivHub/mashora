@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader, StatusBar, stepsFromSelection, toast, FormSection, ReadonlyField } from '@/components/shared'
 import { Button, Skeleton, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+import type { M2OValue } from '@/components/shared/OrderLinesEditor'
 import { Check, X, RotateCcw, CalendarDays } from 'lucide-react'
 import M2OInput from '@/components/shared/M2OInput'
 
@@ -58,7 +60,7 @@ function m2oLabel(val: [number, string] | false): string {
 // ─── New Leave Form ───────────────────────────────────────────────────────────
 
 interface NewLeaveForm {
-  employee_id: any
+  employee_id: M2OValue
   holiday_status_id: string
   request_date_from: string
   request_date_to: string
@@ -77,7 +79,7 @@ function NewLeaveView() {
     name: '',
   })
 
-  const setField = (k: keyof NewLeaveForm, v: any) => setForm(p => ({ ...p, [k]: v }))
+  const setField = <K extends keyof NewLeaveForm>(k: K, v: NewLeaveForm[K]) => setForm(p => ({ ...p, [k]: v }))
 
   const { data: leaveTypes } = useQuery<LeaveType[]>({
     queryKey: ['hr-leave-types'],
@@ -107,8 +109,8 @@ function NewLeaveView() {
       const newId = data?.id ?? data
       if (newId) navigate(`/admin/hr/leaves/${newId}`, { replace: true })
     },
-    onError: (e: any) => {
-      toast.error('Error', e?.response?.data?.detail || e.message || 'Failed to create leave request')
+    onError: (e: unknown) => {
+      toast.error('Error', extractErrorMessage(e, 'Failed to create leave request'))
     },
   })
 
@@ -225,8 +227,8 @@ function ExistingLeaveView({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: ['leave', id] })
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
     },
-    onError: (e: any) => {
-      toast.error('Error', e?.response?.data?.detail || e.message || 'Failed to approve')
+    onError: (e: unknown) => {
+      toast.error('Error', extractErrorMessage(e, 'Failed to approve'))
     },
   })
 
@@ -237,8 +239,8 @@ function ExistingLeaveView({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: ['leave', id] })
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
     },
-    onError: (e: any) => {
-      toast.error('Error', e?.response?.data?.detail || e.message || 'Failed to refuse')
+    onError: (e: unknown) => {
+      toast.error('Error', extractErrorMessage(e, 'Failed to refuse'))
     },
   })
 
@@ -249,8 +251,8 @@ function ExistingLeaveView({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: ['leave', id] })
       queryClient.invalidateQueries({ queryKey: ['leaves'] })
     },
-    onError: (e: any) => {
-      toast.error('Error', e?.response?.data?.detail || e.message || 'Failed to reset')
+    onError: (e: unknown) => {
+      toast.error('Error', extractErrorMessage(e, 'Failed to reset'))
     },
   })
 

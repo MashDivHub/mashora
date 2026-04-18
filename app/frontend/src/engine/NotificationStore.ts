@@ -55,15 +55,25 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
       const readIds = getReadIds()
 
-      const activities: Notification[] = (data.records || []).map((a: any) => {
+      interface ActivityRow {
+        id: number
+        activity_type_id?: [number, string] | false
+        summary?: string | false
+        note?: string | false
+        res_model?: string
+        res_id?: number
+        date_deadline?: string | false
+        create_date?: string | false
+      }
+      const activities: Notification[] = ((data.records || []) as ActivityRow[]).map((a) => {
         const id = `activity_${a.id}`
         return {
           id,
-          title: a.activity_type_id?.[1] || 'Activity',
+          title: Array.isArray(a.activity_type_id) ? a.activity_type_id[1] : 'Activity',
           body: a.summary || a.note || '',
           model: a.res_model,
           resId: a.res_id,
-          timestamp: new Date(a.date_deadline || a.create_date),
+          timestamp: new Date(a.date_deadline || a.create_date || ''),
           read: readIds.has(id),
         }
       })

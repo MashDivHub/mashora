@@ -46,13 +46,15 @@ export default function One2ManyField({ name, value, fieldMeta, readonly, classN
           </TableRow>
         </TableHeader>
         <TableBody>
-          {records.map((rec: any, i: number) => (
+          {(records as Array<Record<string, unknown> & { id?: number }>).map((rec, i) => (
             <TableRow key={rec.id || i} className="border-border/30 hover:bg-muted/20">
-              {keys.slice(0, 6).map((k: string) => (
-                <TableCell key={k} className="text-sm py-2.5">
-                  {Array.isArray(rec[k]) ? rec[k][1] || rec[k][0] : String(rec[k] ?? '')}
-                </TableCell>
-              ))}
+              {keys.slice(0, 6).map((k: string) => {
+                const v = rec[k]
+                const display = Array.isArray(v) ? String(v[1] ?? v[0] ?? '') : String(v ?? '')
+                return (
+                  <TableCell key={k} className="text-sm py-2.5">{display}</TableCell>
+                )
+              })}
             </TableRow>
           ))}
         </TableBody>

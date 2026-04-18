@@ -38,29 +38,31 @@ export default function LocationList() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const pageSize = 50
 
-  const usageFilter = activeFilters.length > 0
-    ? activeFilters.map(k => FILTERS.find(f => f.key === k)?.domain?.[0]).filter(Boolean)
+  const usageFilter: unknown[][] | undefined = activeFilters.length > 0
+    ? activeFilters
+        .map(k => FILTERS.find(f => f.key === k)?.domain?.[0] as unknown[] | undefined)
+        .filter((d): d is unknown[] => Array.isArray(d))
     : undefined
 
   const order = sortField ? `${sortField} ${sortDir}` : 'complete_name asc'
 
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     offset: page * pageSize,
     limit: pageSize,
     order,
   }
   if (search) body.search = search
   if (usageFilter && usageFilter.length === 1) {
-    body.usage = (usageFilter[0] as any[])[2]
+    body.usage = usageFilter[0][2]
   } else if (usageFilter && usageFilter.length > 1) {
-    body.usage = usageFilter.map((d: any) => d[2])
+    body.usage = usageFilter.map(d => d[2])
   }
 
   const { data, isLoading } = useQuery({
     queryKey: ['locations', search, activeFilters, page, order],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/inventory/locations', body)
-      return data as { records: any[]; total: number }
+      return data as { records: Array<Record<string, unknown>>; total: number }
     },
   })
 

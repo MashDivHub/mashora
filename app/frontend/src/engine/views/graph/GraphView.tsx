@@ -41,7 +41,7 @@ export default function GraphView({ model, action, domain: actionDomain }: ViewP
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">{model.replace(/\./g, ' ')}</p>
-          <h1 className="text-xl font-semibold tracking-tight capitalize">{action?.name || modelLabel}</h1>
+          <h1 className="text-xl font-semibold tracking-tight capitalize">{(typeof action?.name === 'string' ? action.name : '') || modelLabel}</h1>
         </div>
 
         {/* Chart type switcher */}
@@ -73,7 +73,7 @@ export default function GraphView({ model, action, domain: actionDomain }: ViewP
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-panel">
         {graphData && graphData.length > 0 ? (
           <GraphRenderer data={graphData} config={config!} />
         ) : (

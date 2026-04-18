@@ -65,7 +65,7 @@ export default function AllocationList() {
 
   const order = sortField ? `${sortField} ${sortDir}` : 'create_date desc'
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push(['employee_id.name', 'ilike', search])
   if (tab !== 'all') domain.push(['state', '=', tab])
 

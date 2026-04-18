@@ -4,9 +4,10 @@ Phase 4 secondary module API endpoints.
 Covers: fleet, repair, mrp, event, survey, mass_mailing, pos, calendar.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
-from app.services.base import async_create
+from app.services.base import async_create, async_update
 from app.schemas.secondary import (
     VehicleListParams, VehicleCreate, VehicleUpdate, VehicleCostCreate,
     RepairListParams, RepairCreate, RepairUpdate,
@@ -182,6 +183,40 @@ async def get_workcenters(user: CurrentUser | None = Depends(get_optional_user))
 @router.post("/manufacturing/workorders")
 async def get_workorders(params: dict | None = None, user: CurrentUser | None = Depends(get_optional_user)):
     return await list_workorders(params=params or {})
+
+
+@router.post("/manufacturing/workorders/{workorder_id}/start")
+async def start_workorder(workorder_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Start a work order — set state=progress and date_start=now."""
+    from datetime import datetime
+    return await async_update("mrp.workorder", workorder_id, {
+        "state": "progress",
+        "date_start": datetime.now().isoformat(),
+    }, uid=_uid(user))
+
+
+@router.post("/manufacturing/workorders/{workorder_id}/pause")
+async def pause_workorder(workorder_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Pause work order — set state=pending."""
+    return await async_update("mrp.workorder", workorder_id, {"state": "pending"}, uid=_uid(user))
+
+
+class WorkorderFinish(BaseModel):
+    qty_produced: float | None = None
+
+
+@router.post("/manufacturing/workorders/{workorder_id}/finish")
+async def finish_workorder(workorder_id: int, body: WorkorderFinish | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    """Finish work order — set state=done, date_finished=now, optionally qty_produced."""
+    from datetime import datetime
+    vals: dict = {
+        "state": "done",
+        "date_finished": datetime.now().isoformat(),
+    }
+    if body and body.qty_produced is not None:
+        vals["qty_produced"] = body.qty_produced
+    return await async_update("mrp.workorder", workorder_id, vals, uid=_uid(user))
+
 
 @router.get("/manufacturing/dashboard")
 async def mrp_dashboard(user: CurrentUser | None = Depends(get_optional_user)):

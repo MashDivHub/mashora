@@ -47,7 +47,7 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
         <h2 className="text-2xl font-semibold tracking-tight mb-8">Featured Products</h2>
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          {(products || []).map((p: any) => (
+          {(products || []).map((p: { id: number; name: string; image_1920?: string | false; list_price?: number }) => (
             <Link key={p.id} to={`/shop/${p.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="p-5">

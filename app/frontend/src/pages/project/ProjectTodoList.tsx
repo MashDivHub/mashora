@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Badge, cn } from '@mashora/design-system'
 import { Star, CalendarClock, ClipboardCheck } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 interface ProjectTask {
@@ -18,9 +18,9 @@ interface TaskResponse {
   total: number
 }
 
-function fmt(v: any): string {
-  if (Array.isArray(v)) return v[1] ?? ''
-  return v || ''
+function fmt(v: unknown): string {
+  if (Array.isArray(v)) return String(v[1] ?? '')
+  return v == null || v === false ? '' : String(v)
 }
 
 function isOverdue(deadline: string | false): boolean {
@@ -81,10 +81,11 @@ export default function ProjectTodoList() {
           ))}
         </div>
       ) : tasks.length === 0 ? (
-        <div className="rounded-2xl border border-border/30 bg-card/50 p-12 text-center">
-          <ClipboardCheck className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
-          <p className="text-muted-foreground">All caught up — no pending tasks</p>
-        </div>
+        <EmptyState
+          icon={<ClipboardCheck className="h-12 w-12" />}
+          title="All caught up"
+          description="No pending tasks assigned to you."
+        />
       ) : (
         <div className="space-y-6">
           {Array.from(grouped.entries()).map(([project, ptasks]) => (

@@ -1,5 +1,27 @@
 import { erpClient } from '@/lib/erp-api'
 
+export type DomainTerm = [string, string, unknown] | string
+export type Domain = DomainTerm[]
+
+interface ArchNode {
+  tag?: string
+  name?: string
+  type?: string
+  children?: ArchNode[]
+  [key: string]: unknown
+}
+
+interface FieldMeta {
+  string?: string
+  type?: string
+  [key: string]: unknown
+}
+
+interface ReadGroupRow {
+  __domain?: Domain
+  [key: string]: unknown
+}
+
 export interface PivotConfig {
   rowFields: { field: string; label: string }[]
   colFields: { field: string; label: string }[]
@@ -12,16 +34,18 @@ export interface PivotRow {
   children?: PivotRow[]
   isExpanded?: boolean
   depth: number
-  domain: any[]
+  domain: Domain
 }
 
-export function extractPivotConfig(arch: any, fields: Record<string, any>): PivotConfig {
+export function extractPivotConfig(arch: ArchNode | string | null | undefined, fields: Record<string, FieldMeta>): PivotConfig {
   const rowFields: PivotConfig['rowFields'] = []
   const colFields: PivotConfig['colFields'] = []
   const measures: PivotConfig['measures'] = []
 
-  if (arch?.children) {
-    for (const child of arch.children) {
+  const archNode: ArchNode | null = typeof arch === 'string' || !arch ? null : arch
+
+  if (archNode?.children) {
+    for (const child of archNode.children) {
       if (child.tag === 'field' && child.name) {
         const meta = fields[child.name]
         const label = meta?.string || child.name
@@ -45,7 +69,7 @@ export function extractPivotConfig(arch: any, fields: Record<string, any>): Pivo
 export async function loadPivotData(
   model: string,
   config: PivotConfig,
-  domain: any[] = [],
+  domain: Domain = [],
 ): Promise<PivotRow[]> {
   if (config.rowFields.length === 0) return []
 
@@ -58,16 +82,16 @@ export async function loadPivotData(
     groupby: [groupby[0]], // First level only
   })
 
-  return (data.groups || []).map((g: any) => {
+  return ((data.groups || []) as ReadGroupRow[]).map((g) => {
     const val = g[groupby[0]]
-    const label = Array.isArray(val) ? val[1] : String(val ?? 'N/A')
+    const label = Array.isArray(val) ? String(val[1]) : String(val ?? 'N/A')
 
     const values: Record<string, number> = {}
     for (const m of config.measures) {
       if (m.field === '__count') {
-        values[m.field] = g[`${groupby[0]}_count`] || 0
+        values[m.field] = Number(g[`${groupby[0]}_count`]) || 0
       } else {
-        values[m.field] = g[m.field] || 0
+        values[m.field] = Number(g[m.field]) || 0
       }
     }
 
@@ -75,7 +99,7 @@ export async function loadPivotData(
       label,
       values,
       depth: 0,
-      domain: g.__domain || [...domain, [groupby[0], '=', Array.isArray(val) ? val[0] : val]],
+      domain: g.__domain || [...domain, [groupby[0], '=', Array.isArray(val) ? val[0] : val]] as Domain,
     }
   })
 }
@@ -94,16 +118,16 @@ export async function expandPivotRow(
     groupby: [nextGroupField],
   })
 
-  return (data.groups || []).map((g: any) => {
+  return ((data.groups || []) as ReadGroupRow[]).map((g) => {
     const val = g[nextGroupField]
-    const label = Array.isArray(val) ? val[1] : String(val ?? 'N/A')
+    const label = Array.isArray(val) ? String(val[1]) : String(val ?? 'N/A')
 
     const values: Record<string, number> = {}
     for (const m of config.measures) {
       if (m.field === '__count') {
-        values[m.field] = g[`${nextGroupField}_count`] || 0
+        values[m.field] = Number(g[`${nextGroupField}_count`]) || 0
       } else {
-        values[m.field] = g[m.field] || 0
+        values[m.field] = Number(g[m.field]) || 0
       }
     }
 
@@ -111,7 +135,7 @@ export async function expandPivotRow(
       label,
       values,
       depth: parentRow.depth + 1,
-      domain: g.__domain || [...parentRow.domain, [nextGroupField, '=', Array.isArray(val) ? val[0] : val]],
+      domain: g.__domain || [...parentRow.domain, [nextGroupField, '=', Array.isArray(val) ? val[0] : val]] as Domain,
     }
   })
 }

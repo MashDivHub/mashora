@@ -11,6 +11,7 @@ Provides REST API for:
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.schemas.account import (
@@ -118,16 +119,61 @@ async def cancel_existing_invoice(invoice_id: int, user: CurrentUser | None = De
     return result
 
 
+class ReverseBody(BaseModel):
+    reason: str = ""
+    reverse_date: str | None = None
+
+
 @router.post("/invoices/{invoice_id}/reverse")
 async def reverse_existing_invoice(
     invoice_id: int,
-    reason: str = Query(default="", description="Reason for reversal"),
-    date: str | None = Query(default=None, description="Reversal date (YYYY-MM-DD)"),
+    body: ReverseBody | None = None,
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Create a reversal (credit note) for a posted invoice."""
-    result = await reverse_invoice(invoice_id=invoice_id, reason=reason, date=date, )
+    reason = body.reason if body else ""
+    date = body.reverse_date if body else None
+    result = await reverse_invoice(invoice_id=invoice_id, reason=reason, date=date)
     return result
+
+
+@router.post("/invoices/{invoice_id}/draft")
+async def reset_invoice_to_draft(invoice_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Reset a cancelled invoice back to draft."""
+    from app.services.base import async_update
+    return await async_update("account.move", invoice_id, {"state": "draft"}, uid=user.uid if user else 1)
+
+
+class RegisterPaymentBody(BaseModel):
+    amount: float
+    journal_id: int
+    payment_date: str | None = None
+    memo: str | None = None
+
+
+@router.post("/invoices/{invoice_id}/register-payment")
+async def register_payment_for_invoice(
+    invoice_id: int,
+    body: RegisterPaymentBody,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Register a payment against a posted invoice."""
+    from app.services.base import async_get_or_raise, async_create
+    invoice = await async_get_or_raise("account.move", invoice_id, fields=["partner_id", "amount_total", "amount_residual", "move_type"])
+    partner_id = invoice.get("partner_id")
+    if isinstance(partner_id, list):
+        partner_id = partner_id[0]
+    payment_type = "inbound" if invoice.get("move_type", "").startswith("out_") else "outbound"
+    payment = await async_create("account.payment", {
+        "partner_id": partner_id,
+        "amount": body.amount,
+        "journal_id": body.journal_id,
+        "payment_type": payment_type,
+        "date": body.payment_date,
+        "ref": body.memo or f"Payment for {invoice.get('id')}",
+        "state": "draft",
+    }, uid=user.uid if user else 1)
+    return {"payment_id": payment.get("id") if isinstance(payment, dict) else payment, "invoice_id": invoice_id}
 
 
 # ============================================

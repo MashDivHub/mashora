@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Skeleton,
 } from '@mashora/design-system'
-import { Users } from 'lucide-react'
+import { Users, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -74,7 +74,7 @@ export default function AgedReceivable() {
     <div className="space-y-6">
       <PageHeader title="Aged Receivable" subtitle="accounting" />
 
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         <div className="flex items-center gap-2.5 border-b border-border/70 bg-muted/20 px-6 py-4">
           <div className="rounded-xl border border-border/70 bg-muted/60 p-2">
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -123,7 +123,10 @@ export default function AgedReceivable() {
                     <TableCell className="text-right font-mono text-sm">{fmt(row.days_60)}</TableCell>
                     <TableCell className="text-right font-mono text-sm">{fmt(row.days_90)}</TableCell>
                     <TableCell className={`text-right font-mono text-sm${row.days_90_plus > 0 ? ' text-red-400' : ''}`}>
-                      {fmt(row.days_90_plus)}
+                      <span className="inline-flex items-center gap-1 justify-end" aria-label={row.days_90_plus > 0 ? `overdue ${fmt(row.days_90_plus)}` : undefined}>
+                        {row.days_90_plus > 0 && <AlertCircle className="h-3 w-3" aria-hidden="true" />}
+                        {fmt(row.days_90_plus)}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm font-bold">{fmt(row.total)}</TableCell>
                   </TableRow>
@@ -139,7 +142,10 @@ export default function AgedReceivable() {
                   <TableCell className="text-right font-mono text-sm">{fmt(totals.days_60)}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{fmt(totals.days_90)}</TableCell>
                   <TableCell className={`text-right font-mono text-sm${totals.days_90_plus > 0 ? ' text-red-400' : ''}`}>
-                    {fmt(totals.days_90_plus)}
+                    <span className="inline-flex items-center gap-1 justify-end" aria-label={totals.days_90_plus > 0 ? `overdue ${fmt(totals.days_90_plus)}` : undefined}>
+                      {totals.days_90_plus > 0 && <AlertCircle className="h-3 w-3" aria-hidden="true" />}
+                      {fmt(totals.days_90_plus)}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm font-bold">{fmt(totals.total)}</TableCell>
                 </TableRow>

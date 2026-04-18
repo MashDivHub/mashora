@@ -5,6 +5,7 @@ import { Badge } from '@mashora/design-system'
 import { Users, Shield } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 const LIST_FIELDS = ['id', 'name', 'login', 'email', 'image_128', 'active', 'company_id', 'share', 'lang', 'tz']
 
@@ -15,6 +16,7 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function UserList() {
+  useDocumentTitle('Users')
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
@@ -23,7 +25,7 @@ export default function UserList() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const pageSize = 40
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push('|', '|', ['name', 'ilike', search], ['login', 'ilike', search], ['email', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)

@@ -23,6 +23,30 @@ interface ChatterProps {
   className?: string
 }
 
+interface ChatterMessage {
+  id: number
+  author_id?: [number, string] | false
+  date: string
+  body: string
+  tracking_value_ids?: unknown[]
+}
+
+interface ChatterActivity {
+  id: number
+  state: string
+  activity_type_id?: [number, string] | false
+  summary?: string | false
+  date_deadline?: string | false
+  user_id?: [number, string] | false
+}
+
+interface ChatterFollower {
+  id: number
+  partner_id?: [number, string] | false
+}
+
+interface AxiosLikeResponse<T> { data: T }
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -206,19 +230,19 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
   // Messages
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
     queryKey: ['chatter-messages', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/messages`).then((r: any) => r.data).catch(() => ({ messages: [], total: 0 })),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/messages`).then((r: AxiosLikeResponse<{ messages: ChatterMessage[]; total: number }>) => r.data).catch(() => ({ messages: [] as ChatterMessage[], total: 0 })),
   })
 
   // Activities
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery({
     queryKey: ['chatter-activities', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/activities`).then((r: any) => r.data).catch(() => ({ activities: [], total: 0 })),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/activities`).then((r: AxiosLikeResponse<{ activities: ChatterActivity[]; total: number }>) => r.data).catch(() => ({ activities: [] as ChatterActivity[], total: 0 })),
   })
 
   // Followers
   const { data: followersData, isLoading: followersLoading } = useQuery({
     queryKey: ['chatter-followers', model, resId],
-    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/followers`).then((r: any) => r.data).catch(() => ({ followers: [], total: 0 })),
+    queryFn: () => erpClient.raw.get(`/chatter/${model}/${resId}/followers`).then((r: AxiosLikeResponse<{ followers: ChatterFollower[]; total: number }>) => r.data).catch(() => ({ followers: [] as ChatterFollower[], total: 0 })),
     retry: false,
   })
 
@@ -260,7 +284,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
   return (
     <div
       className={cn(
-        'rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden',
+        'rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden',
         className,
       )}
     >
@@ -342,7 +366,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
               </div>
             ) : (
               <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
-                {messages.map((msg: any) => {
+                {messages.map((msg: ChatterMessage) => {
                   const authorName = msg.author_id ? msg.author_id[1] : 'System'
                   const isSystem = !msg.author_id
                   return (
@@ -367,7 +391,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
                           className="prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-p:my-1 prose-a:text-foreground prose-a:underline-offset-4"
                           dangerouslySetInnerHTML={sanitizedHtml(msg.body)}
                         />
-                        {msg.tracking_value_ids?.length > 0 && (
+                        {msg.tracking_value_ids && msg.tracking_value_ids.length > 0 && (
                           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground">
                             <span className="font-medium">{msg.tracking_value_ids.length}</span>
                             field{msg.tracking_value_ids.length === 1 ? '' : 's'} changed
@@ -397,7 +421,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
                 <p className="text-sm text-muted-foreground">No scheduled activities.</p>
               </div>
             ) : (
-              activities.map((act: any) => (
+              activities.map((act: ChatterActivity) => (
                 <div
                   key={act.id}
                   className="rounded-2xl border border-border/50 bg-muted/10 p-4 transition-colors hover:bg-muted/20"
@@ -463,7 +487,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
                 <p className="text-sm text-muted-foreground">No followers.</p>
               </div>
             ) : (
-              followers.map((f: any) => {
+              followers.map((f: ChatterFollower) => {
                 const name = f.partner_id ? f.partner_id[1] : 'Unknown'
                 return (
                   <div

@@ -14,7 +14,7 @@ export default function LotSerialList() {
   const [sortField, setSortField] = useState<string | null>('create_date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const domain: any[] = search ? [['name', 'ilike', search]] : []
+  const domain: unknown[] = search ? [['name', 'ilike', search]] : []
   const order = sortField ? `${sortField} ${sortDir}` : 'create_date desc'
 
   const { data, isLoading } = useQuery({
@@ -65,6 +65,8 @@ export default function LotSerialList() {
       <PageHeader
         title="Lots / Serial Numbers"
         subtitle={total > 0 ? `${total} record${total === 1 ? '' : 's'}` : 'inventory'}
+        onNew="/admin/inventory/lots/new"
+        newLabel="New Lot"
       />
       <SearchBar
         placeholder="Search lots..."
@@ -83,6 +85,7 @@ export default function LotSerialList() {
         loading={isLoading}
         emptyMessage="No lots or serial numbers found"
         emptyIcon={<ScanBarcode className="h-10 w-10" />}
+        rowLink={(row) => `/admin/inventory/lots/${row.id}`}
       />
     </div>
   )

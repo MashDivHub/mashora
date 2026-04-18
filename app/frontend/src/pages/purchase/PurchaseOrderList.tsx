@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { Package } from 'lucide-react'
-import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
+import { Package, CheckCircle2, XCircle, Mail, ThumbsUp, X } from 'lucide-react'
+import {
+  DataTable, PageHeader, SearchBar, BulkActionBar,
+  toast,
+  type Column, type FilterOption, type BulkAction,
+} from '@/components/shared'
+import { useBulkSelect } from '@/hooks/useBulkSelect'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 const LIST_FIELDS = [
   'id', 'name', 'partner_id', 'state', 'date_order', 'date_planned',
@@ -12,7 +19,7 @@ const LIST_FIELDS = [
   'incoming_picking_count', 'invoice_count', 'partner_ref',
 ]
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'RFQ', variant: 'secondary' },
   sent: { label: 'RFQ Sent', variant: 'info' },
   'to approve': { label: 'To Approve', variant: 'warning' },
@@ -29,26 +36,39 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function PurchaseOrderList() {
+  useDocumentTitle('Purchase Orders')
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const initialFilter = searchParams.get('filter')
+  const productTmplId = searchParams.get('product_tmpl_id')
+  const productName = searchParams.get('product_name') || ''
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>(initialFilter ? [initialFilter] : [])
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>('date_order')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
+  const { selected, clear, setSelected } = useBulkSelect()
 
-  const domain: any[] = []
-  if (search) domain.push('|', ['name', 'ilike', search], ['partner_id', 'ilike', search])
+  const domain: unknown[] = []
+  if (productTmplId) domain.push(['order_line.product.product_tmpl_id', '=', parseInt(productTmplId)])
+  if (search) domain.push('|', ['name', 'ilike', search], ['partner_id.name', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
     if (f?.domain) domain.push(...f.domain)
   }
 
+  const clearProductFilter = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('product_tmpl_id')
+    next.delete('product_name')
+    setSearchParams(next)
+  }
+
   const order = sortField ? `${sortField} ${sortDir}` : 'date_order desc'
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['purchase-orders', domain, page, order],
     queryFn: async () => {
       const { data } = await erpClient.raw.post('/model/purchase.order', {
@@ -62,6 +82,48 @@ export default function PurchaseOrderList() {
   const title = activeFilters.includes('rfq') ? 'Requests for Quotation' :
     activeFilters.includes('orders') ? 'Purchase Orders' : 'Purchase'
 
+  async function bulkAction(ids: number[], action: (id: number) => Promise<unknown>, successMsg: string) {
+    try {
+      await Promise.all(ids.map(action))
+      toast.success(`${successMsg} (${ids.length})`)
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] })
+      clear()
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Action failed'))
+    }
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: 'confirm',
+      label: 'Confirm',
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      confirm: 'Confirm {count} order(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/purchase/orders/${id}/confirm`), 'Orders confirmed'),
+    },
+    {
+      key: 'send',
+      label: 'Send RFQ',
+      icon: <Mail className="h-3.5 w-3.5" />,
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/purchase/orders/${id}/send`), 'RFQs sent'),
+    },
+    {
+      key: 'approve',
+      label: 'Approve',
+      icon: <ThumbsUp className="h-3.5 w-3.5" />,
+      confirm: 'Approve {count} order(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/purchase/orders/${id}/approve`), 'Orders approved'),
+    },
+    {
+      key: 'cancel',
+      label: 'Cancel',
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      variant: 'destructive',
+      confirm: 'Cancel {count} order(s)?',
+      onClick: ids => bulkAction(ids, id => erpClient.raw.post(`/purchase/orders/${id}/cancel`), 'Orders cancelled'),
+    },
+  ]
+
   const columns: Column[] = [
     { key: 'name', label: 'Reference', render: (_, row) => <span className="font-mono text-sm">{row.name}</span> },
     { key: 'partner_id', label: 'Vendor', format: v => Array.isArray(v) ? v[1] : '' },
@@ -70,7 +132,7 @@ export default function PurchaseOrderList() {
     { key: 'date_planned', label: 'Expected', format: v => v ? new Date(v).toLocaleDateString() : '' },
     {
       key: 'state', label: 'Status',
-      render: v => { const s = STATE_BADGE[v] || { label: v, variant: 'secondary' }; return <Badge variant={s.variant as any} className="rounded-full text-xs">{s.label}</Badge> },
+      render: v => { const s = STATE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }; return <Badge variant={s.variant} className="rounded-full text-xs">{s.label}</Badge> },
     },
     {
       key: 'receipt_status', label: 'Receipt',
@@ -83,16 +145,33 @@ export default function PurchaseOrderList() {
     { key: 'user_id', label: 'Buyer', format: v => Array.isArray(v) ? v[1] : '' },
   ]
 
+  const records = data?.records || []
+  const selectedSet = new Set(selected)
+
   return (
     <div className="space-y-4">
       <PageHeader title={title} subtitle="purchase" onNew={() => navigate('/admin/purchase/orders/new')} />
+      {productTmplId && (
+        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs">
+          <span>Product: <strong>{productName || `#${productTmplId}`}</strong></span>
+          <button type="button" onClick={clearProductFilter} className="hover:text-destructive" title="Clear product filter" aria-label="Clear product filter">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       <SearchBar placeholder="Search orders..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
-      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
+      <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
+      <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        rowLink={row => `/admin/purchase/orders/${row.id}`} emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
+        isError={isError} error={error} onRetry={() => refetch()}
+        rowLink={row => `/admin/purchase/orders/${row.id}`}
+        selectable
+        selectedIds={selectedSet}
+        onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+        emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
     </div>
   )
 }

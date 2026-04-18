@@ -172,8 +172,10 @@ async def async_create(
         valid_cols = {c.key for c in mapper.column_attrs}
 
         clean = {k: v for k, v in vals.items() if k in valid_cols and k != "id" and v is not None}
-        clean["create_uid"] = uid
-        clean["write_uid"] = uid
+        if "create_uid" in valid_cols:
+            clean["create_uid"] = uid
+        if "write_uid" in valid_cols:
+            clean["write_uid"] = uid
 
         record = model_cls(**clean)
         session.add(record)
@@ -210,7 +212,8 @@ async def async_update(
             if k in valid_cols and k != "id" and v is not None:
                 setattr(record, k, v)
 
-        record.write_uid = uid
+        if "write_uid" in valid_cols:
+            record.write_uid = uid
         await session.flush()
         await session.refresh(record)
         data = _to_dict(record, fields)

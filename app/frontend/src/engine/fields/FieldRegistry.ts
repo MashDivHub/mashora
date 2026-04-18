@@ -13,6 +13,14 @@ import One2ManyFieldComponent from './One2ManyField'
 import Many2ManyFieldComponent from './Many2ManyField'
 import BinaryFieldComponent from './BinaryField'
 
+// FieldProps is the shared contract for all field components. Because fields
+// accept arbitrary ERP field values (strings, numbers, tuples, arrays, etc.),
+// `value`/`onChange`/`record`/`fieldMeta[key]` are intentionally typed `any` —
+// narrowing to `unknown` cascades errors into 13+ field component files where
+// the value is unpacked by widget-specific code. Each field already narrows
+// internally via `typeof`/`Array.isArray`. See DataTable.tsx Column<T> for the
+// same trade-off.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface FieldProps {
   name: string
   value: any
@@ -36,6 +44,7 @@ export interface FieldProps {
   widget?: string
   className?: string
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // Registry populated at module load time
 const registry: Record<string, ComponentType<FieldProps>> = {

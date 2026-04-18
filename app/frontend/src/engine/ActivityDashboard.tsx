@@ -2,10 +2,25 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Badge, Skeleton, cn } from '@mashora/design-system'
-import { CheckCircle2, Clock, AlertCircle, Calendar, ArrowRight, Filter } from 'lucide-react'
+import { CheckCircle2, Clock, AlertCircle, Calendar, ArrowRight, Filter, type LucideIcon } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 type ActivityFilter = 'all' | 'overdue' | 'today' | 'upcoming'
+
+type DomainTerm = string | [string, string, unknown]
+
+interface ActivityRecord {
+  id: number
+  activity_type_id?: [number, string] | false
+  summary?: string | false
+  note?: string | false
+  date_deadline?: string | false
+  res_model?: string | false
+  res_id?: number | false
+  res_name?: string | false
+  user_id?: [number, string] | false
+  state?: string | false
+}
 
 export default function ActivityDashboard() {
   const navigate = useNavigate()
@@ -16,7 +31,7 @@ export default function ActivityDashboard() {
     queryKey: ['activities', 'dashboard', filter],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0]
-      let domain: any[] = []
+      let domain: DomainTerm[] = []
 
       if (filter === 'overdue') {
         domain = [['date_deadline', '<', today]]
@@ -52,7 +67,7 @@ export default function ActivityDashboard() {
   const activities = data?.records || []
   const today = new Date().toISOString().split('T')[0]
 
-  const filters: { key: ActivityFilter; label: string; icon: any }[] = [
+  const filters: { key: ActivityFilter; label: string; icon: LucideIcon }[] = [
     { key: 'all', label: 'All', icon: Filter },
     { key: 'overdue', label: 'Overdue', icon: AlertCircle },
     { key: 'today', label: 'Today', icon: Clock },
@@ -86,7 +101,7 @@ export default function ActivityDashboard() {
       </div>
 
       {/* Activity list */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         {isLoading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
@@ -101,7 +116,7 @@ export default function ActivityDashboard() {
           </div>
         ) : (
           <div className="divide-y divide-border/60">
-            {activities.map((activity: any) => {
+            {(activities as ActivityRecord[]).map((activity) => {
               const isOverdue = activity.date_deadline && activity.date_deadline < today
               const isToday = activity.date_deadline === today
 
@@ -126,7 +141,7 @@ export default function ActivityDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium truncate">
-                        {activity.activity_type_id?.[1] || 'Activity'}
+                        {Array.isArray(activity.activity_type_id) ? activity.activity_type_id[1] : 'Activity'}
                       </span>
                       <Badge variant={isOverdue ? 'destructive' : isToday ? 'warning' : 'secondary'} className="text-[10px] rounded-full">
                         {activity.date_deadline || 'No date'}

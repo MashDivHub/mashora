@@ -5,7 +5,7 @@ import { Search, X, SlidersHorizontal } from 'lucide-react'
 export interface FilterOption {
   key: string
   label: string
-  domain?: any[]
+  domain?: unknown[]
   active?: boolean
 }
 
@@ -20,6 +20,8 @@ export interface SearchBarProps {
   debounce?: number
   className?: string
   children?: React.ReactNode
+  /** Accessible label for the search input. Defaults to "Search". */
+  ariaLabel?: string
 }
 
 export default function SearchBar({
@@ -30,6 +32,7 @@ export default function SearchBar({
   onFilterToggle,
   debounce = 300,
   className,
+  ariaLabel = 'Search',
 }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -59,11 +62,14 @@ export default function SearchBar({
             value={query}
             onChange={e => handleChange(e.target.value)}
             placeholder={placeholder}
+            aria-label={ariaLabel}
             className="pl-9 pr-8 h-9 rounded-xl"
           />
           {query && (
             <button
+              type="button"
               onClick={handleClear}
+              aria-label="Clear search"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
             >
               <X className="h-3.5 w-3.5" />

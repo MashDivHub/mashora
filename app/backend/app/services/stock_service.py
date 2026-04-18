@@ -345,7 +345,7 @@ async def get_inventory_dashboard(uid: int = 1, context: Optional[dict] = None) 
 
 INVENTORY_QUANT_FIELDS = [
     "id", "product_id", "location_id", "lot_id",
-    "quantity", "reserved_quantity", "available_quantity",
+    "quantity", "reserved_quantity",
     "inventory_quantity", "inventory_diff_quantity",
 ]
 
@@ -353,7 +353,7 @@ INVENTORY_QUANT_FIELDS = [
 async def list_inventory_adjustments(uid=1, context=None, domain=None, offset=0, limit=50, order="product_id"):
     """List stock quants for inventory adjustment."""
     d = list(domain) if domain else []
-    d.append(["location_id.usage", "=", "internal"])
+    d.append(["location.usage", "=", "internal"])
     return await async_search_read(
         "stock.quant",
         domain=d,
@@ -467,3 +467,176 @@ async def create_lot(vals: dict, uid=1, context=None):
 
 async def update_lot(lot_id: int, vals: dict, uid=1, context=None):
     return await async_update("stock.lot", lot_id, vals, uid=uid, fields=LOT_FIELDS)
+
+
+# --- Product-specific: quants, update-quantity, replenish -----------------
+
+async def list_quants_for_template(product_tmpl_id: int) -> list[dict]:
+    """All stock quants across variants of a product template, at internal locations."""
+    result = await async_search_read(
+        "stock.quant",
+        domain=[
+            ["product.product_tmpl_id", "=", product_tmpl_id],
+            ["location.usage", "=", "internal"],
+        ],
+        fields=INVENTORY_QUANT_FIELDS,
+        limit=200,
+        order="location_id asc, product_id asc",
+    )
+    return result.get("records", [])
+
+
+async def upsert_product_quantity(
+    product_id: int,
+    location_id: int,
+    inventory_quantity: float,
+    lot_id: Optional[int] = None,
+    uid: int = 1,
+) -> dict:
+    """Create or update a quant to set an inventory count; then apply it.
+
+    This mimics Odoo's 'Update Quantity' flow: typing a count on a
+    (product, location) pair creates a stock.quant if missing, sets its
+    inventory_quantity, and applies the adjustment.
+    """
+    # Find existing quant
+    domain: list = [
+        ["product_id", "=", product_id],
+        ["location_id", "=", location_id],
+    ]
+    if lot_id:
+        domain.append(["lot_id", "=", lot_id])
+    else:
+        domain.append(["lot_id", "=", False])
+
+    existing = await async_search_read(
+        "stock.quant", domain=domain, fields=["id"], limit=1,
+    )
+    records = existing.get("records", [])
+
+    if records:
+        quant_id = records[0]["id"]
+        await async_update(
+            "stock.quant", quant_id,
+            {"inventory_quantity": inventory_quantity},
+            uid=uid, fields=INVENTORY_QUANT_FIELDS,
+        )
+    else:
+        vals = {
+            "product_id": product_id,
+            "location_id": location_id,
+            "inventory_quantity": inventory_quantity,
+            "quantity": 0,
+        }
+        if lot_id:
+            vals["lot_id"] = lot_id
+        created = await async_create("stock.quant", vals, uid=uid, fields=INVENTORY_QUANT_FIELDS)
+        quant_id = created["id"]
+
+    # Apply the adjustment
+    result = await async_action(
+        "stock.quant", quant_id, "inventory_quantity_set", False,
+        uid=uid, fields=INVENTORY_QUANT_FIELDS,
+    )
+    return result or {"id": quant_id}
+
+
+async def replenish_product(
+    product_id: int,
+    warehouse_id: Optional[int],
+    qty: float,
+    min_qty: Optional[float] = None,
+    max_qty: Optional[float] = None,
+    uid: int = 1,
+) -> dict:
+    """Create or update a stock.warehouse.orderpoint and mark it for replenishment.
+
+    Schema notes: the orderpoint table has qty_to_order_manual and qty_to_order_computed
+    (no plain qty_to_order). It requires warehouse_id, location_id, company_id, name.
+    """
+    # Default warehouse if not given — pick the first active warehouse
+    if not warehouse_id:
+        wh_result = await async_search_read(
+            "stock.warehouse", domain=[], fields=["id", "lot_stock_id", "company_id"], limit=1, order="id asc",
+        )
+        whs = wh_result.get("records", [])
+        if not whs:
+            raise ValueError("No warehouse configured — create a warehouse before replenishing.")
+        warehouse_id = whs[0]["id"]
+        location_id = whs[0].get("lot_stock_id")
+        company_id = whs[0].get("company_id")
+    else:
+        wh_result = await async_search_read(
+            "stock.warehouse", domain=[["id", "=", warehouse_id]],
+            fields=["id", "lot_stock_id", "company_id"], limit=1,
+        )
+        whs = wh_result.get("records", [])
+        if not whs:
+            raise ValueError(f"Warehouse {warehouse_id} not found.")
+        location_id = whs[0].get("lot_stock_id")
+        company_id = whs[0].get("company_id")
+
+    # Unwrap M2O tuples
+    if isinstance(location_id, list):
+        location_id = location_id[0]
+    if isinstance(company_id, list):
+        company_id = company_id[0]
+
+    if not location_id:
+        raise ValueError("Warehouse has no default stock location.")
+    if not company_id:
+        raise ValueError("Warehouse has no company — record is misconfigured.")
+
+    # Look up existing orderpoint for (product, warehouse)
+    existing = await async_search_read(
+        "stock.warehouse.orderpoint",
+        domain=[["product_id", "=", product_id], ["warehouse_id", "=", warehouse_id]],
+        fields=["id"],
+        limit=1,
+    )
+    records = existing.get("records", [])
+
+    vals: dict = {
+        "qty_to_order_manual": qty,
+    }
+    if min_qty is not None:
+        vals["product_min_qty"] = min_qty
+    if max_qty is not None:
+        vals["product_max_qty"] = max_qty
+
+    if records:
+        op_id = records[0]["id"]
+        result = await async_update(
+            "stock.warehouse.orderpoint", op_id, vals,
+            uid=uid,
+            fields=["id", "product_id", "warehouse_id", "qty_to_order_manual", "product_min_qty", "product_max_qty"],
+        )
+        return {"orderpoint_id": op_id, "created": False, "record": result}
+    else:
+        # Resolve product name for the orderpoint's display name
+        product_rows = await async_search_read(
+            "product.product", domain=[["id", "=", product_id]], fields=["id", "display_name"], limit=1,
+        )
+        product_name = "OP"
+        if product_rows.get("records"):
+            raw_name = product_rows["records"][0].get("display_name")
+            if raw_name:
+                product_name = str(raw_name)[:60]
+
+        create_vals = {
+            "product_id": product_id,
+            "warehouse_id": warehouse_id,
+            "location_id": location_id,
+            "company_id": company_id,
+            "name": f"OP/{product_name}",
+            "qty_to_order_manual": qty,
+            "product_min_qty": min_qty if min_qty is not None else 0,
+            "product_max_qty": max_qty if max_qty is not None else qty,
+            "trigger": "manual",
+        }
+        result = await async_create(
+            "stock.warehouse.orderpoint", create_vals,
+            uid=uid,
+            fields=["id", "product_id", "warehouse_id", "qty_to_order_manual", "product_min_qty", "product_max_qty"],
+        )
+        return {"orderpoint_id": result.get("id"), "created": True, "record": result}

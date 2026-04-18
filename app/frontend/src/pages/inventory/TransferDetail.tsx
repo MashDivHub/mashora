@@ -10,6 +10,9 @@ import { RecordForm, FormField, ReadonlyField, StatusBar, toast, type FormTab } 
 import { sanitizedHtml } from '@/lib/sanitize'
 import Chatter from '@/components/Chatter'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+
+interface NameSearchResult { id: number; display_name: string }
 
 const FORM_FIELDS = [
   'id', 'name', 'partner_id', 'state', 'picking_type_id', 'picking_type_code',
@@ -65,7 +68,7 @@ export default function TransferDetail() {
   })
 
   useEffect(() => { if (record) { setForm({ ...record }); setMoves(moveData || []) } }, [record, moveData])
-  const setField = useCallback((n: string, v: any) => { setForm(p => ({ ...p, [n]: v })) }, [])
+  const setField = useCallback((n: string, v: unknown) => { setForm(p => ({ ...p, [n]: v })) }, [])
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -85,7 +88,7 @@ export default function TransferDetail() {
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!validate()) throw new Error('Validation failed')
-      const vals: Record<string, any> = {}
+      const vals: Record<string, unknown> = {}
       for (const f of ['origin', 'scheduled_date', 'note']) {
         if (form[f] !== record?.[f]) vals[f] = form[f] ?? false
       }
@@ -109,9 +112,9 @@ export default function TransferDetail() {
       queryClient.invalidateQueries({ queryKey: ['transfers'] })
       if (isNew && data?.id) navigate(`/admin/inventory/transfers/${data.id}`, { replace: true })
     },
-    onError: (e: any) => {
-      if (e.message !== 'Validation failed') {
-        toast.error('Save Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    onError: (e: unknown) => {
+      if (!(e instanceof Error && e.message === 'Validation failed')) {
+        toast.error('Save Failed', extractErrorMessage(e))
       }
     },
   })
@@ -124,12 +127,12 @@ export default function TransferDetail() {
       toast.success('Action Complete', `${method.replace('action_', '').replace('button_', '').replace(/_/g, ' ')} executed`)
       queryClient.invalidateQueries({ queryKey: ['transfer', recordId] })
       queryClient.invalidateQueries({ queryKey: ['transfer-moves', recordId] })
-    } catch (e: any) {
-      toast.error('Action Failed', e?.response?.data?.detail || e.message || 'Unknown error')
+    } catch (e: unknown) {
+      toast.error('Action Failed', extractErrorMessage(e))
     }
   }, [recordId, queryClient, validate])
 
-  const [m2oResults, setM2oResults] = useState<Record<string, any[]>>({})
+  const [m2oResults, setM2oResults] = useState<Record<string, NameSearchResult[]>>({})
   const searchM2o = useCallback(async (model: string, q: string, field: string) => {
     if (!q) { setM2oResults(p => ({ ...p, [field]: [] })); return }
     try {
@@ -142,7 +145,7 @@ export default function TransferDetail() {
     return <div className="space-y-4"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-2xl" /></div>
   }
 
-  const m2oVal = (v: any) => Array.isArray(v) ? v[1] : ''
+  const m2oVal = (v: unknown): string => (Array.isArray(v) ? String(v[1] ?? '') : '')
   const state = form.state || 'draft'
   const isDraft = state === 'draft'
   const isReady = state === 'assigned'
@@ -162,7 +165,7 @@ export default function TransferDetail() {
             onBlur={() => setTimeout(() => setOpen(false), 200)} placeholder="Search..." />
           {open && (m2oResults[field] || []).length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-popover shadow-lg max-h-48 overflow-y-auto">
-              {(m2oResults[field] || []).map((r: any) => (
+              {(m2oResults[field] || []).map((r) => (
                 <button key={r.id} className="w-full px-3 py-2 text-left text-sm hover:bg-accent first:rounded-t-xl last:rounded-b-xl"
                   onMouseDown={() => { setField(field, [r.id, r.display_name]); setOpen(false); onSelect?.() }}>{r.display_name}</button>
               ))}
@@ -249,7 +252,7 @@ export default function TransferDetail() {
           {isDraft && recordId && <Button variant="ghost" size="sm" className="rounded-xl gap-1.5 text-destructive" onClick={async () => {
             if (!confirm('Cancel this transfer?')) return
             try { await erpClient.raw.post('/model/stock.picking/call', { record_ids: [recordId], method: 'action_cancel' }); toast.success('Cancelled'); queryClient.invalidateQueries({ queryKey: ['transfer', recordId] }) }
-            catch (e: any) { toast.error('Cancel Failed', e?.response?.data?.detail || e.message) }
+            catch (e: unknown) { toast.error('Cancel Failed', extractErrorMessage(e)) }
           }}><XCircle className="h-3.5 w-3.5" /> Cancel</Button>}
         </>
       }

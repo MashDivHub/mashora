@@ -8,6 +8,9 @@ import { Tag, Plus, Pencil, Trash2, ChevronRight, FolderTree, X, Check } from 'l
 import { PageHeader, SearchBar } from '@/components/shared'
 import { toast } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
+
+type DomainTerm = [string, string, unknown]
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -48,8 +51,8 @@ function CategoryRow({ cat, categories, onSaved, onDeleted }: {
       toast.success('Category updated')
       setEditing(false)
       onSaved()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Update failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Update failed'))
     } finally {
       setBusy(false)
     }
@@ -62,8 +65,8 @@ function CategoryRow({ cat, categories, onSaved, onDeleted }: {
       await erpClient.raw.delete(`/model/product.category/${cat.id}`)
       toast.success('Category deleted')
       onDeleted()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Delete failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Delete failed'))
     } finally {
       setBusy(false)
     }
@@ -148,8 +151,8 @@ function CreateCategory({ categories, onCreated }: { categories: Category[]; onC
       setParentId(null)
       setOpen(false)
       onCreated()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Create failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Create failed'))
     } finally {
       setBusy(false)
     }
@@ -201,7 +204,7 @@ export default function CategoryManager() {
   const { data, isLoading } = useQuery({
     queryKey: ['product-categories', search],
     queryFn: async () => {
-      const domain: any[] = []
+      const domain: DomainTerm[] = []
       if (search) domain.push(['name', 'ilike', search])
       const { data } = await erpClient.raw.post('/model/product.category', {
         domain,

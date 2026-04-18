@@ -2,29 +2,41 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@mashora/design-system'
-import { Users, DollarSign } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { Users, DollarSign, Utensils } from 'lucide-react'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
-interface PosPreset {
+interface RestaurantTable {
   id: number
   name: string
-  sequence: number
-  type?: string
+  seats: number
+  shape?: string // 'square' | 'round' | string
+  position_h?: number
+  position_v?: number
+  width?: number
+  height?: number
+  color?: string
+  floor_id?: [number, string] | false | null
+  active?: boolean
 }
 
-type TableStatus = 'available' | 'occupied' | 'reserved'
-
-interface TableData {
+interface RestaurantFloor {
   id: number
   name: string
-  status: TableStatus
-  orderTotal?: number
-  guests?: number
-  floor?: string
+  sequence?: number
 }
+
+interface PosOrderRow {
+  id: number
+  table_id: [number, string] | false
+  amount_total: number
+  state: string
+  partner_id?: [number, string] | false
+}
+
+type TableStatus = 'available' | 'occupied'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,72 +46,62 @@ function formatCurrency(value: number): string {
 
 const STATUS_STYLES: Record<TableStatus, string> = {
   available: 'border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20',
-  occupied:  'border-amber-500/50  bg-amber-500/10',
-  reserved:  'border-blue-500/50   bg-blue-500/10',
+  occupied:  'border-amber-500/50  bg-amber-500/10 hover:bg-amber-500/20',
 }
 
 const STATUS_LABEL: Record<TableStatus, string> = {
   available: 'Available',
   occupied:  'Occupied',
-  reserved:  'Reserved',
 }
 
 const STATUS_DOT: Record<TableStatus, string> = {
   available: 'bg-emerald-500',
   occupied:  'bg-amber-500',
-  reserved:  'bg-blue-500',
-}
-
-// ── fallback tables when pos.preset model is unavailable ──────────────────────
-
-const STATUSES: TableStatus[] = ['available', 'occupied', 'reserved']
-
-function buildFallbackTables(): TableData[] {
-  return Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    name: `Table ${i + 1}`,
-    status: STATUSES[i % 3] as TableStatus,
-    orderTotal: i % 3 === 1 ? 48.5 + i * 10 : undefined,
-    guests: i % 3 === 1 ? 2 + (i % 3) : undefined,
-    floor: i < 6 ? 'Main Floor' : 'Upper Floor',
-  }))
 }
 
 // ── table card ────────────────────────────────────────────────────────────────
 
-function TableCard({ table, onClick }: { table: TableData; onClick: () => void }) {
-  const style = STATUS_STYLES[table.status]
-  const isOccupied = table.status === 'occupied'
+interface TableCardProps {
+  table: RestaurantTable
+  status: TableStatus
+  orderTotal?: number
+  onClick: () => void
+}
+
+function TableCard({ table, status, orderTotal, onClick }: TableCardProps) {
+  const isRound = (table.shape || '').toLowerCase() === 'round'
+  const style = STATUS_STYLES[status]
+  const isOccupied = status === 'occupied'
 
   return (
     <button
       onClick={onClick}
       className={[
-        'w-24 h-24 rounded-2xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all gap-1 p-2',
+        'w-24 h-24 border-2 flex flex-col items-center justify-center cursor-pointer transition-all gap-1 p-2',
+        isRound ? 'rounded-full' : 'rounded-2xl',
         style,
       ].join(' ')}
+      style={table.color ? { borderColor: table.color } : undefined}
     >
       <div className="flex items-center gap-1">
-        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${STATUS_DOT[table.status]}`} />
+        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${STATUS_DOT[status]}`} />
         <span className="text-xs font-semibold truncate max-w-[72px]">{table.name}</span>
       </div>
 
-      {isOccupied && table.orderTotal != null && (
+      {isOccupied && orderTotal != null && (
         <div className="flex items-center gap-0.5 text-amber-400">
           <DollarSign className="h-3 w-3" />
-          <span className="text-[10px] font-semibold">{formatCurrency(table.orderTotal)}</span>
+          <span className="text-[10px] font-semibold">{formatCurrency(orderTotal)}</span>
         </div>
       )}
 
-      {isOccupied && table.guests != null && (
-        <div className="flex items-center gap-0.5 text-muted-foreground">
-          <Users className="h-3 w-3" />
-          <span className="text-[10px]">{table.guests}</span>
-        </div>
-      )}
+      <div className="flex items-center gap-0.5 text-muted-foreground">
+        <Users className="h-3 w-3" />
+        <span className="text-[10px]">{table.seats}</span>
+      </div>
 
       {!isOccupied && (
-        <span className="text-[10px] text-muted-foreground">{STATUS_LABEL[table.status]}</span>
+        <span className="text-[10px] text-muted-foreground">{STATUS_LABEL[status]}</span>
       )}
     </button>
   )
@@ -109,44 +111,67 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
 
 export default function PosRestaurant() {
   const navigate = useNavigate()
-  const [selectedFloor, setSelectedFloor] = useState<string | null>(null)
+  const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null)
 
-  // Attempt to fetch pos.preset — fall back gracefully on 404 / error
-  const { data: presetsData, isLoading, isError } = useQuery<{ records: PosPreset[] }>({
-    queryKey: ['pos-presets'],
-    queryFn: () =>
-      erpClient.raw
-        .post('/model/pos.preset', {
-          fields: ['id', 'name', 'sequence', 'type'],
-          order: 'sequence asc',
-          limit: 100,
-        })
-        .then(r => r.data),
+  // Fetch tables (real)
+  const { data: tables, isLoading, isError } = useQuery<RestaurantTable[]>({
+    queryKey: ['restaurant-tables'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/restaurant.table', {
+        domain: [['active', '=', true]],
+        fields: ['id', 'name', 'seats', 'shape', 'position_h', 'position_v', 'width', 'height', 'color', 'floor_id'],
+        limit: 200,
+      })
+      return data?.records || []
+    },
     retry: false,
-    staleTime: 60_000,
   })
 
-  // Build table list — from presets if available, else fallback
-  const tables: TableData[] = (() => {
-    if (isError || !presetsData?.records?.length) {
-      return buildFallbackTables()
-    }
-    return presetsData.records.map((p, i) => ({
-      id: p.id,
-      name: p.name,
-      status: (STATUSES[i % 3]) as TableStatus,
-      floor: 'Main Floor',
-    }))
-  })()
+  // Fetch floors (optional)
+  const { data: floors } = useQuery<RestaurantFloor[]>({
+    queryKey: ['restaurant-floors'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/restaurant.floor', {
+        fields: ['id', 'name', 'sequence'],
+        order: 'sequence asc, id asc',
+        limit: 50,
+      })
+      return data?.records || []
+    },
+    retry: false,
+  })
 
-  // Derive distinct floors
-  const floors = Array.from(new Set(tables.map(t => t.floor).filter(Boolean))) as string[]
-  const activeFloor = selectedFloor ?? (floors[0] ?? null)
-  const visibleTables = activeFloor
-    ? tables.filter(t => t.floor === activeFloor)
-    : tables
+  // Fetch active draft orders to compute occupancy
+  const { data: activeOrders } = useQuery<PosOrderRow[]>({
+    queryKey: ['pos-orders-draft'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/pos.order', {
+        domain: [['state', '=', 'draft']],
+        fields: ['id', 'table_id', 'amount_total', 'state', 'partner_id'],
+        limit: 500,
+      })
+      return data?.records || []
+    },
+    retry: false,
+  })
+
+  // Build occupancy map: table_id → { total }
+  const occupancy = new Map<number, { total: number }>()
+  for (const o of activeOrders ?? []) {
+    if (Array.isArray(o.table_id)) {
+      const tid = o.table_id[0]
+      const existing = occupancy.get(tid)
+      occupancy.set(tid, { total: (existing?.total ?? 0) + Number(o.amount_total || 0) })
+    }
+  }
+
+  const allTables = tables ?? []
+  const visibleTables = selectedFloorId == null
+    ? allTables
+    : allTables.filter(t => Array.isArray(t.floor_id) && t.floor_id[0] === selectedFloorId)
 
   function openTerminal(tableId: number) {
+    // Note: configId 1 is a placeholder when no specific config is in context.
     navigate(`/admin/pos/terminal/1?table=${tableId}`)
   }
 
@@ -165,27 +190,55 @@ export default function PosRestaurant() {
     )
   }
 
+  // ── error / empty state ────────────────────────────────────────────────────
+
+  if (isError || allTables.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Restaurant" backTo="/admin/pos" />
+        <EmptyState
+          icon={<Utensils className="h-12 w-12" />}
+          title="No restaurant tables configured"
+          description="Set up tables in POS → Configuration → Restaurant Floor Designer (coming soon)."
+        />
+      </div>
+    )
+  }
+
   // ── render ─────────────────────────────────────────────────────────────────
+
+  const hasFloors = (floors?.length ?? 0) > 0
 
   return (
     <div className="space-y-6">
       <PageHeader title="Restaurant" backTo="/admin/pos" />
 
       {/* Floor selector */}
-      {floors.length > 1 && (
-        <div className="flex gap-2">
-          {floors.map(floor => (
+      {hasFloors && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setSelectedFloorId(null)}
+            className={[
+              'rounded-xl px-4 py-2 text-sm font-medium transition-all',
+              selectedFloorId === null
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border/40 bg-muted/30 text-muted-foreground hover:bg-muted/60',
+            ].join(' ')}
+          >
+            All Floors
+          </button>
+          {(floors ?? []).map(floor => (
             <button
-              key={floor}
-              onClick={() => setSelectedFloor(floor)}
+              key={floor.id}
+              onClick={() => setSelectedFloorId(floor.id)}
               className={[
                 'rounded-xl px-4 py-2 text-sm font-medium transition-all',
-                activeFloor === floor
+                selectedFloorId === floor.id
                   ? 'bg-primary text-primary-foreground'
                   : 'border border-border/40 bg-muted/30 text-muted-foreground hover:bg-muted/60',
               ].join(' ')}
             >
-              {floor}
+              {floor.name}
             </button>
           ))}
         </div>
@@ -203,16 +256,26 @@ export default function PosRestaurant() {
 
       {/* Floor plan grid */}
       <div>
-        {activeFloor && (
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-            {activeFloor}
-          </h2>
-        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {visibleTables.map(table => (
-            <TableCard key={table.id} table={table} onClick={() => openTerminal(table.id)} />
-          ))}
+          {visibleTables.map(table => {
+            const occ = occupancy.get(table.id)
+            const status: TableStatus = occ ? 'occupied' : 'available'
+            return (
+              <TableCard
+                key={table.id}
+                table={table}
+                status={status}
+                orderTotal={occ?.total}
+                onClick={() => openTerminal(table.id)}
+              />
+            )
+          })}
         </div>
+        {visibleTables.length === 0 && (
+          <p className="text-sm text-muted-foreground italic mt-4 text-center">
+            No tables on this floor.
+          </p>
+        )}
       </div>
     </div>
   )

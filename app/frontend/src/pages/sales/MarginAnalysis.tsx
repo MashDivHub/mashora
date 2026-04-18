@@ -141,7 +141,15 @@ export default function MarginAnalysis() {
                   {fmt(line.price_subtotal)}
                 </TableCell>
                 <TableCell className={`text-right font-mono text-sm font-medium ${line.margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {fmt(line.margin)}
+                  <span
+                    className="inline-flex items-center gap-1 justify-end"
+                    aria-label={line.margin >= 0 ? `positive margin ${fmt(line.margin)}` : `negative margin ${fmt(line.margin)}`}
+                  >
+                    {line.margin >= 0
+                      ? <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                      : <TrendingDown className="h-3 w-3" aria-hidden="true" />}
+                    {fmt(line.margin)}
+                  </span>
                 </TableCell>
                 <TableCell className={`text-right font-mono text-sm font-medium ${marginPctColor(line.margin_percent)}`}>
                   {line.margin_percent.toFixed(1)}%
@@ -156,7 +164,15 @@ export default function MarginAnalysis() {
                 {fmt(totalSubtotal)}
               </TableCell>
               <TableCell className={`text-right font-mono text-sm ${totalMargin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {fmt(totalMargin)}
+                <span
+                  className="inline-flex items-center gap-1 justify-end"
+                  aria-label={totalMargin >= 0 ? `positive margin ${fmt(totalMargin)}` : `negative margin ${fmt(totalMargin)}`}
+                >
+                  {totalMargin >= 0
+                    ? <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    : <TrendingDown className="h-3 w-3" aria-hidden="true" />}
+                  {fmt(totalMargin)}
+                </span>
               </TableCell>
               <TableCell className={`text-right font-mono text-sm ${marginPctColor(overallMarginPct)}`}>
                 {overallMarginPct.toFixed(1)}%

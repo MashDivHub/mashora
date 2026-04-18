@@ -24,11 +24,18 @@ from sqlalchemy.sql import ColumnElement
 def _get_column(model_cls, field_name: str):
     """Get a SQLAlchemy column from a model class, handling dotted paths."""
     if "." in field_name:
-        # For dotted paths like "partner_id.name", we need joins
-        # For now, just get the first part (the FK column)
         parts = field_name.split(".")
         return getattr(model_cls, parts[0], None)
     return getattr(model_cls, field_name, None)
+
+
+def _is_relationship(model_cls, attr_name: str) -> bool:
+    """Return True if the attribute is a SQLAlchemy relationship (not a scalar column)."""
+    attr = getattr(model_cls, attr_name, None)
+    if attr is None:
+        return False
+    prop = getattr(attr, "property", None)
+    return isinstance(prop, RelationshipProperty)
 
 
 def _coerce_value(col, value: Any) -> Any:
@@ -61,6 +68,23 @@ def _coerce_value(col, value: Any) -> Any:
 
 def _make_condition(model_cls, field_name: str, operator: str, value: Any) -> ColumnElement:
     """Convert a single (field, operator, value) triple to a SQLAlchemy condition."""
+
+    # Handle one-hop dotted paths on relationships: "order_line.product_id", "partner_id.name"
+    if "." in field_name:
+        head, *rest = field_name.split(".", 1)
+        tail = rest[0] if rest else ""
+        rel_attr = getattr(model_cls, head, None)
+        if rel_attr is not None and _is_relationship(model_cls, head):
+            target_cls = rel_attr.property.mapper.class_
+            # Recurse so the tail can itself be dotted (but we only support one extra hop here)
+            inner = _make_condition(target_cls, tail, operator, value)
+            if rel_attr.property.uselist:
+                # one-to-many / many-to-many → EXISTS subquery
+                return rel_attr.any(inner)
+            else:
+                # many-to-one → HAS subquery
+                return rel_attr.has(inner)
+
     col = _get_column(model_cls, field_name)
     if col is None:
         # Unknown field — return always-true to avoid breaking queries

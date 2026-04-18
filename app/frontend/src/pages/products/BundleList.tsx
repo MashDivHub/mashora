@@ -8,6 +8,7 @@ import { BoxesIcon, Plus, Pencil, Trash2, Package, Search, X } from 'lucide-reac
 import { PageHeader } from '@/components/shared'
 import { toast } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface Bom {
   id: number
@@ -30,7 +31,7 @@ export default function BundleList() {
   const { data, isLoading } = useQuery({
     queryKey: ['bundles', search],
     queryFn: async () => {
-      const domain: any[] = [['type', '=', 'phantom']]
+      const domain: (string | [string, string, unknown])[] = [['type', '=', 'phantom']]
       if (search) domain.push('|', ['code', 'ilike', search], ['product_tmpl_id', 'ilike', search])
       const { data } = await erpClient.raw.post('/model/mrp.bom', {
         domain, fields: FIELDS, limit: 100, order: 'id desc',
@@ -42,7 +43,7 @@ export default function BundleList() {
   const deleteMut = useMutation({
     mutationFn: (id: number) => erpClient.raw.delete(`/model/mrp.bom/${id}`),
     onSuccess: () => { toast.success('Bundle deleted'); queryClient.invalidateQueries({ queryKey: ['bundles'] }) },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Delete failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Delete failed')),
   })
 
   const records = data?.records ?? []
@@ -153,8 +154,8 @@ function CreateBundleCard({ onCreated, onCancel }: { onCreated: () => void; onCa
       })
       toast.success(`Bundle "${productName}" created`)
       onCreated()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Create failed')
+    } catch (e: unknown) {
+      toast.error(extractErrorMessage(e, 'Create failed'))
     } finally {
       setBusy(false)
     }
@@ -165,7 +166,7 @@ function CreateBundleCard({ onCreated, onCancel }: { onCreated: () => void; onCa
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">New Bundle / Kit</h3>
-          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground transition-colors"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onCancel} aria-label="Cancel new bundle" className="text-muted-foreground hover:text-foreground transition-colors"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">

@@ -17,13 +17,14 @@ import { erpClient } from '@/lib/erp-api'
 import AttachmentPanel from '../../AttachmentPanel'
 import { DebugPanel } from '../../DebugMode'
 import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
 
 export default function FormView({ model, recordId }: ViewProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(!recordId)
   const [state, setState] = useState<RecordState | null>(null)
-  const [wizardState, setWizardState] = useState<{ open: boolean; model: string; context?: Record<string, any> }>({ open: false, model: '' })
+  const [wizardState, setWizardState] = useState<{ open: boolean; model: string; context?: Record<string, unknown> }>({ open: false, model: '' })
   const [reportState, setReportState] = useState<{ open: boolean; reportName: string; recordIds: number[] }>({ open: false, reportName: '', recordIds: [] })
 
   const { data: formData, isLoading } = useQuery({
@@ -44,7 +45,8 @@ export default function FormView({ model, recordId }: ViewProps) {
 
   useEffect(() => {
     if (formData) {
-      setState(createRecordState(model, formData.record.id ?? null, formData.record))
+      const rid = typeof formData.record.id === 'number' ? formData.record.id : null
+      setState(createRecordState(model, rid, formData.record as Record<string, unknown>))
     }
   }, [formData, model])
 
@@ -56,7 +58,7 @@ export default function FormView({ model, recordId }: ViewProps) {
     onOpenUrl: (url) => window.open(url, '_blank'),
   }
 
-  const handleFieldChange = useCallback(async (fieldName: string, value: any) => {
+  const handleFieldChange = useCallback(async (fieldName: string, value: unknown) => {
     if (!state) return
     const newState = updateField(state, fieldName, value)
     setState(newState)
@@ -66,10 +68,8 @@ export default function FormView({ model, recordId }: ViewProps) {
       if (updates && Object.keys(updates).length > 0) {
         setState(prev => prev ? mergeOnchangeResult(prev, updates) : prev)
       }
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || e?.message || 'An error occurred'
-      console.error('Onchange failed:', msg)
-      toast.error('Field update failed', msg)
+    } catch (e: unknown) {
+      toast.error('Field update failed', extractErrorMessage(e, 'An error occurred'))
     }
   }, [state, model])
 
@@ -85,10 +85,8 @@ export default function FormView({ model, recordId }: ViewProps) {
       } else {
         queryClient.invalidateQueries({ queryKey: ['form', model, recordId] })
       }
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || e?.message || 'An error occurred'
-      console.error('Save failed:', msg)
-      toast.error('Save failed', msg)
+    } catch (e: unknown) {
+      toast.error('Save failed', extractErrorMessage(e, 'An error occurred'))
     }
   }, [state, model, recordId, navigate, queryClient])
 
@@ -112,14 +110,14 @@ export default function FormView({ model, recordId }: ViewProps) {
           const action = await fetchAction(actionId)
           // Handle report actions directly
           if (action.action_type === 'ir.actions.report' || action.type === 'ir.actions.report') {
-            const reportName = (action as any).report_name || actionRef
+            const reportName = action.report_name || actionRef
             const ids = state?.id ? [state.id] : []
             setReportState({ open: true, reportName, recordIds: ids })
           } else {
             handleActionResult(action, actionCallbacks)
           }
-        } catch (e: any) {
-          console.error('Action failed:', e)
+        } catch (e: unknown) {
+          toast.error('Action Failed', extractErrorMessage(e, 'Could not execute action'))
         }
       }
       return
@@ -130,13 +128,13 @@ export default function FormView({ model, recordId }: ViewProps) {
     if (!recordId && state) {
       try {
         const saved = await saveRecord(model, state)
-        recordId = saved.id ?? null
+        recordId = typeof saved.id === 'number' ? saved.id : null
         if (recordId) {
           setState(prev => prev ? markSaved(prev, saved) : prev)
           navigate(`/admin/model/${model}/${recordId}`, { replace: true })
         }
-      } catch (e: any) {
-        console.error('Save before action failed:', e)
+      } catch (e: unknown) {
+        toast.error('Save Failed', extractErrorMessage(e, 'Could not save before action'))
         return
       }
     }
@@ -145,8 +143,8 @@ export default function FormView({ model, recordId }: ViewProps) {
     try {
       const result = await executeButton(model, recordId, method)
       handleActionResult(result, actionCallbacks)
-    } catch (e: any) {
-      console.error('Button action failed:', e)
+    } catch (e: unknown) {
+      toast.error('Action Failed', extractErrorMessage(e, 'Button action could not complete'))
     }
   }, [state, model, actionCallbacks, navigate])
 
@@ -230,8 +228,8 @@ export default function FormView({ model, recordId }: ViewProps) {
         {/* Form body from arch — add top padding to clear sticky toolbar */}
         <div className="pt-1">
         <FormRenderer
-          arch={viewDef?.arch}
-          fields={viewDef?.fields || {}}
+          arch={viewDef?.arch as never}
+          fields={(viewDef?.fields || {}) as never}
           record={state.data}
           readonly={!editing}
           onFieldChange={handleFieldChange}
@@ -240,7 +238,7 @@ export default function FormView({ model, recordId }: ViewProps) {
         </div>
       </div>
 
-      <DebugPanel info={{ model, viewType: 'form', viewId: formData?.viewDef?.view?.id, recordId: state?.id, record: state?.data }} />
+      <DebugPanel info={{ model, viewType: 'form', viewId: (formData?.viewDef as { view?: { id?: number } } | undefined)?.view?.id, recordId: state?.id, record: state?.data }} />
 
       {hasChatter && state?.id && (
         <div className="-mx-4 sm:-mx-6 lg:-mx-8">

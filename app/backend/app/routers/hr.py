@@ -10,7 +10,7 @@ Provides REST API for:
 - Leave Types
 - HR Dashboard
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
 from app.schemas.hr import (
@@ -299,6 +299,36 @@ async def update_expense_endpoint(expense_id: int, body: ExpenseUpdate, user: Cu
 async def submit_expenses_endpoint(body: ExpenseSubmitBody, user: CurrentUser | None = Depends(get_optional_user)):
     """Create an expense sheet from selected expenses."""
     return await submit_expenses(expense_ids=body.expense_ids)
+
+
+@router.post("/expenses/ocr")
+async def ocr_receipt(
+    file: UploadFile = File(...),
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """OCR scan of an expense receipt. Returns extracted fields.
+
+    Currently returns mock/empty data — wire this endpoint to Tesseract.js
+    (client-side), AWS Textract, or Google Document AI for real extraction.
+    """
+    # Drain the upload so the client request completes cleanly even though
+    # we are not yet persisting the bytes anywhere.
+    _ = await file.read()
+
+    extracted = {
+        "vendor_name": "",
+        "total_amount": 0.0,
+        "date": None,
+        "currency": "USD",
+        "items": [],
+        "confidence": 0.0,
+        "warning": (
+            "OCR engine not configured. Returning empty fields. Install "
+            "Tesseract.js client-side or wire AWS Textract / Google Document AI "
+            "to populate."
+        ),
+    }
+    return extracted
 
 
 # ============================================

@@ -1,5 +1,5 @@
 import type { FieldProps } from './FieldRegistry'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, cn } from '@mashora/design-system'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, cn, statusToBadgeVariant } from '@mashora/design-system'
 import { formatSelection } from '../utils/format'
 import { Check } from 'lucide-react'
 
@@ -46,8 +46,8 @@ export default function SelectionField({ name, value, fieldMeta, onChange, reado
 
   if (readonly || widget === 'badge') {
     const label = formatSelection(value, options)
-    const variant = STATUS_COLORS[value as string] || 'secondary'
-    return <Badge variant={variant as any} className={cn('text-xs', className)}>{label || <span className="text-muted-foreground/40">&mdash;</span>}</Badge>
+    const variant = statusToBadgeVariant(STATUS_COLORS[value as string])
+    return <Badge variant={variant} className={cn('text-xs', className)}>{label || <span className="text-muted-foreground/40">&mdash;</span>}</Badge>
   }
 
   return (

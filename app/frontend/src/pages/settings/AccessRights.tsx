@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Badge, Button, Card, CardContent, Input, Label } from '@mashora/design-system'
+import { Badge, Button, Card, CardContent, Input, Label, cn } from '@mashora/design-system'
 import { Lock, Search, Plus, Trash2, X } from 'lucide-react'
-import { PageHeader, toast } from '@/components/shared'
+import { PageHeader, toast, LoadingState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface AclRecord {
   id: number
@@ -83,13 +84,13 @@ export default function AccessRights() {
       setNewName(''); setNewModelId(''); setNewGroupId(''); setShowCreate(false)
       qc.invalidateQueries({ queryKey: ['permission-acl-list'] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Create failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Create failed')),
   })
 
   const deleteMut = useMutation({
     mutationFn: async (id: number) => { await erpClient.raw.delete(`/permissions/acl/${id}`) },
     onSuccess: () => { toast.success('ACL deleted'); qc.invalidateQueries({ queryKey: ['permission-acl-list'] }) },
-    onError: (e: any) => toast.error(e?.response?.data?.detail || 'Delete failed'),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e, 'Delete failed')),
   })
 
   const records = data?.records || []
@@ -128,14 +129,14 @@ export default function AccessRights() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Model</Label>
-                <select value={newModelId} onChange={e => setNewModelId(Number(e.target.value))} className={selectCls + ' w-full'}>
+                <select value={newModelId} onChange={e => setNewModelId(Number(e.target.value))} className={cn(selectCls, 'w-full')}>
                   <option value="">Select model...</option>
                   {models.map(m => <option key={m.id} value={m.id}>{m.model} ({m.name})</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Group (optional)</Label>
-                <select value={newGroupId} onChange={e => setNewGroupId(e.target.value ? Number(e.target.value) : '')} className={selectCls + ' w-full'}>
+                <select value={newGroupId} onChange={e => setNewGroupId(e.target.value ? Number(e.target.value) : '')} className={cn(selectCls, 'w-full')}>
                   <option value="">Global (no group)</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
@@ -167,7 +168,7 @@ export default function AccessRights() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center"><LoadingState label="Loading access rights..." /></td></tr>
               ) : records.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No rules found</td></tr>
               ) : (

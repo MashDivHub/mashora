@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Clock, Users, FolderKanban } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, LoadingState } from '@/components/shared'
 import { Button } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
 
@@ -174,7 +174,7 @@ export default function TimesheetSummary() {
             <h3 className="text-sm font-semibold">By Project</h3>
           </div>
           {loading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+            <LoadingState className="py-6" />
           ) : (
             <GroupTable rows={byProject} emptyText="No data for this period" />
           )}
@@ -187,7 +187,7 @@ export default function TimesheetSummary() {
             <h3 className="text-sm font-semibold">By Employee</h3>
           </div>
           {loading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+            <LoadingState className="py-6" />
           ) : (
             <GroupTable rows={byEmployee} emptyText="No data for this period" />
           )}

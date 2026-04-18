@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { Badge } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
 import { Briefcase } from 'lucide-react'
@@ -119,12 +119,11 @@ export default function JobList() {
           ))}
         </div>
       ) : records.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="rounded-2xl border border-border/70 bg-muted/60 p-4 text-muted-foreground">
-            <Briefcase className="h-6 w-6" />
-          </div>
-          <p className="text-sm font-medium">No job positions found</p>
-        </div>
+        <EmptyState
+          icon={<Briefcase className="h-12 w-12" />}
+          title="No job positions yet"
+          description="Create job positions to start posting openings."
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {records.map(job => (

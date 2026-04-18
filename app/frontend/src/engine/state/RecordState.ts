@@ -22,7 +22,7 @@ export function createRecordState(model: string, id: number | null, data: Record
   }
 }
 
-export function updateField(state: RecordState, field: string, value: any): RecordState {
+export function updateField(state: RecordState, field: string, value: unknown): RecordState {
   const newData = { ...state.data, [field]: value }
   const newDirty = new Set(state.dirtyFields)
   if (JSON.stringify(value) !== JSON.stringify(state.originalData[field])) {

@@ -34,7 +34,8 @@ export default function InventoryValuation() {
             order: 'create_date desc',
             limit: 200,
           })
-          return (data.records ?? []).map((r: any) => ({ ...r, unit_cost: r.quantity ? r.value / r.quantity : 0 }))
+          interface QuantRow { id: number; product_id?: [number, string] | false; quantity?: number; value?: number; create_date?: string | false; [k: string]: unknown }
+          return ((data.records ?? []) as QuantRow[]).map((r) => ({ ...r, unit_cost: r.quantity ? (r.value ?? 0) / r.quantity : 0 }))
         } catch {
           return []
         }

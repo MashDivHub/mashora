@@ -5,9 +5,16 @@ import {
   Button, Checkbox, Skeleton, cn,
 } from '@mashora/design-system'
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import ErrorState from './ErrorState'
 
 /* ── Column Definition ── */
-export interface Column<T = any> {
+// NOTE: the `value` type below is intentionally `any`. Column render/format
+// callbacks are passed arbitrary cell values pulled from a row's `[key]`, and
+// narrowing to `unknown` breaks dozens of ad-hoc call sites that compare,
+// index, or pass the value to `Date`/template strings. Keeping this `any`
+// localised to the Column edge is the pragmatic trade-off.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface Column<T = Record<string, any>> {
   key: string
   label: string
   sortable?: boolean
@@ -15,12 +22,15 @@ export interface Column<T = any> {
   width?: string
   className?: string
   /** Custom render function. Receives row data + cell value */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   render?: (value: any, row: T) => ReactNode
   /** If no custom render, format the raw value */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   format?: (value: any) => string
 }
 
 /* ── Props ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DataTableProps<T = Record<string, any>> {
   columns: Column<T>[]
   data: T[]
@@ -32,6 +42,10 @@ export interface DataTableProps<T = Record<string, any>> {
   sortDir?: 'asc' | 'desc'
   onSort?: (field: string, dir: 'asc' | 'desc') => void
   loading?: boolean
+  /** Render an error fallback with Retry button when the fetch fails */
+  isError?: boolean
+  error?: Error | unknown
+  onRetry?: () => void
   emptyMessage?: string
   emptyIcon?: ReactNode
   /** Row click handler — receives the row data */
@@ -48,6 +62,7 @@ export interface DataTableProps<T = Record<string, any>> {
   className?: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function DataTable<T extends Record<string, any> = Record<string, any>>({
   columns,
   data,
@@ -59,6 +74,9 @@ export default function DataTable<T extends Record<string, any> = Record<string,
   sortDir = 'asc',
   onSort,
   loading,
+  isError,
+  error,
+  onRetry,
   emptyMessage = 'No records found',
   emptyIcon,
   onRowClick,
@@ -117,6 +135,8 @@ export default function DataTable<T extends Record<string, any> = Record<string,
             <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState error={error} onRetry={onRetry} />
       ) : (
         <>
           <div className="overflow-x-auto">

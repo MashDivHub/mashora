@@ -1,13 +1,16 @@
 import { erpClient } from '@/lib/erp-api'
 import { getCached, setCache } from './utils/cache'
 
+export type DomainLeaf = [string, string, unknown] | string
+export type Domain = DomainLeaf[]
+
 export interface ActionDefinition {
   id: number
   name: string
   res_model: string
   view_mode: string
   view_mode_list: string[]
-  domain: any[] | false
+  domain: Domain | false
   context: string | false
   target: string
   limit: number | false
@@ -18,14 +21,32 @@ export interface ActionDefinition {
   views: Array<{ view_id: [number, string] | false; view_mode: string; sequence: number }>
   // Client action fields
   tag?: string
-  params?: Record<string, any>
+  params?: Record<string, unknown>
   // URL action fields
   url?: string
+  // Report action fields
+  report_name?: string
+  [key: string]: unknown
 }
 
 export interface ActionResult {
   type: string
-  [key: string]: any
+  [key: string]: unknown
+}
+
+export interface MenuNode {
+  id: number
+  name: string
+  parent_id?: [number, string] | false
+  action?: string | false
+  children?: MenuNode[]
+  [key: string]: unknown
+}
+
+export interface ViewDefinition {
+  arch: string
+  fields: Record<string, Record<string, unknown>>
+  [key: string]: unknown
 }
 
 export async function fetchAction(actionId: number | string, actionModel?: string): Promise<ActionDefinition> {
@@ -51,9 +72,9 @@ export async function fetchActionForModel(model: string): Promise<ActionDefiniti
   }
 }
 
-export async function fetchMenuTree(): Promise<any[]> {
+export async function fetchMenuTree(): Promise<MenuNode[]> {
   const cacheKey = 'menu_tree'
-  const cached = getCached<any[]>(cacheKey)
+  const cached = getCached<MenuNode[]>(cacheKey)
   if (cached) return cached
 
   const { data } = await erpClient.raw.get('/menus')
@@ -61,9 +82,9 @@ export async function fetchMenuTree(): Promise<any[]> {
   return data
 }
 
-export async function fetchViewDefinition(model: string, viewType: string): Promise<any> {
+export async function fetchViewDefinition(model: string, viewType: string): Promise<ViewDefinition> {
   const cacheKey = `view_${model}_${viewType}`
-  const cached = getCached<any>(cacheKey)
+  const cached = getCached<ViewDefinition>(cacheKey)
   if (cached) return cached
 
   const { data } = await erpClient.raw.get(`/views/${model}/${viewType}`)
@@ -71,12 +92,12 @@ export async function fetchViewDefinition(model: string, viewType: string): Prom
   return data
 }
 
-export async function fetchDefaults(model: string, fields?: string[]): Promise<Record<string, any>> {
+export async function fetchDefaults(model: string, fields?: string[]): Promise<Record<string, unknown>> {
   const { data } = await erpClient.raw.post(`/model/${model}/defaults`, { fields })
   return data
 }
 
-export async function callOnchange(model: string, recordId: number | null, fieldName: string, fieldValue: any, currentValues: Record<string, any>): Promise<any> {
+export async function callOnchange(model: string, recordId: number | null, fieldName: string, fieldValue: unknown, currentValues: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data } = await erpClient.raw.post(`/model/${model}/onchange`, {
     record_id: recordId,
     field_name: fieldName,
@@ -86,7 +107,7 @@ export async function callOnchange(model: string, recordId: number | null, field
   return data
 }
 
-export async function callMethod(model: string, recordIds: number[], method: string, args?: any[], kwargs?: Record<string, any>): Promise<ActionResult | any> {
+export async function callMethod(model: string, recordIds: number[], method: string, args?: unknown[], kwargs?: Record<string, unknown>): Promise<ActionResult | unknown> {
   const { data } = await erpClient.raw.post(`/model/${model}/call`, {
     record_ids: recordIds,
     method,
@@ -96,18 +117,22 @@ export async function callMethod(model: string, recordIds: number[], method: str
   return data.result
 }
 
-export function isWizardAction(result: any): boolean {
-  return result && typeof result === 'object' && result.type === 'ir.actions.act_window' && result.target === 'new'
+function isObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object'
 }
 
-export function isNavigationAction(result: any): boolean {
-  return result && typeof result === 'object' && result.type === 'ir.actions.act_window' && result.target !== 'new'
+export function isWizardAction(result: unknown): boolean {
+  return isObject(result) && result.type === 'ir.actions.act_window' && result.target === 'new'
 }
 
-export function isUrlAction(result: any): boolean {
-  return result && typeof result === 'object' && result.type === 'ir.actions.act_url'
+export function isNavigationAction(result: unknown): boolean {
+  return isObject(result) && result.type === 'ir.actions.act_window' && result.target !== 'new'
 }
 
-export function isReportAction(result: any): boolean {
-  return result && typeof result === 'object' && result.type === 'ir.actions.report'
+export function isUrlAction(result: unknown): boolean {
+  return isObject(result) && result.type === 'ir.actions.act_url'
+}
+
+export function isReportAction(result: unknown): boolean {
+  return isObject(result) && result.type === 'ir.actions.report'
 }

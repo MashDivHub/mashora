@@ -41,7 +41,7 @@ export default function PageHeader({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           {backTo && (
-            <button onClick={handleBack} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            <button onClick={handleBack} aria-label="Go back" className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}

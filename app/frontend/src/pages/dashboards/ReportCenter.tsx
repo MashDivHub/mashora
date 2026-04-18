@@ -26,11 +26,11 @@ const GROUPS: ReportGroup[] = [
   {
     title: 'Accounting Reports',
     links: [
-      { icon: <BookOpen className="h-4 w-4" />, label: 'Trial Balance', to: '/accounting/reports/trial-balance' },
-      { icon: <TrendingUp className="h-4 w-4" />, label: 'Profit & Loss', to: '/accounting/reports/profit-loss' },
-      { icon: <BarChart2 className="h-4 w-4" />, label: 'Balance Sheet', to: '/accounting/reports/balance-sheet' },
-      { icon: <DollarSign className="h-4 w-4" />, label: 'Aged Receivable', to: '/accounting/reports/aged-receivable' },
-      { icon: <FileText className="h-4 w-4" />, label: 'Aged Payable', to: '/accounting/reports/aged-payable' },
+      { icon: <BookOpen className="h-4 w-4" />, label: 'Trial Balance', to: '/admin/accounting/reports/trial-balance' },
+      { icon: <TrendingUp className="h-4 w-4" />, label: 'Profit & Loss', to: '/admin/accounting/reports/profit-loss' },
+      { icon: <BarChart2 className="h-4 w-4" />, label: 'Balance Sheet', to: '/admin/accounting/reports/balance-sheet' },
+      { icon: <DollarSign className="h-4 w-4" />, label: 'Aged Receivable', to: '/admin/accounting/reports/aged-receivable' },
+      { icon: <FileText className="h-4 w-4" />, label: 'Aged Payable', to: '/admin/accounting/reports/aged-payable' },
     ],
   },
   {
@@ -42,13 +42,13 @@ const GROUPS: ReportGroup[] = [
   {
     title: 'Project Reports',
     links: [
-      { icon: <Clock className="h-4 w-4" />, label: 'Timesheet Summary', to: '/projects/timesheets/summary' },
+      { icon: <Clock className="h-4 w-4" />, label: 'Timesheet Summary', to: '/admin/projects/timesheets/summary' },
     ],
   },
   {
     title: 'Website Reports',
     links: [
-      { icon: <Globe className="h-4 w-4" />, label: 'Visitor Analytics', to: '/website/analytics' },
+      { icon: <Globe className="h-4 w-4" />, label: 'Visitor Analytics', to: '/admin/website/analytics' },
     ],
   },
 ]

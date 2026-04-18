@@ -10,26 +10,66 @@ import {
   Wrench, FileCheck, Send, Printer, CheckCircle, XCircle, Lock, Unlock,
   Copy, RotateCcw, CreditCard, Ban, Play, Pause, RefreshCw, Download,
   Upload, Trash2, Plus, Edit3, Archive, ExternalLink,
+  type LucideIcon,
 } from 'lucide-react'
 
+/**
+ * Arch nodes are parsed XML — the shape is dynamic (attrs, children, tag).
+ * We narrow at use sites rather than enumerating every possible field.
+ */
+interface ArchNode {
+  tag?: string
+  name?: string
+  string?: string
+  widget?: string
+  text?: string
+  class?: string
+  readonly?: string | boolean
+  required?: string | boolean
+  invisible?: string | boolean
+  nolabel?: string
+  col?: string
+  for_?: string
+  href?: string
+  src?: string
+  type?: string
+  confirm?: string
+  children?: ArchNode[]
+  attrs?: Record<string, string | undefined>
+  [key: string]: unknown
+}
+
+type FieldMeta = {
+  type: string
+  string: string
+  help?: string
+  required?: boolean
+  readonly?: boolean
+  selection?: [string, string][]
+  relation?: string
+  digits?: [number, number]
+  currency_field?: string
+  [key: string]: unknown
+}
+
 interface FormRendererProps {
-  arch: any
-  fields: Record<string, any>
-  record: Record<string, any>
+  arch: ArchNode | null | undefined
+  fields: Record<string, FieldMeta>
+  record: Record<string, unknown>
   readonly: boolean
-  onFieldChange: (name: string, value: any) => void
+  onFieldChange: (name: string, value: unknown) => void
   onButtonClick: (method: string, confirm?: string) => void
 }
 
 /* ── Format monetary with Mashora currency_id ([id, "USD"]) ── */
-function fmtMoney(value: any, currencyId?: any): string {
+function fmtMoney(value: unknown, currencyId?: unknown): string {
   if (value === null || value === false || value === undefined) return ''
   const sym = Array.isArray(currencyId) ? currencyId[1] || '$' : (typeof currencyId === 'string' ? currencyId : '$')
   return `${sym}\u00a0${Number(value).toFixed(2)}`
 }
 
 /* ── Stat-button icon heuristic ── */
-const STAT_ICONS: Record<string, any> = {
+const STAT_ICONS: Record<string, LucideIcon> = {
   delivery: Truck, picking: Truck, shipment: Truck, shipping: Truck,
   invoice: FileText, bill: FileText, payment: DollarSign, credit_note: FileText,
   purchase: ShoppingCart, vendor: ShoppingCart,
@@ -43,7 +83,7 @@ const STAT_ICONS: Record<string, any> = {
   view: Eye, report: FileText, repair: Wrench,
 }
 
-function guessStatIcon(name: string, label: string): any {
+function guessStatIcon(name: string, label: string): LucideIcon {
   const text = `${name} ${label}`.toLowerCase()
   for (const [keyword, icon] of Object.entries(STAT_ICONS)) {
     if (text.includes(keyword)) return icon
@@ -52,7 +92,7 @@ function guessStatIcon(name: string, label: string): any {
 }
 
 /* ── Workflow button icon heuristic ── */
-const BTN_ICONS: Record<string, any> = {
+const BTN_ICONS: Record<string, LucideIcon> = {
   send: Send, mail: Send, email: Send, quotation_send: Send,
   print: Printer, report: Printer,
   confirm: CheckCircle, validate: CheckCircle, approve: CheckCircle, action_confirm: CheckCircle,
@@ -74,7 +114,7 @@ const BTN_ICONS: Record<string, any> = {
   capture: CreditCard, void: Ban,
 }
 
-function guessButtonIcon(name: string, label: string): any | null {
+function guessButtonIcon(name: string, label: string): LucideIcon | null {
   const text = `${name} ${label}`.toLowerCase()
   for (const [keyword, icon] of Object.entries(BTN_ICONS)) {
     if (text.includes(keyword)) return icon
@@ -85,7 +125,7 @@ function guessButtonIcon(name: string, label: string): any | null {
 export default function FormRenderer({ arch, fields, record, readonly, onFieldChange, onButtonClick }: FormRendererProps) {
   if (!arch) return null
 
-  function isInvisible(el: any): boolean {
+  function isInvisible(el: ArchNode): boolean {
     if (!el.invisible) return false
     const inv = String(el.invisible)
     if (inv === '1' || inv === 'True' || inv === 'true') return true
@@ -96,7 +136,7 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
     }
   }
 
-  function renderField(el: any, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
+  function renderField(el: ArchNode, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
     const fieldName = el.name
     if (!fieldName) return null
     const fieldMeta = fields[fieldName]
@@ -105,16 +145,16 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
     // Check invisible on the field element
     if (isInvisible(el)) return null
 
-    const isReadonly = readonly || el.readonly === '1' || el.readonly === 'True' ||
-      (el.readonly && typeof el.readonly === 'string' && evaluateExpression(String(el.readonly), record))
-    const isRequired = el.required === '1' || el.required === 'True' || fieldMeta.required ||
-      (el.required && typeof el.required === 'string' && evaluateExpression(el.required, record))
+    const isReadonly = Boolean(readonly || el.readonly === '1' || el.readonly === 'True' ||
+      (el.readonly && typeof el.readonly === 'string' && evaluateExpression(String(el.readonly), record)))
+    const isRequired = Boolean(el.required === '1' || el.required === 'True' || fieldMeta.required ||
+      (el.required && typeof el.required === 'string' && evaluateExpression(el.required, record)))
 
     const widget = el.widget
 
     // ── statinfo widget (inside oe_stat_button) ──
     if (widget === 'statinfo') {
-      const val = record[fieldName]
+      const val = record[fieldName] as number | null | false
       const label = el.string || fieldMeta.string || fieldName
       const formatted = fieldMeta.type === 'float' || fieldMeta.type === 'monetary'
         ? formatFloat(val) : formatInteger(val)
@@ -128,11 +168,21 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
 
     // ── account-tax-totals-field widget ──
     if (widget === 'account-tax-totals-field') {
-      const totals = record[fieldName]
-      if (!totals || typeof totals !== 'object') return null
+      const totalsRaw = record[fieldName]
+      if (!totalsRaw || typeof totalsRaw !== 'object') return null
+      type TaxGroup = { tax_group_name?: string; tax_group_amount?: unknown }
+      type TaxTotals = {
+        subtotals?: Array<{ name?: string; amount?: unknown }>
+        groups_by_subtotal?: Record<string, TaxGroup[]>
+        currency_id?: unknown
+        amount_total?: unknown
+        amount_untaxed?: unknown
+        amount_tax?: unknown
+      }
+      const totals = totalsRaw as TaxTotals
       return (
         <div key={key} className="space-y-2 text-sm">
-          {totals.subtotals?.map((sub: any, i: number) => (
+          {totals.subtotals?.map((sub, i: number) => (
             <div key={i}>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{sub.name || 'Untaxed Amount'}</span>
@@ -140,9 +190,9 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
               </div>
             </div>
           ))}
-          {totals.groups_by_subtotal && Object.entries(totals.groups_by_subtotal).map(([, taxes]: any, i: number) => (
+          {totals.groups_by_subtotal && Object.entries(totals.groups_by_subtotal).map(([, taxes]: [string, unknown], i: number) => (
             <Fragment key={`tax-${i}`}>
-              {(taxes as any[]).map((tax: any, j: number) => (
+              {(Array.isArray(taxes) ? taxes as TaxGroup[] : []).map((tax, j: number) => (
                 <div key={j} className="flex justify-between text-muted-foreground">
                   <span>{tax.tax_group_name}</span>
                   <span>{fmtMoney(tax.tax_group_amount, totals.currency_id)}</span>
@@ -210,21 +260,22 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
     )
   }
 
-  function renderElementSafe(el: any, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
+  function renderElementSafe(el: ArchNode | string | null | undefined, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
     try {
       return renderElement(el, key, parentTag, parentClass)
-    } catch (e) {
-      console.warn('[FormRenderer] Error rendering element:', el?.tag, el?.name, e)
+    } catch {
+      /* ignore: individual element render failures should not break the whole form;
+         the bad element is skipped and the rest of the arch keeps rendering */
       return null
     }
   }
 
-  function renderElement(el: any, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
+  function renderElement(el: ArchNode | string | null | undefined, key: string | number, parentTag?: string, parentClass?: string): React.ReactNode {
     if (!el || typeof el === 'string') return el ? <span key={key}>{el}</span> : null
     if (isInvisible(el)) return null
 
     const elClass = el.attrs?.class || el.class || ''
-    const children = el.children?.map((c: any, i: number) => renderElementSafe(c, i, el.tag, elClass))
+    const children = el.children?.map((c, i: number) => renderElementSafe(c, i, el.tag, elClass))
 
     switch (el.tag) {
       case 'form':
@@ -246,11 +297,11 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
 
         // ── Button Box (smart buttons) ──
         if (elClass.includes('oe_button_box')) {
-          const visibleButtons = el.children?.filter((c: any) => !isInvisible(c)) || []
+          const visibleButtons = el.children?.filter(c => !isInvisible(c)) || []
           if (visibleButtons.length === 0) return null
           return (
             <div key={key} className="flex flex-wrap gap-2 mb-4">
-              {visibleButtons.map((c: any, i: number) => renderElement(c, i, 'button_box', elClass))}
+              {visibleButtons.map((c, i: number) => renderElement(c, i, 'button_box', elClass))}
             </div>
           )
         }
@@ -366,9 +417,9 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
         }
 
         // Check if this group's children are all groups (column container pattern)
-        const childGroups = el.children?.filter((c: any) => c.tag === 'group' && !isInvisible(c)) || []
+        const childGroups = el.children?.filter(c => c.tag === 'group' && !isInvisible(c)) || []
         const isColumnContainer = childGroups.length > 0 &&
-          childGroups.length === el.children?.filter((c: any) => !isInvisible(c) && c.tag !== 'newline').length
+          childGroups.length === el.children?.filter(c => !isInvisible(c) && c.tag !== 'newline').length
 
         if (isColumnContainer) {
           // Parent group acting as column container
@@ -404,12 +455,12 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
 
       // ── Notebook (tabs) ──
       case 'notebook': {
-        const pages = el.children?.filter((c: any) => c.tag === 'page' && !isInvisible(c)) || []
+        const pages = el.children?.filter(c => c.tag === 'page' && !isInvisible(c)) || []
         if (pages.length === 0) return null
         return (
           <Tabs key={key} defaultValue={pages[0]?.name || pages[0]?.attrs?.name || '0'} className="mt-4">
             <TabsList className="bg-muted/40 rounded-xl p-1">
-              {pages.map((p: any, i: number) => (
+              {pages.map((p, i: number) => (
                 <TabsTrigger
                   key={i}
                   value={p.name || p.attrs?.name || String(i)}
@@ -419,9 +470,9 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
                 </TabsTrigger>
               ))}
             </TabsList>
-            {pages.map((p: any, i: number) => (
+            {pages.map((p, i: number) => (
               <TabsContent key={i} value={p.name || p.attrs?.name || String(i)} className="mt-4">
-                {p.children?.map((c: any, j: number) => renderElement(c, j, 'page'))}
+                {p.children?.map((c, j: number) => renderElement(c, j, 'page'))}
               </TabsContent>
             ))}
           </Tabs>
@@ -445,11 +496,11 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
         // ── Stat button (smart button) ──
         if (btnClass.includes('oe_stat_button')) {
           // Find statinfo: either field with widget="statinfo" or div.o_stat_info
-          const statField = el.children?.find((c: any) =>
+          const statField = el.children?.find(c =>
             c.tag === 'field' && (c.widget === 'statinfo' || c.attrs?.widget === 'statinfo')
           )
           // Also check for div.o_stat_info pattern (contains field + span)
-          const statDiv = !statField ? el.children?.find((c: any) =>
+          const statDiv = !statField ? el.children?.find(c =>
             c.tag === 'div' && ((c.attrs?.class || c.class || '').includes('o_stat_info') || (c.attrs?.class || c.class || '').includes('o_form_field'))
           ) : null
           // Extract field name and label from either pattern
@@ -460,15 +511,18 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
             statLabel = statField.string || statField.attrs?.string
           } else if (statDiv) {
             // Inside div.o_stat_info: look for field (value) and span (label)
-            const innerField = statDiv.children?.find((c: any) => c.tag === 'field')
-            const innerSpan = statDiv.children?.find((c: any) => c.tag === 'span' || c.tag === 'label')
+            const innerField = statDiv.children?.find(c => c.tag === 'field')
+            const innerSpan = statDiv.children?.find(c => c.tag === 'span' || c.tag === 'label')
             statFieldName = innerField?.name || innerField?.attrs?.name
-            statLabel = innerSpan?.text || innerSpan?.string || innerField?.string || innerField?.attrs?.string
+            statLabel = (typeof innerSpan?.text === 'string' ? innerSpan.text : undefined) || innerSpan?.string || innerField?.string || innerField?.attrs?.string
           }
           if (!statLabel) {
             statLabel = label || btnName.replace(/^action_view_/, '').replace(/^\d+$/, '').replace(/_/g, ' ')
           }
-          const statValue = statFieldName ? record[statFieldName] : 0
+          const statValueRaw = statFieldName ? record[statFieldName] : 0
+          const statValue = typeof statValueRaw === 'number' || typeof statValueRaw === 'string'
+            ? statValueRaw
+            : 0
           const Icon = guessStatIcon(btnName, statLabel || '')
 
           return (
@@ -501,7 +555,8 @@ export default function FormRenderer({ arch, fields, record, readonly, onFieldCh
         // Handle states attribute
         if (el.attrs?.states && readonly) {
           const allowedStates = el.attrs.states.split(',').map((s: string) => s.trim())
-          if (!allowedStates.includes(record.state)) return null
+          const currentState = typeof record.state === 'string' ? record.state : ''
+          if (!allowedStates.includes(currentState)) return null
         }
 
         const BtnIcon = guessButtonIcon(btnName, label)

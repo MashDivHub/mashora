@@ -1,5 +1,7 @@
 import { erpClient } from '@/lib/erp-api'
 
+export type Domain = unknown[]
+
 export interface ActionResult {
   type?: string
   name?: string
@@ -7,25 +9,31 @@ export interface ActionResult {
   res_id?: number | false
   view_mode?: string
   target?: string
-  domain?: any[]
-  context?: Record<string, any>
+  domain?: Domain
+  context?: Record<string, unknown>
   url?: string
   report_name?: string
   report_type?: string
-  data?: any
-  [key: string]: any
+  data?: unknown
+  result?: unknown
+  action_type?: string
+  [key: string]: unknown
 }
 
 export type ActionResultCallback = {
   onRefresh: () => void
   onNavigate: (path: string) => void
-  onOpenWizard: (model: string, context?: Record<string, any>) => void
+  onOpenWizard: (model: string, context?: Record<string, unknown>) => void
   onOpenReport: (reportName: string, recordIds: number[]) => void
   onOpenUrl: (url: string) => void
 }
 
+function isObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object'
+}
+
 export function handleActionResult(
-  result: any,
+  result: unknown,
   callbacks: ActionResultCallback,
 ): void {
   // None / True / False → refresh current view
@@ -35,41 +43,45 @@ export function handleActionResult(
   }
 
   // Not an object → refresh
-  if (typeof result !== 'object') {
+  if (!isObject(result)) {
     callbacks.onRefresh()
     return
   }
 
+  const r = result as ActionResult
   // Handle by action type
-  const actionType = result.type || result.action_type
+  const actionType = r.type || r.action_type
 
   switch (actionType) {
     case 'ir.actions.act_window': {
-      if (result.target === 'new') {
+      if (r.target === 'new') {
         // Open wizard dialog
-        callbacks.onOpenWizard(result.res_model, result.context)
+        callbacks.onOpenWizard(String(r.res_model ?? ''), r.context)
       } else {
         // Navigate to the action
-        if (result.res_id) {
-          callbacks.onNavigate(`/admin/model/${result.res_model}/${result.res_id}`)
+        if (r.res_id) {
+          callbacks.onNavigate(`/admin/model/${r.res_model}/${r.res_id}`)
         } else {
-          callbacks.onNavigate(`/admin/model/${result.res_model}`)
+          callbacks.onNavigate(`/admin/model/${r.res_model}`)
         }
       }
       break
     }
 
     case 'ir.actions.act_url': {
-      const url = result.url || ''
+      const url = r.url || ''
       if (url) callbacks.onOpenUrl(url)
       break
     }
 
     case 'ir.actions.report': {
       // Generate and download report
-      const reportName = result.report_name || result.name
-      const recordIds = result.context?.active_ids || (result.context?.active_id ? [result.context.active_id] : [])
-      if (reportName) callbacks.onOpenReport(reportName, recordIds)
+      const reportName = r.report_name || r.name
+      const ctx = r.context || {}
+      const activeIds = Array.isArray(ctx.active_ids) ? ctx.active_ids as number[] : null
+      const activeId = typeof ctx.active_id === 'number' ? ctx.active_id : null
+      const recordIds: number[] = activeIds || (activeId != null ? [activeId] : [])
+      if (reportName) callbacks.onOpenReport(String(reportName), recordIds)
       break
     }
 
@@ -87,8 +99,8 @@ export function handleActionResult(
 
     default: {
       // Unknown or wrapped result — try to extract
-      if (result.result && typeof result.result === 'object') {
-        handleActionResult(result.result, callbacks)
+      if (isObject(r.result)) {
+        handleActionResult(r.result, callbacks)
       } else {
         callbacks.onRefresh()
       }

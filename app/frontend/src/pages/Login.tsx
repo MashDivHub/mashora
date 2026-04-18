@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes'
 import { ArrowRight, MoonStar, SunMedium, Layers, Shield, Zap } from 'lucide-react'
 import { Button, Card, CardContent, Input, Label } from '@mashora/design-system'
 import { useAuthStore } from '@/engine/AuthStore'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 // ─── Theme Toggle ──────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ const features = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Login() {
+  useDocumentTitle('Sign In')
   const navigate = useNavigate()
   const { login, loading, error, isAuthenticated, clearError } = useAuthStore()
   const [email, setEmail] = useState('')
@@ -135,7 +137,7 @@ export default function Login() {
               </div>
             </div>
 
-            <Card className="rounded-3xl border border-border/60 bg-card/95 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
+            <Card className="rounded-3xl border border-border/60 bg-card/95 shadow-panel">
               <CardContent className="p-8">
                 {/* Card logo — desktop */}
                 <div className="mb-8 hidden items-center gap-3 lg:flex">

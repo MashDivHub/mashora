@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { Mail } from 'lucide-react'
+import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
+import { Mail, AlertCircle } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 interface MailingRecord {
   id: number
@@ -19,7 +20,7 @@ interface MailingRecord {
   create_date: string
 }
 
-const STATE_BADGE: Record<string, { label: string; variant: string }> = {
+const STATE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   draft:    { label: 'Draft',    variant: 'secondary' },
   in_queue: { label: 'Queued',   variant: 'info' },
   sending:  { label: 'Sending',  variant: 'warning' },
@@ -34,6 +35,7 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function CampaignList() {
+  useDocumentTitle('Campaigns')
   const [search, setSearch]           = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage]               = useState(0)
@@ -118,7 +120,11 @@ export default function CampaignList() {
       render: (v) => {
         const n = Number(v || 0)
         return (
-          <span className={cn('font-mono text-xs', n > 0 ? 'text-red-400' : '')}>
+          <span
+            className={cn('font-mono text-xs inline-flex items-center gap-1', n > 0 ? 'text-red-400' : '')}
+            aria-label={n > 0 ? `${n} bounced` : undefined}
+          >
+            {n > 0 && <AlertCircle className="h-3 w-3" aria-hidden="true" />}
             {n.toLocaleString()}
           </span>
         )
@@ -128,9 +134,9 @@ export default function CampaignList() {
       key: 'state',
       label: 'Status',
       render: (v) => {
-        const cfg = STATE_BADGE[v] ?? { label: v, variant: 'secondary' }
+        const cfg = STATE_BADGE[v] ?? { label: v, variant: 'secondary' as BadgeVariant }
         return (
-          <Badge variant={cfg.variant as any} className="rounded-full text-xs">
+          <Badge variant={cfg.variant} className="rounded-full text-xs">
             {cfg.label}
           </Badge>
         )

@@ -36,7 +36,7 @@ export default function ProjectList() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const pageSize = 40
 
-  const domain: any[] = []
+  const domain: unknown[] = []
   if (search) domain.push(['name', 'ilike', search])
   for (const key of activeFilters) {
     const f = FILTERS.find(fl => fl.key === key)
@@ -96,8 +96,8 @@ export default function ProjectList() {
         if (!Array.isArray(v) || !v.length) return ''
         return (
           <div className="flex flex-wrap gap-1">
-            {v.slice(0, 2).map((t: any, i: number) => (
-              <Badge key={i} variant="secondary" className="text-[10px] rounded-full px-1.5 py-0">{Array.isArray(t) ? t[1] : t?.display_name || t}</Badge>
+            {v.slice(0, 2).map((t: unknown, i: number) => (
+              <Badge key={i} variant="secondary" className="text-[10px] rounded-full px-1.5 py-0">{Array.isArray(t) ? String(t[1] ?? '') : (typeof t === 'object' && t && 'display_name' in t) ? String((t as { display_name?: unknown }).display_name ?? '') : String(t)}</Badge>
             ))}
           </div>
         )

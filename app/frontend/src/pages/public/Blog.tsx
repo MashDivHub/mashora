@@ -18,7 +18,7 @@ export default function Blog() {
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <h1 className="text-4xl font-semibold tracking-tight mb-10">Blog</h1>
       <div className="space-y-6">
-        {(data || []).map((post: any) => (
+        {(data || []).map((post: { id: number; name: string; published_date?: string | false; create_date?: string | false; subtitle?: string | false; teaser?: string | false }) => (
           <Link key={post.id} to={`/blog/${post.id}`}>
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">

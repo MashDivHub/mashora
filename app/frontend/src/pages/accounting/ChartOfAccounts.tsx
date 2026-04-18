@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  PageHeader, Input, Badge, Tabs, TabsList, TabsTrigger,
+  Input, Badge, Tabs, TabsList, TabsTrigger,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Skeleton, CardTitle,
 } from '@mashora/design-system'
+import { PageHeader } from '@/components/shared'
 import { Search, BookOpen, CheckCircle2, Circle } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
@@ -73,7 +74,7 @@ export default function ChartOfAccounts() {
     <div className="space-y-6">
       <PageHeader
         title="Chart of Accounts"
-        description={isLoading ? 'Loading...' : `${data?.total ?? 0} accounts`}
+        subtitle={isLoading ? 'Loading...' : `${data?.total ?? 0} accounts`}
       />
 
       {/* Search */}
@@ -102,7 +103,7 @@ export default function ChartOfAccounts() {
       </Tabs>
 
       {/* Accounts table card */}
-      <div className="rounded-3xl border border-border/60 bg-card shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] overflow-hidden">
+      <div className="rounded-3xl border border-border/60 bg-card shadow-panel overflow-hidden">
         <div className="flex items-center justify-between border-b border-border/70 bg-muted/20 px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="rounded-xl border border-border/70 bg-muted/60 p-2">

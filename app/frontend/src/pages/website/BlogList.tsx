@@ -36,7 +36,7 @@ export default function BlogList() {
       const pub = publishedParam(activeFilters)
       if (pub !== undefined) body.published = pub
       const { data } = await erpClient.raw.post('/website/blog/posts', body)
-      return data as { records: any[]; total: number }
+      return data as { records: Array<Record<string, unknown>>; total: number }
     },
   })
 

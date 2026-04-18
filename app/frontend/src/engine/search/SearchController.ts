@@ -88,5 +88,7 @@ export function loadFavorites(model: string): SearchFavorite[] {
 export function saveFavorites(model: string, favorites: SearchFavorite[]): void {
   try {
     localStorage.setItem(FAVORITES_KEY + model, JSON.stringify(favorites))
-  } catch {}
+  } catch {
+    /* ignore: localStorage may be full or disabled (private mode) — favorites remain in memory */
+  }
 }

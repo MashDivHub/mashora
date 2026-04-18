@@ -97,4 +97,10 @@ class SaleOrderLine(Base, TimestampMixin):
     collapse_prices: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     collapse_composition: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     order: Mapped["SaleOrder"] = relationship("SaleOrder", back_populates="order_line")
+    product: Mapped[Optional["ProductProduct"]] = relationship(  # type: ignore[name-defined]
+        "ProductProduct",
+        primaryjoin="foreign(SaleOrderLine.product_id) == ProductProduct.id",
+        viewonly=True,
+        lazy="noload",
+    )
     def __repr__(self): return f"<SaleOrderLine(id={self.id}, order_id={self.order_id}, product_id={self.product_id})>"

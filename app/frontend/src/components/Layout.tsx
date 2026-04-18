@@ -40,6 +40,9 @@ import {
   Button,
   Avatar,
   AvatarFallback,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -149,7 +152,8 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (open) {
       setQuery('')
-      setTimeout(() => inputRef.current?.focus(), 50)
+      const t = setTimeout(() => inputRef.current?.focus(), 50)
+      return () => clearTimeout(t)
     }
   }, [open])
 
@@ -164,64 +168,61 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
     onClose()
   }
 
-  if (!open) return null
-
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Dialog */}
-      <div className="fixed inset-x-0 top-[20%] z-50 mx-auto w-full max-w-lg px-4">
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-popover shadow-2xl">
-          {/* Search input */}
-          <div className="flex items-center gap-3 border-b border-border/70 px-4">
-            <Search className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search modules..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') onClose()
-                if (e.key === 'Enter' && filtered.length > 0) {
-                  handleSelect(filtered[0].href)
-                }
-              }}
-              className="flex-1 bg-transparent py-4 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <kbd className="hidden rounded-md border border-border/70 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
-              ESC
-            </kbd>
-          </div>
-
-          {/* Results */}
-          <div className="max-h-72 overflow-y-auto p-2">
-            {filtered.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No modules found for "{query}"
-              </div>
-            ) : (
-              filtered.map((item) => {
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => handleSelect(item.href)}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
-                  >
-                    <Icon className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="font-medium">{item.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{item.href}</span>
-                  </button>
-                )
-              })
-            )}
-          </div>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden max-w-lg bg-popover"
+        onOpenAutoFocus={(e) => { e.preventDefault(); inputRef.current?.focus() }}
+      >
+        <DialogTitle className="sr-only">Command palette</DialogTitle>
+        {/* Search input */}
+        <div className="flex items-center gap-3 border-b border-border/70 px-4">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search modules..."
+            aria-label="Search modules"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && filtered.length > 0) {
+                handleSelect(filtered[0].href)
+              }
+            }}
+            className="flex-1 bg-transparent py-4 text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <kbd className="hidden rounded-md border border-border/70 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
+            ESC
+          </kbd>
         </div>
-      </div>
-    </>
+
+        {/* Results */}
+        <div className="max-h-72 overflow-y-auto p-2">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No modules found for "{query}"
+            </div>
+          ) : (
+            filtered.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  type="button"
+                  key={item.name}
+                  onClick={() => handleSelect(item.href)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">{item.name}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{item.href}</span>
+                </button>
+              )
+            })
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -436,13 +437,14 @@ export default function Layout() {
     fetchNotifications()
   }, [fetchCompanies, fetchNotifications])
 
-  useBusSubscription('notification', (data: any) => {
-    if (data && data.title) {
+  useBusSubscription('notification', (data: unknown) => {
+    if (typeof data === 'object' && data !== null && 'title' in data) {
+      const d = data as { title: string; body?: string; model?: string; res_id?: number }
       useNotificationStore.getState().addNotification({
-        title: data.title,
-        body: data.body || '',
-        model: data.model,
-        resId: data.res_id,
+        title: d.title,
+        body: d.body || '',
+        model: d.model,
+        resId: d.res_id,
       })
     }
   })
@@ -563,12 +565,18 @@ export default function Layout() {
               {/* Search bar */}
               <button
                 onClick={() => setCommandOpen(true)}
+                aria-label="Open command palette (Ctrl K or Command K)"
                 className="hidden items-center gap-2 rounded-xl border border-border/70 bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 sm:flex"
               >
                 <Search className="size-3.5" />
                 <span>Search...</span>
-                <kbd className="ml-4 rounded-md border border-border/70 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium">
-                  ⌘K
+                <kbd
+                  className="ml-4 rounded-md border border-border/70 bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium"
+                  aria-hidden="true"
+                >
+                  <span className="hidden md:inline">Ctrl</span>
+                  <span className="md:hidden">⌘</span>
+                  <span className="mx-0.5">+</span>K
                 </kbd>
               </button>
 
@@ -588,7 +596,7 @@ export default function Layout() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Search (⌘K)</p>
+                    <p>Search (Ctrl+K / ⌘K)</p>
                   </TooltipContent>
                 </Tooltip>
 

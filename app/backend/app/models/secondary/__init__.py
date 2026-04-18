@@ -6,6 +6,11 @@ from .mail_activity import MailActivity, MailActivityType
 from .calendar_event import CalendarEvent, CalendarAttendee
 from .calendar_sync import CalendarProvider, CalendarSyncLog
 from .ir_mail_server import IrMailServer
+from .fleet_extras import (
+    FleetVehicleLogContract,
+    FleetVehicleOdometer,
+    FleetVehicleAssignationLog,
+)
 
 __all__ = [
     "MailMessage",
@@ -17,4 +22,7 @@ __all__ = [
     "CalendarProvider",
     "CalendarSyncLog",
     "IrMailServer",
+    "FleetVehicleLogContract",
+    "FleetVehicleOdometer",
+    "FleetVehicleAssignationLog",
 ]

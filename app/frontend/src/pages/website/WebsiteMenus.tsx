@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@mashora/design-system'
 import { Menu } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, LoadingState, ErrorState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 interface MenuRecord {
@@ -14,7 +14,7 @@ interface MenuRecord {
 }
 
 export default function WebsiteMenus() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['website-menus'],
     queryFn: () =>
       erpClient.raw
@@ -43,7 +43,13 @@ export default function WebsiteMenus() {
             {isLoading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                  Loading...
+                  <LoadingState label="Loading menus..." />
+                </td>
+              </tr>
+            ) : isError ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center">
+                  <ErrorState error={error} onRetry={() => refetch()} />
                 </td>
               </tr>
             ) : records.length === 0 ? (

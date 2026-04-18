@@ -61,14 +61,14 @@ export default function CalendarView({ model, action, domain: actionDomain }: Vi
   )
 
   const handleEventClick = useCallback(
-    (info: any) => {
+    (info: { event: { id: string } }) => {
       navigate(`/admin/model/${model}/${info.event.id}`)
     },
     [navigate, model],
   )
 
   const handleEventDrop = useCallback(
-    async (info: any) => {
+    async (info: { event: { id: string; start?: Date | null; end?: Date | null } }) => {
       if (!config) return
       const newStart = info.event.start?.toISOString()?.slice(0, 19)?.replace('T', ' ')
       const newEnd = info.event.end?.toISOString()?.slice(0, 19)?.replace('T', ' ')
@@ -91,7 +91,7 @@ export default function CalendarView({ model, action, domain: actionDomain }: Vi
     navigate(`/admin/model/${model}/new`)
   }, [navigate, model])
 
-  const handleDatesSet = useCallback((info: any) => {
+  const handleDatesSet = useCallback((info: { startStr: string; endStr: string }) => {
     setDateRange({
       start: info.startStr.split('T')[0],
       end: info.endStr.split('T')[0],
@@ -116,11 +116,11 @@ export default function CalendarView({ model, action, domain: actionDomain }: Vi
           {model.replace(/\./g, ' ')}
         </p>
         <h1 className="text-xl font-semibold tracking-tight capitalize">
-          {action?.name || modelLabel}
+          {(typeof action?.name === 'string' ? action.name : '') || modelLabel}
         </h1>
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)] [&_.fc]:text-sm [&_.fc-button]:rounded-lg [&_.fc-button]:text-xs [&_.fc-button-primary]:bg-zinc-900 [&_.fc-button-primary]:border-zinc-700 [&_.fc-today-button]:rounded-xl [&_.fc-daygrid-event]:rounded-lg [&_.fc-daygrid-event]:border-0 [&_.fc-daygrid-event]:bg-primary/80 [&_.fc-daygrid-event]:px-1.5 [&_.fc-daygrid-event]:text-primary-foreground [&_.fc-timegrid-event]:rounded-lg [&_.fc-timegrid-event]:border-0 [&_.fc-timegrid-event]:bg-primary/80 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted-foreground [&_.fc-scrollgrid]:border-border/60 [&_td]:border-border/40 [&_th]:border-border/40">
+      <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-panel [&_.fc]:text-sm [&_.fc-button]:rounded-lg [&_.fc-button]:text-xs [&_.fc-button-primary]:bg-zinc-900 [&_.fc-button-primary]:border-zinc-700 [&_.fc-today-button]:rounded-xl [&_.fc-daygrid-event]:rounded-lg [&_.fc-daygrid-event]:border-0 [&_.fc-daygrid-event]:bg-primary/80 [&_.fc-daygrid-event]:px-1.5 [&_.fc-daygrid-event]:text-primary-foreground [&_.fc-timegrid-event]:rounded-lg [&_.fc-timegrid-event]:border-0 [&_.fc-timegrid-event]:bg-primary/80 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted-foreground [&_.fc-scrollgrid]:border-border/60 [&_td]:border-border/40 [&_th]:border-border/40">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"

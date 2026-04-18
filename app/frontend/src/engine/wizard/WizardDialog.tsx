@@ -6,18 +6,22 @@ import { fetchViewDefinition } from '../ActionService'
 import FormRenderer from '../views/form/FormRenderer'
 import { createRecordState, updateField, mergeOnchangeResult, type RecordState } from '../state/RecordState'
 import { callOnchange } from '../ActionService'
+import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface WizardDialogProps {
   open: boolean
   onClose: () => void
   wizardModel: string
-  wizardContext?: Record<string, any>
+  wizardContext?: Record<string, unknown>
   onComplete?: () => void
 }
 
 export default function WizardDialog({ open, onClose, wizardModel, wizardContext, onComplete }: WizardDialogProps) {
   const queryClient = useQueryClient()
-  const [viewDef, setViewDef] = useState<any>(null)
+  // viewDef arch is parsed XML at runtime; schema intentionally loose at this boundary
+  interface WizardViewDef { arch?: unknown; fields?: Record<string, unknown>; view?: { name?: string } }
+  const [viewDef, setViewDef] = useState<WizardViewDef | null>(null)
   const [state, setState] = useState<RecordState | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -35,8 +39,8 @@ export default function WizardDialog({ open, onClose, wizardModel, wizardContext
           context: wizardContext || {},
         })
         setState(createRecordState(wizardModel, data.id, data))
-      } catch (e) {
-        console.error('Failed to initialize wizard:', e)
+      } catch (e: unknown) {
+        toast.error('Wizard Failed', extractErrorMessage(e, 'Could not initialize wizard'))
       } finally {
         setLoading(false)
       }
@@ -44,15 +48,18 @@ export default function WizardDialog({ open, onClose, wizardModel, wizardContext
     init()
   }, [open, wizardModel, wizardContext])
 
-  const handleFieldChange = async (fieldName: string, value: any) => {
+  const handleFieldChange = async (fieldName: string, value: unknown) => {
     if (!state) return
     const newState = updateField(state, fieldName, value)
     setState(newState)
 
     try {
       const result = await callOnchange(wizardModel, state.id, fieldName, value, newState.data)
-      if (result?.value) setState(prev => prev ? mergeOnchangeResult(prev, result.value) : prev)
-    } catch {}
+      const updates = (result as { value?: Record<string, unknown> } | undefined)?.value
+      if (updates) setState(prev => prev ? mergeOnchangeResult(prev, updates) : prev)
+    } catch {
+      /* ignore: onchange is best-effort — field value is already applied locally */
+    }
   }
 
   const handleButton = async (method: string) => {
@@ -68,8 +75,8 @@ export default function WizardDialog({ open, onClose, wizardModel, wizardContext
       queryClient.invalidateQueries()
       onComplete?.()
       onClose()
-    } catch (e) {
-      console.error('Wizard action failed:', e)
+    } catch (e: unknown) {
+      toast.error('Wizard Action Failed', extractErrorMessage(e, 'Action could not be completed'))
     }
   }
 
@@ -88,9 +95,10 @@ export default function WizardDialog({ open, onClose, wizardModel, wizardContext
           </div>
         ) : viewDef && state ? (
           <div className="py-2">
+            {/* FormRenderer accepts parsed or raw XML at runtime */}
             <FormRenderer
-              arch={viewDef.arch}
-              fields={viewDef.fields}
+              arch={viewDef.arch as never}
+              fields={(viewDef.fields ?? {}) as never}
               record={state.data}
               readonly={false}
               onFieldChange={handleFieldChange}

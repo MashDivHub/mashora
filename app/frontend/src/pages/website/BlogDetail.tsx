@@ -110,9 +110,9 @@ export default function BlogDetail() {
         <div className="rounded-2xl border border-border/30 bg-card/50 p-6">
           <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Tags</h2>
           <div className="flex flex-wrap gap-2">
-            {data.tag_ids.map((tag: any) => {
-              const tagId   = Array.isArray(tag) ? tag[0] : tag
-              const tagName = Array.isArray(tag) ? tag[1] : `Tag ${tag}`
+            {data.tag_ids.map((tag: unknown) => {
+              const tagId   = Array.isArray(tag) ? tag[0] as number : Number(tag)
+              const tagName = Array.isArray(tag) ? String(tag[1] ?? '') : `Tag ${String(tag)}`
               return (
                 <Badge key={tagId} variant="secondary" className="rounded-full text-xs gap-1">
                   <Tag className="h-3 w-3" />

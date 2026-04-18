@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Skeleton } from '@mashora/design-system'
 import { PageHeader } from '@/components/shared'
-import { ArrowLeft, Car, DollarSign } from 'lucide-react'
+import { ArrowLeft, Car, DollarSign, Gauge, Users, FileText } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 interface VehicleDetail {
@@ -42,6 +42,21 @@ export default function FleetDetail() {
     enabled: vehicleId > 0,
   })
 
+  // Counts for smart buttons
+  const { data: counts } = useQuery({
+    queryKey: ['fleet-vehicle-counts', vehicleId],
+    enabled: vehicleId > 0,
+    queryFn: async () => {
+      const dom = [['vehicle_id', '=', vehicleId]]
+      const [odo, asg, ctr] = await Promise.all([
+        erpClient.raw.post('/model/fleet.vehicle.odometer', { domain: dom, fields: ['id'], limit: 1 }).then(r => r.data?.total ?? 0).catch(() => 0),
+        erpClient.raw.post('/model/fleet.vehicle.assignation.log', { domain: dom, fields: ['id'], limit: 1 }).then(r => r.data?.total ?? 0).catch(() => 0),
+        erpClient.raw.post('/model/fleet.vehicle.log.contract', { domain: dom, fields: ['id'], limit: 1 }).then(r => r.data?.total ?? 0).catch(() => 0),
+      ])
+      return { odometer: odo, assignation: asg, contract: ctr }
+    },
+  })
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -70,6 +85,40 @@ export default function FleetDetail() {
         subtitle={vehicle.license_plate || undefined}
         backTo="/admin/fleet"
       />
+
+      {/* Smart Buttons */}
+      <div className="flex flex-wrap gap-2.5">
+        <button
+          onClick={() => navigate(`/admin/fleet/odometer?vehicle=${vehicleId}`)}
+          className="flex items-center gap-3 rounded-2xl border border-border/40 bg-gradient-to-b from-card to-card/80 px-5 py-3 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30 transition-all text-left min-w-[140px]"
+        >
+          <div className="rounded-xl bg-primary/8 p-2 text-muted-foreground"><Gauge className="h-5 w-5" /></div>
+          <div>
+            <div className="text-lg font-bold leading-tight tabular-nums">{counts?.odometer ?? 0}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] font-medium">Odometer Logs</div>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate(`/admin/fleet/assignations?vehicle=${vehicleId}`)}
+          className="flex items-center gap-3 rounded-2xl border border-border/40 bg-gradient-to-b from-card to-card/80 px-5 py-3 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30 transition-all text-left min-w-[140px]"
+        >
+          <div className="rounded-xl bg-primary/8 p-2 text-muted-foreground"><Users className="h-5 w-5" /></div>
+          <div>
+            <div className="text-lg font-bold leading-tight tabular-nums">{counts?.assignation ?? 0}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] font-medium">Assignment History</div>
+          </div>
+        </button>
+        <button
+          onClick={() => navigate(`/admin/fleet/contracts?vehicle=${vehicleId}`)}
+          className="flex items-center gap-3 rounded-2xl border border-border/40 bg-gradient-to-b from-card to-card/80 px-5 py-3 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30 transition-all text-left min-w-[140px]"
+        >
+          <div className="rounded-xl bg-primary/8 p-2 text-muted-foreground"><FileText className="h-5 w-5" /></div>
+          <div>
+            <div className="text-lg font-bold leading-tight tabular-nums">{counts?.contract ?? 0}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] font-medium">Contracts</div>
+          </div>
+        </button>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Info card */}

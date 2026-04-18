@@ -4,8 +4,10 @@ import { Skeleton } from '@mashora/design-system'
 import { Settings, Users, Building2, Globe, Shield, Database, Key, Bell, Lock } from 'lucide-react'
 import { PageHeader, StatCards, type StatCardData } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export default function SettingsDashboard() {
+  useDocumentTitle('Settings')
   const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({

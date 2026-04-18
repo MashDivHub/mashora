@@ -6,6 +6,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 import { ArrowLeft, Play, Square, DollarSign, Receipt, Clock } from 'lucide-react'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -129,8 +130,8 @@ export default function PosSessionDetail() {
       toast.success('Session Opened', 'The POS session is now open.')
       queryClient.invalidateQueries({ queryKey: ['pos-session', sessionId] })
     },
-    onError: (e: any) => {
-      toast.error('Failed to Open', e?.response?.data?.detail || e.message || 'Unknown error')
+    onError: (e: unknown) => {
+      toast.error('Failed to Open', extractErrorMessage(e, 'Unknown error'))
     },
   })
 
@@ -143,8 +144,8 @@ export default function PosSessionDetail() {
       toast.success('Session Closed', 'The POS session has been closed.')
       queryClient.invalidateQueries({ queryKey: ['pos-session', sessionId] })
     },
-    onError: (e: any) => {
-      toast.error('Failed to Close', e?.response?.data?.detail || e.message || 'Unknown error')
+    onError: (e: unknown) => {
+      toast.error('Failed to Close', extractErrorMessage(e, 'Unknown error'))
     },
   })
 

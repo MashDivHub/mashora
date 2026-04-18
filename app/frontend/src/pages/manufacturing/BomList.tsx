@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Layers } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -27,7 +27,7 @@ interface BomListResponse {
 
 type TypeFilter = 'all' | 'normal' | 'phantom'
 
-const TYPE_BADGE: Record<string, { label: string; variant: string }> = {
+const TYPE_BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
   normal:  { label: 'Manufacture', variant: 'default' },
   phantom: { label: 'Kit',         variant: 'info' },
 }
@@ -70,9 +70,9 @@ const columns: Column<BomRecord>[] = [
     key: 'type',
     label: 'Type',
     render: (v) => {
-      const b = TYPE_BADGE[v] || { label: v, variant: 'secondary' }
+      const b = TYPE_BADGE[v] || { label: v, variant: 'secondary' as BadgeVariant }
       return (
-        <Badge variant={b.variant as any} className="rounded-full text-xs">
+        <Badge variant={b.variant} className="rounded-full text-xs">
           {b.label}
         </Badge>
       )

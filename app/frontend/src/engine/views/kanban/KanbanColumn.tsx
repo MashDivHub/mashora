@@ -1,14 +1,14 @@
 import { Button, Badge, cn } from '@mashora/design-system'
 import { Plus } from 'lucide-react'
 import KanbanCard from './KanbanCard'
-import type { KanbanColumn as KanbanColumnType } from './KanbanController'
+import type { KanbanColumn as KanbanColumnType, KanbanGroupValue } from './KanbanController'
 
 interface KanbanColumnProps {
   column: KanbanColumnType
-  fields: Record<string, any>
+  fields: Record<string, unknown>
   cardFields: string[]
   onCardClick: (recordId: number) => void
-  onQuickCreate?: (groupValue: any) => void
+  onQuickCreate?: (groupValue: KanbanGroupValue) => void
   isOver?: boolean
 }
 
@@ -39,15 +39,18 @@ export default function KanbanColumn({
 
       {/* Cards */}
       <div className="flex-1 space-y-2 overflow-y-auto p-3" style={{ maxHeight: '70vh' }}>
-        {column.records.map(record => (
-          <KanbanCard
-            key={record.id}
-            record={record}
-            fields={fields}
-            cardFields={cardFields}
-            onClick={() => onCardClick(record.id)}
-          />
-        ))}
+        {column.records.map(record => {
+          const id = Number(record.id)
+          return (
+            <KanbanCard
+              key={id}
+              record={record}
+              fields={fields}
+              cardFields={cardFields}
+              onClick={() => onCardClick(id)}
+            />
+          )
+        })}
 
         {column.records.length === 0 && (
           <div className="rounded-2xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">

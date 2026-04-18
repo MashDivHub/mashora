@@ -1,15 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Card, CardContent, Input, Label } from '@mashora/design-system'
 import { toast } from '@/components/shared'
 
 export default function ContactUs() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [loading, setLoading] = useState(false)
+  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (submitTimerRef.current) clearTimeout(submitTimerRef.current)
+  }, [])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
+    if (submitTimerRef.current) clearTimeout(submitTimerRef.current)
+    submitTimerRef.current = setTimeout(() => {
       setLoading(false)
       toast.success('Message sent', 'We will get back to you soon.')
       setForm({ name: '', email: '', message: '' })
