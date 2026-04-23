@@ -109,7 +109,9 @@ export default function StockLevels() {
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
         isError={isError} error={error} onRetry={() => refetch()}
-        emptyMessage="No stock found" emptyIcon={<Package className="h-10 w-10" />} />
+        rowLink={row => `/admin/model/stock.quant/${row.id}`}
+        emptyMessage="No stock on hand. Stock levels appear once you receive products into internal locations."
+        emptyIcon={<Package className="h-10 w-10" />} />
     </div>
   )
 }

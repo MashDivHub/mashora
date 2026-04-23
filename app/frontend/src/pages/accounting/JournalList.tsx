@@ -8,7 +8,7 @@ import {
 } from '@mashora/design-system'
 import {
   ShoppingCart, Package, Landmark, Wallet, FileText, BookMarked,
-  Plus, Upload, ChevronRight, AlertTriangle,
+  Plus, Upload, ChevronRight, AlertTriangle, Pencil,
 } from 'lucide-react'
 import { PageHeader, M2OInput, toast } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -450,10 +450,10 @@ function JournalCard({ journal }: { journal: Journal }) {
             size="sm"
             variant="outline"
             className="w-full h-8 text-xs rounded-lg gap-1"
-            onClick={() => toast.info('Upload bill', 'Bill OCR upload coming soon')}
+            onClick={() => navigate(`/admin/model/account.move/new?type=in_invoice&journal_id=${journal.id}`)}
           >
             <Upload className="h-3.5 w-3.5" />
-            Upload Bill
+            New Bill
           </Button>
         </div>
       )
@@ -557,9 +557,14 @@ function JournalCard({ journal }: { journal: Journal }) {
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate" title={journal.name}>
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/model/account.journal/${journal.id}`)}
+              className="text-sm font-semibold truncate hover:underline text-left block max-w-full"
+              title={`Edit ${journal.name}`}
+            >
               {journal.name}
-            </p>
+            </button>
             <div className="flex items-center gap-1.5 mt-0.5">
               <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                 {meta.label}
@@ -572,6 +577,14 @@ function JournalCard({ journal }: { journal: Journal }) {
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate(`/admin/model/account.journal/${journal.id}`)}
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground shrink-0"
+          aria-label={`Edit ${journal.name}`}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       {/* Body */}

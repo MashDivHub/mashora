@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Badge,
+  Badge, Button,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Skeleton,
 } from '@mashora/design-system'
 import { PageHeader } from '@/components/shared'
-import { DollarSign } from 'lucide-react'
+import { DollarSign, Plus } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 interface VehicleCost {
@@ -59,6 +59,8 @@ export default function FleetCosts() {
   const records = data?.records ?? []
 
   const totalAmount = records.reduce((sum, r) => sum + (r.amount || 0), 0)
+  const handleCreate = () =>
+    navigate(`/admin/model/fleet.vehicle.cost/new?vehicle_id=${vehicleId}`)
 
   return (
     <div className="space-y-6">
@@ -66,6 +68,8 @@ export default function FleetCosts() {
         title="Vehicle Costs"
         subtitle={vehicleData?.name ?? `Vehicle #${vehicleId}`}
         backTo={`/admin/fleet/${vehicleId}`}
+        onNew={handleCreate}
+        newLabel="Log Cost"
       />
 
       {/* Summary strip */}
@@ -100,12 +104,20 @@ export default function FleetCosts() {
               <TableSkeleton cols={4} />
             ) : records.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="h-40 text-center">
-                  <div className="flex flex-col items-center gap-2">
+                <TableCell colSpan={4} className="h-48 text-center">
+                  <div className="flex flex-col items-center gap-3">
                     <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
                       <DollarSign className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm text-muted-foreground">No costs recorded for this vehicle.</p>
+                    <div>
+                      <p className="text-sm font-semibold">No costs recorded for this vehicle.</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Track fuel, repairs, or other expenses against this vehicle.
+                      </p>
+                    </div>
+                    <Button onClick={handleCreate} className="rounded-xl gap-1.5" size="sm">
+                      <Plus className="h-3.5 w-3.5" /> Log First Cost
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

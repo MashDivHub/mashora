@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { PageHeader } from '@/components/shared'
+import { useNavigate } from 'react-router-dom'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { Badge } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
 import { Calendar } from 'lucide-react'
@@ -57,6 +58,7 @@ function validationCfg(type: string) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LeaveTypes() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['leave-types'],
     queryFn: () => erpClient.raw.post('/hr/leave-types', {}).then(r => r.data),
@@ -64,11 +66,12 @@ export default function LeaveTypes() {
 
   const records: LeaveTypeRecord[] = data?.records ?? []
   const total: number = data?.total ?? 0
+  const handleCreate = () => navigate('/admin/model/hr.leave.type/new')
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Leave Types" />
+        <PageHeader title="Leave Types" onNew={handleCreate} newLabel="New Leave Type" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-2xl border border-border/30 bg-card/50 p-5 animate-pulse h-36" />
@@ -83,22 +86,29 @@ export default function LeaveTypes() {
       <PageHeader
         title="Leave Types"
         subtitle={`${total} type${total !== 1 ? 's' : ''}`}
+        onNew={handleCreate}
+        newLabel="New Leave Type"
       />
 
       {records.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
-          <Calendar className="h-10 w-10" />
-          <p className="text-sm">No leave types found</p>
-        </div>
+        <EmptyState
+          icon={<Calendar className="h-12 w-12" />}
+          title="No leave types yet"
+          description="Configure leave types before employees can request time off."
+          actionLabel="New Leave Type"
+          onAction={handleCreate}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {records.map(lt => {
             const vcfg = validationCfg(lt.leave_validation_type)
             const remaining = lt.virtual_remaining_leaves
             return (
-              <div
+              <button
                 key={lt.id}
-                className="rounded-2xl border border-border/30 bg-card/50 p-5 flex flex-col gap-4"
+                type="button"
+                onClick={() => navigate(`/admin/model/hr.leave.type/${lt.id}`)}
+                className="w-full text-left rounded-2xl border border-border/30 bg-card/50 p-5 flex flex-col gap-4 transition-colors hover:border-border/60 hover:bg-card/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 {/* Header */}
                 <div className="flex items-center gap-3">
@@ -140,7 +150,7 @@ export default function LeaveTypes() {
                     {lt.requires_allocation === 'yes' ? 'Allocation Required' : 'No Allocation'}
                   </Badge>
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>

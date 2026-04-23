@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Activity } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 const LIST_FIELDS = ['id', 'name', 'project_id', 'status', 'date', 'description', 'user_id', 'create_date']
@@ -24,6 +25,7 @@ interface UpdateRecord {
 }
 
 export default function ProjectUpdates() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['project-updates'],
     queryFn: async () => {
@@ -37,10 +39,16 @@ export default function ProjectUpdates() {
   })
 
   const records: UpdateRecord[] = data?.records || []
+  const handleCreate = () => navigate('/admin/model/project.update/new')
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Project Updates" subtitle="project" />
+      <PageHeader
+        title="Project Updates"
+        subtitle="project"
+        onNew={handleCreate}
+        newLabel="New Update"
+      />
 
       {isLoading && (
         <div className="space-y-3">
@@ -51,10 +59,13 @@ export default function ProjectUpdates() {
       )}
 
       {!isLoading && records.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <Activity className="h-10 w-10" />
-          <p className="text-sm">No project updates found</p>
-        </div>
+        <EmptyState
+          icon={<Activity className="h-12 w-12" />}
+          title="No project updates yet"
+          description="Post status updates to keep stakeholders informed on project progress."
+          actionLabel="New Update"
+          onAction={handleCreate}
+        />
       )}
 
       {!isLoading && records.length > 0 && (
@@ -66,7 +77,12 @@ export default function ProjectUpdates() {
             const formattedDate = update.date ? new Date(update.date).toLocaleDateString() : ''
 
             return (
-              <div key={update.id} className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-2">
+              <button
+                key={update.id}
+                type="button"
+                onClick={() => navigate(`/admin/model/project.update/${update.id}`)}
+                className="w-full text-left rounded-2xl border border-border/30 bg-card/50 p-5 space-y-2 transition-colors hover:border-border/60 hover:bg-card/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-muted-foreground">{projectName}</span>
                   <Badge variant={statusCfg.variant} className="rounded-full text-xs">
@@ -80,7 +96,7 @@ export default function ProjectUpdates() {
                 {update.description && (
                   <p className="text-sm text-muted-foreground line-clamp-2">{update.description}</p>
                 )}
-              </div>
+              </button>
             )
           })}
         </div>

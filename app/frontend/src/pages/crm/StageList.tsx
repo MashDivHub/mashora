@@ -176,9 +176,20 @@ export default function StageList() {
       )}
 
       {!isLoading && stages.length === 0 && !creating && (
-        <div className="rounded-2xl border border-border/30 bg-card/50 p-6 flex flex-col items-center justify-center gap-2 py-12">
-          <GitBranch className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">No pipeline stages configured</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <GitBranch className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No pipeline stages configured</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Add stages like New, Qualified, Proposition, Won to organise your sales pipeline.
+            </p>
+          </div>
+          <Button onClick={() => setCreating(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Stage
+          </Button>
         </div>
       )}
 

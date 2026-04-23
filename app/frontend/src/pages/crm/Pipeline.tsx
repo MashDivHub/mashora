@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Badge, Input, Skeleton, cn } from '@mashora/design-system'
-import { Plus, Star, Calendar, User, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Plus, Star, Calendar, User, AlertCircle, CheckCircle2, GitBranch, ArrowRight } from 'lucide-react'
 import { PageHeader, SearchBar, toast, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 import { extractErrorMessage } from '@/lib/errors'
@@ -182,6 +182,29 @@ export default function Pipeline() {
               <Skeleton className="h-28 w-full rounded-2xl" />
             </div>
           ))}
+        </div>
+      ) : baseCols.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <GitBranch className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Configure your sales stages</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              Your pipeline needs at least one stage before you can drag opportunities across it.
+              Create stages like New, Qualified, Proposition, and Won to get started.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Button onClick={() => navigate('/admin/crm/stages')} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Stages
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/admin/crm/leads/new')} className="gap-2">
+              New Lead
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">

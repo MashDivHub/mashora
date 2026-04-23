@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
@@ -22,6 +23,7 @@ const FILTERS = [
 ]
 
 export default function ScrapOrders() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
@@ -105,6 +107,8 @@ export default function ScrapOrders() {
       <PageHeader
         title="Scrap Orders"
         subtitle={data?.total != null ? `${data.total} record${data.total === 1 ? '' : 's'}` : 'inventory'}
+        onNew={() => navigate('/admin/model/stock.scrap/new')}
+        newLabel="New Scrap"
       />
       <SearchBar
         placeholder="Search scrap orders..."
@@ -127,7 +131,8 @@ export default function ScrapOrders() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        emptyMessage="No scrap orders found"
+        rowLink={(row) => `/admin/model/stock.scrap/${row.id}`}
+        emptyMessage="No scrap orders yet. Record damaged or expired stock to keep inventory accurate."
         emptyIcon={<Trash2 className="h-10 w-10" />}
       />
     </div>

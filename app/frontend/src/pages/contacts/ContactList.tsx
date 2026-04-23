@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { Users, Building2, Archive, Mail } from 'lucide-react'
+import { Badge, Button, cn } from '@mashora/design-system'
+import { Users, Building2, Archive, Mail, Plus } from 'lucide-react'
 import {
   DataTable, PageHeader, SearchBar, BulkActionBar, ViewToggle,
+  EmailComposer,
   toast,
   type Column, type FilterOption, type BulkAction, type ViewMode,
 } from '@/components/shared'
@@ -58,6 +59,7 @@ export default function ContactList() {
   const [view, setView] = useState<ViewMode>('list')
   const pageSize = 40
   const { selected, clear, setSelected } = useBulkSelect()
+  const [emailRecipients, setEmailRecipients] = useState<string[] | null>(null)
 
   const handleFilterToggle = useCallback((key: string) => {
     setActiveFilters(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
@@ -122,7 +124,16 @@ export default function ContactList() {
       key: 'email',
       label: 'Send Email',
       icon: <Mail className="h-3.5 w-3.5" />,
-      onClick: () => { toast.info('Email composer coming soon') },
+      onClick: (ids) => {
+        const emails = records
+          .filter((r: ContactRecord) => ids.includes(r.id) && typeof r.email === 'string' && r.email)
+          .map((r: ContactRecord) => r.email as string)
+        if (emails.length === 0) {
+          toast.warning('No email addresses', 'None of the selected contacts have an email on file.')
+          return
+        }
+        setEmailRecipients(emails)
+      },
     },
   ]
 
@@ -216,29 +227,60 @@ export default function ContactList() {
 
       <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
 
-      {view === 'list' ? (
-        <DataTable
-          columns={columns}
-          data={records}
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-          loading={isLoading}
-          isError={isError} error={error} onRetry={() => refetch()}
-          rowLink={(row) => `/admin/contacts/${row.id}`}
-          selectable
-          selectedIds={selectedSet}
-          onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
-          emptyMessage="No contacts found"
-          emptyIcon={<Users className="h-10 w-10" />}
-        />
-      ) : (
-        <ContactsGrid records={records} loading={isLoading} onOpen={(id) => navigate(`/admin/contacts/${id}`)} />
-      )}
+      {(() => {
+        const hasFilters = !!search || activeFilters.length > 0
+        const showEmptyCta = !isLoading && !isError && records.length === 0 && page === 0 && !hasFilters
+        if (showEmptyCta) {
+          return (
+            <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+              <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">No contacts yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add customers, vendors, and companies to your address book.
+                </p>
+              </div>
+              <Button onClick={() => navigate('/admin/contacts/new')} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create First Contact
+              </Button>
+            </div>
+          )
+        }
+        return view === 'list' ? (
+          <DataTable
+            columns={columns}
+            data={records}
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+            loading={isLoading}
+            isError={isError} error={error} onRetry={() => refetch()}
+            rowLink={(row) => `/admin/contacts/${row.id}`}
+            selectable
+            selectedIds={selectedSet}
+            onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+            emptyMessage="No contacts found"
+            emptyIcon={<Users className="h-10 w-10" />}
+          />
+        ) : (
+          <ContactsGrid records={records} loading={isLoading} onOpen={(id) => navigate(`/admin/contacts/${id}`)} />
+        )
+      })()}
+
+      <EmailComposer
+        open={emailRecipients !== null}
+        onClose={() => setEmailRecipients(null)}
+        resModel="res.partner"
+        defaultTo={emailRecipients ?? []}
+        onSent={() => { setEmailRecipients(null); clear() }}
+      />
     </div>
   )
 }

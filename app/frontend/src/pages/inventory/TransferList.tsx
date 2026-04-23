@@ -190,7 +190,7 @@ export default function TransferList() {
         selectable
         selectedIds={selectedSet}
         onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
-        emptyMessage="No transfers found" emptyIcon={<Truck className="h-10 w-10" />} />
+        emptyMessage="No transfers yet. Create a receipt, delivery, or internal move to get started." emptyIcon={<Truck className="h-10 w-10" />} />
     </div>
   )
 }

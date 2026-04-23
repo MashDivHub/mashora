@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
-import { ClipboardList } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { ClipboardList, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -119,11 +119,17 @@ export default function SurveyList() {
     },
   ]
 
+  const records = data?.records ?? []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Surveys"
         subtitle={data?.total != null ? `${data.total} survey${data.total !== 1 ? 's' : ''}` : undefined}
+        onNew={() => navigate('/admin/model/survey.survey/new')}
+        newLabel="New Survey"
       />
       <SearchBar
         placeholder="Search surveys..."
@@ -137,21 +143,39 @@ export default function SurveyList() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        rowLink={(row) => `/admin/surveys/${row.id}`}
-        emptyMessage="No surveys found"
-        emptyIcon={<ClipboardList className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <ClipboardList className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No surveys yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Create a survey to collect feedback, run assessments, or gather customer responses.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/survey.survey/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Survey
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={(row) => `/admin/surveys/${row.id}`}
+          emptyMessage="No surveys found"
+          emptyIcon={<ClipboardList className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

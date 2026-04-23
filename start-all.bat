@@ -6,7 +6,7 @@ echo  =============================================
 echo   Mashora - Full Stack Launcher
 echo  =============================================
 echo.
-echo  App Backend:     http://localhost:8001
+echo  App Backend:     http://localhost:8002
 echo  App Frontend:    http://localhost:3000
 echo  Portal Backend:  http://localhost:8000
 echo  Portal Frontend: http://localhost:8069

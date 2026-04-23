@@ -155,11 +155,25 @@ export default function InventoryDashboard() {
       ))}
 
       {(pickingTypes || []).length === 0 && (
-        <Card className="rounded-2xl">
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No picking types configured yet.
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Warehouse className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No picking types configured yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              Receipts, deliveries, and internal transfers all flow through picking types.
+              Create a warehouse to auto-seed the defaults.
+            </p>
+          </div>
+          <Button
+            onClick={() => navigate('/admin/inventory/warehouses')}
+            className="gap-2 rounded-xl"
+          >
+            <Package className="h-4 w-4" />
+            Set Up Warehouse
+          </Button>
+        </div>
       )}
 
       {/* Throughput chart */}
@@ -175,8 +189,9 @@ export default function InventoryDashboard() {
           {throughputLoading ? (
             <Skeleton className="h-56 rounded-xl" />
           ) : (throughput?.length || 0) === 0 ? (
-            <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
-              No throughput data —
+            <div className="h-56 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Activity className="h-8 w-8 opacity-40" />
+              <p>No completed transfers in the last 7 days</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>

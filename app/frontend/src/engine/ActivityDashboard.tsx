@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button, Badge, Skeleton, cn } from '@mashora/design-system'
 import { CheckCircle2, Clock, AlertCircle, Calendar, ArrowRight, Filter, type LucideIcon } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
 
 type ActivityFilter = 'all' | 'overdue' | 'today' | 'upcoming'
 
@@ -62,6 +64,7 @@ export default function ActivityDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] })
     },
+    onError: (e: unknown) => toast.error('Failed to mark done', extractErrorMessage(e)),
   })
 
   const activities = data?.records || []

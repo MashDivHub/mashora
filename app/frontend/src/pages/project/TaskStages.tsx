@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '@mashora/design-system'
 import { Layers } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, EmptyState } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
 const LIST_FIELDS = ['id', 'name', 'sequence', 'fold', 'project_ids']
@@ -15,6 +16,7 @@ interface StageRecord {
 }
 
 export default function TaskStages() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['task-stages'],
     queryFn: async () => {
@@ -28,10 +30,16 @@ export default function TaskStages() {
   })
 
   const records: StageRecord[] = data?.records || []
+  const handleCreate = () => navigate('/admin/model/project.task.type/new')
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Task Stages" subtitle="project" />
+      <PageHeader
+        title="Task Stages"
+        subtitle="project"
+        onNew={handleCreate}
+        newLabel="New Stage"
+      />
 
       {isLoading && (
         <div className="space-y-0">
@@ -48,10 +56,13 @@ export default function TaskStages() {
       )}
 
       {!isLoading && records.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <Layers className="h-10 w-10" />
-          <p className="text-sm">No task stages found</p>
-        </div>
+        <EmptyState
+          icon={<Layers className="h-12 w-12" />}
+          title="No task stages yet"
+          description="Stages drive the Kanban board. Create your first stage to organise tasks."
+          actionLabel="New Stage"
+          onAction={handleCreate}
+        />
       )}
 
       {!isLoading && records.length > 0 && (
@@ -66,7 +77,11 @@ export default function TaskStages() {
               </div>
 
               {/* Stage card */}
-              <div className="rounded-2xl border border-border/30 bg-card/50 p-4 flex-1 mb-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/model/project.task.type/${stage.id}`)}
+                className="w-full text-left rounded-2xl border border-border/30 bg-card/50 p-4 flex-1 mb-2 transition-colors hover:border-border/60 hover:bg-card/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-bold">{stage.name}</span>
                   <Badge variant="secondary" className="rounded-full text-[10px] px-1.5 py-0 tabular-nums">
@@ -79,7 +94,7 @@ export default function TaskStages() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {stage.project_ids.length} {stage.project_ids.length === 1 ? 'project' : 'projects'}
                 </p>
-              </div>
+              </button>
             </div>
           ))}
         </div>

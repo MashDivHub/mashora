@@ -159,7 +159,22 @@ export default function RecordRules() {
               {isLoading ? (
                 <tr><td colSpan={10} className="px-4 py-8 text-center"><LoadingState label="Loading record rules..." /></td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">No record rules found</td></tr>
+                <tr>
+                  <td colSpan={10} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                        <Key className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">No record rules yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Record rules filter which rows a user can see or modify based on a domain.</p>
+                      </div>
+                      <Button size="sm" onClick={() => setShowCreate(true)} className="rounded-xl gap-2">
+                        <Plus className="h-4 w-4" /> Create First Rule
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 records.map(rule => (
                   <tr key={rule.id} className="border-b last:border-0 hover:bg-muted/10 transition-colors group">

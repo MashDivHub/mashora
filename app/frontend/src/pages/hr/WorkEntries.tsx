@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
@@ -53,6 +54,7 @@ function fmtHours(duration: number): string {
 const PAGE_SIZE = 40
 
 export default function WorkEntries() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<string | null>(null)
@@ -120,6 +122,8 @@ export default function WorkEntries() {
       <PageHeader
         title="Work Entries"
         subtitle={isLoading ? undefined : `${total} entr${total !== 1 ? 'ies' : 'y'}`}
+        onNew={() => navigate('/admin/model/hr.work.entry/new')}
+        newLabel="New Entry"
       />
 
       <SearchBar
@@ -138,6 +142,7 @@ export default function WorkEntries() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
+        rowLink={row => `/admin/model/hr.work.entry/${row.id}`}
         emptyMessage="No work entries found"
         emptyIcon={<Clock className="h-10 w-10" />}
       />

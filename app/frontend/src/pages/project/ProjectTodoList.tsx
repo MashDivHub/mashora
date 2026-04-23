@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Badge, cn } from '@mashora/design-system'
 import { Star, CalendarClock, ClipboardCheck } from 'lucide-react'
 import { PageHeader, EmptyState } from '@/components/shared'
@@ -44,6 +45,7 @@ function groupByProject(tasks: ProjectTask[]): Map<string, ProjectTask[]> {
 }
 
 export default function ProjectTodoList() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery<TaskResponse>({
     queryKey: ['project-todos'],
     queryFn: async () => {
@@ -69,10 +71,16 @@ export default function ProjectTodoList() {
 
   const tasks = data?.records ?? []
   const grouped = groupByProject(tasks)
+  const handleCreate = () => navigate('/admin/projects/tasks/new')
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My To-Do" subtitle="project" />
+      <PageHeader
+        title="My To-Do"
+        subtitle="project"
+        onNew={handleCreate}
+        newLabel="New Task"
+      />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -85,6 +93,8 @@ export default function ProjectTodoList() {
           icon={<ClipboardCheck className="h-12 w-12" />}
           title="All caught up"
           description="No pending tasks assigned to you."
+          actionLabel="New Task"
+          onAction={handleCreate}
         />
       ) : (
         <div className="space-y-6">

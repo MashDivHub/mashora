@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Clock } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column } from '@/components/shared'
@@ -23,6 +24,7 @@ const PAGE_SIZE = 40
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TimesheetList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>('date')
@@ -105,6 +107,8 @@ export default function TimesheetList() {
       <PageHeader
         title="Timesheets"
         subtitle={isLoading ? 'Loading…' : `${total} records`}
+        onNew={() => navigate('/admin/model/account.analytic.line/new')}
+        newLabel="New Entry"
       />
 
       <SearchBar
@@ -123,6 +127,7 @@ export default function TimesheetList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
+        rowLink={row => `/admin/model/account.analytic.line/${row.id}`}
         emptyMessage="No timesheet entries found"
         emptyIcon={<Clock className="h-10 w-10" />}
       />

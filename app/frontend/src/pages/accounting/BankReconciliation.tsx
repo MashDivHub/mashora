@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader, toast } from '@/components/shared'
 import {
@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@mashora/design-system'
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Landmark } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 import { extractErrorMessage } from '@/lib/errors'
 
@@ -84,6 +84,7 @@ const PROPOSAL_FIELDS = [
 
 export default function BankReconciliation() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const { data: statement, isLoading: stmtLoading } = useQuery<BankStatement>({
@@ -176,6 +177,29 @@ export default function BankReconciliation() {
           <Skeleton className="h-24 rounded-2xl" />
         </div>
         <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (!statement) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Bank Reconciliation" backTo="/admin/accounting/bank" />
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Landmark className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Statement not found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              This bank statement may have been deleted or the link is stale. Go back to review your statements.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/accounting/bank')} className="gap-2">
+            <Landmark className="h-4 w-4" />
+            Back to Bank Statements
+          </Button>
+        </div>
       </div>
     )
   }

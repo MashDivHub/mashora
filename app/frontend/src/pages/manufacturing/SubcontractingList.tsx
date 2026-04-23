@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Truck } from 'lucide-react'
@@ -39,6 +40,7 @@ function fmt(v: unknown): string {
 }
 
 export default function SubcontractingList() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery<PickingResponse>({
     queryKey: ['subcontracting-list'],
     queryFn: async () => {
@@ -100,13 +102,19 @@ export default function SubcontractingList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Subcontracting" subtitle="manufacturing" />
+      <PageHeader
+        title="Subcontracting"
+        subtitle="manufacturing"
+        onNew={() => navigate('/admin/purchase/orders/new')}
+        newLabel="New Subcontracting PO"
+      />
       <DataTable
         columns={columns}
         data={data?.records ?? []}
         total={data?.total}
         loading={isLoading}
-        emptyMessage="No subcontracting orders found"
+        rowLink={(row) => `/admin/purchase/orders/${row.id}`}
+        emptyMessage="No subcontracting orders yet. Subcontracting is driven by purchase orders to a subcontractor vendor with a dedicated subcontracting location."
         emptyIcon={<Truck className="h-10 w-10" />}
       />
     </div>

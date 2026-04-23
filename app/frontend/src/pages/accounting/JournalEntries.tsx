@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
-import { Badge, type BadgeVariant } from '@mashora/design-system'
-import { BookOpen } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Badge, Button, type BadgeVariant } from '@mashora/design-system'
+import { BookOpen, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -28,6 +28,7 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function JournalEntries() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const journalParam = searchParams.get('journal')
   const journalFilterId = journalParam ? Number(journalParam) : null
@@ -116,9 +117,25 @@ export default function JournalEntries() {
     },
   ]
 
+  const records = data?.records ?? []
+  const hasFilters = !!search || activeFilters.length > 0 || !!journalFilterId
+  const showEmptyCta = !isLoading && records.length === 0 && page === 0 && !hasFilters
+  const createPath = journalFilterId
+    ? `/admin/model/account.move/new?journal_id=${journalFilterId}`
+    : '/admin/model/account.move/new'
+  const handleCreate = () => navigate(createPath)
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Journal Entries" subtitle="accounting" />
+      <PageHeader
+        title="Journal Entries"
+        subtitle="accounting"
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" /> New Entry
+          </Button>
+        }
+      />
       <SearchBar
         placeholder="Search entries..."
         onSearch={(v) => { setSearch(v); setPage(0) }}
@@ -131,20 +148,39 @@ export default function JournalEntries() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        emptyMessage="No journal entries found"
-        emptyIcon={<BookOpen className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No journal entries yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Record your first journal entry to start your accounting ledger.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Entry
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={row => `/admin/model/account.move/${row.id}`}
+          emptyMessage="No journal entries found"
+          emptyIcon={<BookOpen className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

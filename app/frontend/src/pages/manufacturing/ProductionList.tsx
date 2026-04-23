@@ -198,7 +198,7 @@ export default function ProductionList() {
           loading={isLoading}
           isError={isError} error={error} onRetry={() => refetch()}
           rowLink={row => `/admin/manufacturing/orders/${row.id}`}
-          emptyMessage="No production orders found"
+          emptyMessage="No production orders yet. Production orders require a BoM, workcenters, and an mrp_operation picking type."
           emptyIcon={<Factory className="h-10 w-10" />}
         />
       )}

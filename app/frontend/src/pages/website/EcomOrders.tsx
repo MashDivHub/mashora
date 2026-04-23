@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
-import { ShoppingBag } from 'lucide-react'
+import { Badge, Button, type BadgeVariant } from '@mashora/design-system'
+import { ShoppingBag, ArrowRight } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -101,6 +101,10 @@ export default function EcomOrders() {
     },
   ]
 
+  const records = data?.records || []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
+
   return (
     <div className="space-y-4">
       <PageHeader title="E-Commerce Orders" subtitle="website" />
@@ -114,21 +118,39 @@ export default function EcomOrders() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records || []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        rowLink={row => `/admin/sales/orders/${row.id}`}
-        emptyMessage="No e-commerce orders found"
-        emptyIcon={<ShoppingBag className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-muted-foreground">
+            <ShoppingBag className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No e-commerce orders yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Orders appear here when customers check out on your storefront.
+              Visit the product catalog to publish items for sale.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/admin/website/products')} className="gap-2">
+            Manage Products <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={row => `/admin/sales/orders/${row.id}`}
+          emptyMessage="No e-commerce orders found"
+          emptyIcon={<ShoppingBag className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

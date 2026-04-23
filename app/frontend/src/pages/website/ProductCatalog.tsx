@@ -442,12 +442,17 @@ export default function ProductCatalog() {
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}
         </div>
       ) : records.length === 0 ? (
-        <div className="rounded-2xl border border-border/60 bg-card flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <div className="rounded-2xl border border-border/70 bg-muted/60 p-4">
-            <SlidersHorizontal className="size-6 text-muted-foreground" />
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 flex flex-col items-center justify-center gap-4 text-center">
+          <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+            <SlidersHorizontal className="size-6" />
           </div>
-          <p className="text-sm font-medium">No products found</p>
-          <p className="text-xs text-muted-foreground">Try adjusting your filters or create a new product.</p>
+          <div>
+            <p className="text-sm font-semibold">No products found</p>
+            <p className="text-xs text-muted-foreground mt-1">Try adjusting your filters or create a new product.</p>
+          </div>
+          <Button onClick={() => navigate('/admin/products/new')} className="gap-2">
+            <Plus className="h-4 w-4" /> New Product
+          </Button>
         </div>
       ) : groups ? (
         <div className="space-y-2">

@@ -146,7 +146,10 @@ export default function TaskList() {
       confirm: 'Mark {count} task(s) as Done?',
       onClick: ids => {
         if (!doneStage) {
-          toast.error('No closing stage found')
+          toast.error(
+            'No closing stage found',
+            'Configure a stage with "Fold in kanban" enabled in Task Stages.',
+          )
           return
         }
         return bulkAction(

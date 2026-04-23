@@ -73,7 +73,16 @@ export default function InventoryValuation() {
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">No valuation entries found.</TableCell>
+                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">No valuation entries yet</p>
+                    <p className="text-xs">
+                      Valuation entries appear after receiving products with FIFO or AVCO costing.
+                      Products using &quot;standard&quot; costing won&apos;t produce entries here —
+                      check the costing method on your product categories.
+                    </p>
+                  </div>
+                </TableCell>
               </TableRow>
             ) : records.map(layer => (
               <TableRow key={layer.id} className="border-border/30 hover:bg-muted/10">

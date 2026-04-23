@@ -164,19 +164,19 @@ export default function Dashboard() {
       title: 'Sales Orders',
       value: '—',
       icon: ShoppingCart,
-      hint: 'Live data arrives in Phase 1B.',
+      hint: 'Open the Sales module to view quotations and orders.',
     },
     {
       title: 'Revenue',
       value: '—',
       icon: DollarSign,
-      hint: 'Accounting module lands in Phase 1A.',
+      hint: 'Open Accounting to review invoices and revenue.',
     },
     {
       title: 'Products',
       value: '—',
       icon: Package,
-      hint: 'Inventory catalogue coming Phase 1D.',
+      hint: 'Open Products to browse the catalogue.',
     },
   ]
 

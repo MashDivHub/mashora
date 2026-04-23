@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Badge, cn } from '@mashora/design-system'
 import { Milestone, Clock } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
@@ -16,6 +17,7 @@ function getStatusBadge(is_reached: boolean, deadline: string | false) {
 }
 
 export default function MilestoneList() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['milestones'],
     queryFn: async () => {
@@ -64,12 +66,18 @@ export default function MilestoneList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Milestones" subtitle="project" />
+      <PageHeader
+        title="Milestones"
+        subtitle="project"
+        onNew={() => navigate('/admin/model/project.milestone/new')}
+        newLabel="New Milestone"
+      />
       <DataTable
         columns={columns}
         data={data?.records || []}
         total={data?.total}
         loading={isLoading}
+        rowLink={row => `/admin/model/project.milestone/${row.id}`}
         emptyMessage="No milestones found"
         emptyIcon={<Milestone className="h-10 w-10" />}
       />

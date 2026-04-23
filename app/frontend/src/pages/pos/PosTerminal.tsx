@@ -1,169 +1,170 @@
-import { useState, useMemo, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Skeleton, Button } from '@mashora/design-system'
 import {
-  Skeleton,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-  Button, Input,
-} from '@mashora/design-system'
-import { Search, Plus, Minus, X, ShoppingCart, User, Trash2, Printer, CreditCard, Wallet } from 'lucide-react'
+  ShoppingCart, User, Trash2, Plus, Percent, Bookmark, Printer,
+  PackageOpen, ArrowLeft,
+} from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
-import { M2OInput, toast, PosOfflineBadge } from '@/components/shared'
+import { M2OInput, toast, ConfirmDialog } from '@/components/shared'
 import { queueOrder, syncAllPending, cacheProducts, type PosProductCache } from '@/lib/posOffline'
+import { extractErrorMessage } from '@/lib/errors'
+import { usePosOffline } from '@/hooks/usePosOffline'
+import { useAuthStore } from '@/engine/AuthStore'
 
-// ── types ─────────────────────────────────────────────────────────────────────
+import {
+  type CartLine, type PaymentLine, type Product, type PosSession, type PosConfig,
+  type PosCategory, type PosPaymentMethod, type CompletedReceipt, type ServiceMode,
+  TAX_RATE, categoryColor, fmtMoney, uuid,
+} from './terminal/types'
+import SessionGuard from './terminal/SessionGuard'
+import TerminalHeader from './terminal/TerminalHeader'
+import ProductCard from './terminal/ProductCard'
+import CartLineRow from './terminal/CartLineRow'
+import VariantPicker from './terminal/VariantPicker'
+import PaymentDialog from './terminal/PaymentDialog'
+import ReceiptScreen from './terminal/ReceiptScreen'
 
-interface PosCategory {
-  id: number
-  name: string
-  parent_id: [number, string] | null
-  sequence: number
-}
-
-interface Product {
-  id: number
-  name: string
-  price: number
-  categ_id?: [number, string] | null
-}
-
-interface CartLine {
-  productId: number
-  name: string
-  price: number
-  qty: number
-}
+// ── Response shapes ──────────────────────────────────────────────────────────
 
 interface ProductsResponse {
-  products: Product[]
+  records?: Product[]
   total?: number
 }
-
-interface PosPaymentMethod {
-  id: number
-  name: string
-  is_cash_count?: boolean
+interface CategoriesResponse {
+  records?: PosCategory[]
+}
+interface SessionsResponse {
+  records?: PosSession[]
+}
+interface PaymentMethodsResponse {
+  records?: PosPaymentMethod[]
 }
 
-interface PosSession {
-  id: number
-  name: string
-  config_id: [number, string]
-  state: string
+// ── Cart persistence ─────────────────────────────────────────────────────────
+
+function cartStorageKey(configId: number) {
+  return `mashora_pos_cart_${configId}`
 }
 
-interface PaymentLine {
-  payment_method_id: number
-  payment_method_name: string
-  amount: number
-  is_cash: boolean
+function loadCart(configId: number): CartLine[] {
+  try {
+    const raw = localStorage.getItem(cartStorageKey(configId))
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as CartLine[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(l => l && typeof l.productId === 'number' && typeof l.name === 'string')
+  } catch {
+    return []
+  }
 }
 
-interface CompletedReceipt {
-  orderId: number
-  orderName?: string
-  lines: CartLine[]
-  payments: PaymentLine[]
-  subtotal: number
-  tax: number
-  total: number
-  paid: number
-  change: number
-  customer?: string
-  date: string
+function saveCart(configId: number, cart: CartLine[]) {
+  try {
+    // Strip large image_1920 blobs on save (keep cart lightweight)
+    const slim = cart.map(l => ({ ...l, image_1920: l.image_1920 ? l.image_1920.slice(0, 64) : null }))
+    localStorage.setItem(cartStorageKey(configId), JSON.stringify(slim))
+  } catch {
+    // Quota exceeded — drop silently
+  }
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-function formatCurrency(value: number): string {
-  return '$' + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function clearCartStorage(configId: number) {
+  try { localStorage.removeItem(cartStorageKey(configId)) } catch { /* noop */ }
 }
 
-// ── main component ────────────────────────────────────────────────────────────
+// ── Main component ───────────────────────────────────────────────────────────
 
 export default function PosTerminal() {
   const { configId } = useParams<{ configId: string }>()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const tableId = searchParams.get('table')
 
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const configIdNum = configId ? Number(configId) : 0
+  const { online } = usePosOffline()
+  const { user } = useAuthStore()
+
+  // UI state
   const [search, setSearch] = useState('')
-  const [cart, setCart] = useState<CartLine[]>([])
-  const [mobileCartOpen, setMobileCartOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const [cart, setCart] = useState<CartLine[]>(() => configIdNum ? loadCart(configIdNum) : [])
   const [customer, setCustomer] = useState<[number, string] | false>(false)
+  const [mode, setMode] = useState<ServiceMode>(tableId ? 'dine_in' : 'dine_in')
+  const [mobileCartOpen, setMobileCartOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null)
+  const [variantProduct, setVariantProduct] = useState<Product | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
 
-  const configIdNum = configId ? Number(configId) : null
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const barcodeBuf = useRef<{ chars: string; lastAt: number }>({ chars: '', lastAt: 0 })
 
-  // Fetch categories
-  const { data: categoriesData, isLoading: catsLoading } = useQuery<{ records: PosCategory[] }>({
-    queryKey: ['pos-categories'],
-    queryFn: () =>
-      erpClient.raw
-        .post('/model/pos.category', {
-          fields: ['id', 'name', 'parent_id', 'sequence'],
-          order: 'sequence asc',
-          limit: 100,
-        })
-        .then(r => r.data),
+  // Persist cart
+  useEffect(() => {
+    if (!configIdNum) return
+    saveCart(configIdNum, cart)
+  }, [cart, configIdNum])
+
+  // ── Data ───────────────────────────────────────────────────────────────────
+
+  const { data: configData } = useQuery<PosConfig>({
+    queryKey: ['pos-config', configIdNum],
+    enabled: configIdNum > 0,
+    queryFn: () => erpClient.raw
+      .get(`/pos/configs/${configIdNum}`)
+      .then(r => r.data)
+      .catch(() => ({ id: configIdNum, name: `Register #${configIdNum}` } as PosConfig)),
     staleTime: 300_000,
   })
 
-  // Fetch products
+  const { data: categoriesData, isLoading: catsLoading } = useQuery<CategoriesResponse>({
+    queryKey: ['pos-categories'],
+    queryFn: () => erpClient.raw.get('/pos/categories').then(r => r.data).catch(() => ({ records: [] })),
+    staleTime: 300_000,
+  })
+
   const { data: productsData, isLoading: prodsLoading } = useQuery<ProductsResponse>({
-    queryKey: ['pos-products', search],
-    queryFn: () =>
-      erpClient.raw
-        .post('/website/products', {
-          search,
-          limit: 50,
-          published_only: false,
-        })
-        .then(r => r.data),
+    queryKey: ['pos-products', search, selectedCategory],
+    queryFn: () => erpClient.raw
+      .post('/website/products', {
+        search: search || undefined,
+        category_id: selectedCategory ?? undefined,
+        limit: 60,
+      })
+      .then(r => r.data)
+      .catch(() => ({ records: [] })),
     staleTime: 60_000,
   })
 
-  // Fetch active session for this config (needed to create orders)
-  const { data: sessionData } = useQuery<{ records: PosSession[] }>({
+  const { data: sessionData, isLoading: sessionLoading, refetch: refetchSession } = useQuery<SessionsResponse>({
     queryKey: ['pos-session-active', configIdNum],
-    queryFn: () =>
-      erpClient.raw
-        .post('/model/pos.session', {
-          domain: configIdNum
-            ? [['config_id', '=', configIdNum], ['state', '=', 'opened']]
-            : [['state', '=', 'opened']],
-          fields: ['id', 'name', 'config_id', 'state'],
-          limit: 1,
-          order: 'id desc',
-        })
-        .then(r => r.data),
-    enabled: !!configIdNum,
+    enabled: configIdNum > 0,
+    queryFn: () => erpClient.raw
+      .get('/pos/sessions', {
+        params: { config_id: configIdNum, state: 'opened', limit: 1 },
+      })
+      .then(r => r.data)
+      .catch(() => ({ records: [] })),
   })
 
-  const activeSession = sessionData?.records?.[0]
+  const activeSession = sessionData?.records?.[0] ?? null
 
-  // Fetch payment methods (filtered by config_id, fallback to defaults if empty/error)
-  const { data: paymentMethodsData } = useQuery<{ records: PosPaymentMethod[] }>({
+  const { data: paymentMethodsData } = useQuery<PaymentMethodsResponse>({
     queryKey: ['pos-payment-methods', configIdNum],
-    queryFn: () =>
-      erpClient.raw
-        .post('/model/pos.payment.method', {
-          domain: configIdNum ? [['config_ids', 'in', [configIdNum]]] : [],
-          fields: ['id', 'name', 'is_cash_count'],
-          limit: 50,
-        })
-        .then(r => r.data)
-        .catch(() => ({ records: [] })),
+    queryFn: () => erpClient.raw
+      .get('/pos/payment-methods', { params: { active_only: true } })
+      .then(r => r.data)
+      .catch(() => ({ records: [] })),
     staleTime: 300_000,
   })
 
   const paymentMethods: PosPaymentMethod[] = useMemo(() => {
     const records = paymentMethodsData?.records ?? []
     if (records.length > 0) return records
-    // Fallback defaults — synthetic ids of -1/-2 (won't be sent if backend resolves properly)
     return [
       { id: -1, name: 'Cash', is_cash_count: true },
       { id: -2, name: 'Card', is_cash_count: false },
@@ -171,63 +172,135 @@ export default function PosTerminal() {
   }, [paymentMethodsData])
 
   const categories = categoriesData?.records ?? []
-  const allProducts: Product[] = productsData?.products ?? []
+  const categoriesById = useMemo(() => {
+    const m = new Map<number, PosCategory>()
+    for (const c of categories) m.set(c.id, c)
+    return m
+  }, [categories])
 
+  const allProducts: Product[] = productsData?.records ?? []
+
+  // Client-side category filter (backend may or may not apply categ filter)
   const filteredProducts = useMemo(() => {
     if (selectedCategory === null) return allProducts
     return allProducts.filter(p => {
       if (!p.categ_id) return false
-      return p.categ_id[0] === selectedCategory
+      const id = Array.isArray(p.categ_id) ? p.categ_id[0] : p.categ_id
+      return id === selectedCategory
     })
   }, [allProducts, selectedCategory])
 
-  // ── cart helpers ──────────────────────────────────────────────────────────
+  // Cache products for offline use
+  useEffect(() => {
+    if (allProducts.length > 0) {
+      const cached: PosProductCache[] = allProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        list_price: p.list_price ?? p.price ?? 0,
+      }))
+      cacheProducts(cached).catch(() => {})
+    }
+  }, [allProducts])
 
-  function addToCart(product: Product) {
+  // ── Cart helpers ───────────────────────────────────────────────────────────
+
+  const addProductToCart = useCallback((product: Product, opts?: { variantId?: number; variantName?: string; price?: number; qty?: number; image?: string | null }) => {
+    const productId = opts?.variantId ?? product.id
+    const name = opts?.variantName ?? product.name
+    const price = opts?.price ?? product.list_price ?? product.price ?? 0
+    const qty = opts?.qty ?? 1
+
     setCart(prev => {
-      const existing = prev.find(l => l.productId === product.id)
-      if (existing) {
-        return prev.map(l =>
-          l.productId === product.id ? { ...l, qty: l.qty + 1 } : l
-        )
+      // Merge same product+variant with zero discount / no note
+      const matchIdx = prev.findIndex(l =>
+        l.productId === productId
+        && (l.variantId ?? null) === (opts?.variantId ?? null)
+        && l.discount === 0
+        && !l.note,
+      )
+      if (matchIdx >= 0) {
+        return prev.map((l, i) => i === matchIdx ? { ...l, qty: l.qty + qty } : l)
       }
-      return [...prev, { productId: product.id, name: product.name, price: product.price ?? 0, qty: 1 }]
+      const newLine: CartLine = {
+        uid: uuid(),
+        productId,
+        variantId: opts?.variantId ?? null,
+        name,
+        price,
+        qty,
+        discount: 0,
+        image_1920: opts?.image ?? (typeof product.image_1920 === 'string' ? product.image_1920 : null),
+      }
+      return [...prev, newLine]
     })
+  }, [])
+
+  function onProductClick(product: Product) {
+    // Products with attribute lines open the variant picker; others go straight in.
+    // The cheapest heuristic without an extra fetch: attempt to add directly; the
+    // picker is also available via right-click.
+    addProductToCart(product)
   }
 
-  function setQty(productId: number, delta: number) {
+  function onProductContext(e: React.MouseEvent, product: Product) {
+    e.preventDefault()
+    setVariantProduct(product)
+  }
+
+  function setQtyDelta(lineUid: string, delta: number) {
     setCart(prev =>
       prev
-        .map(l => l.productId === productId ? { ...l, qty: l.qty + delta } : l)
-        .filter(l => l.qty > 0)
+        .map(l => l.uid === lineUid ? { ...l, qty: l.qty + delta } : l)
+        .filter(l => l.qty > 0),
     )
   }
-
-  function removeLine(productId: number) {
-    setCart(prev => prev.filter(l => l.productId !== productId))
+  function setQty(lineUid: string, qty: number) {
+    setCart(prev => prev.map(l => l.uid === lineUid ? { ...l, qty } : l).filter(l => l.qty > 0))
   }
-
+  function removeLine(lineUid: string) {
+    setCart(prev => prev.filter(l => l.uid !== lineUid))
+  }
+  function setDiscount(lineUid: string, discount: number) {
+    setCart(prev => prev.map(l => l.uid === lineUid ? { ...l, discount } : l))
+  }
+  function setNote(lineUid: string, note: string) {
+    setCart(prev => prev.map(l => l.uid === lineUid ? { ...l, note } : l))
+  }
   function clearCart() {
     setCart([])
     setCustomer(false)
   }
 
-  // ── totals ────────────────────────────────────────────────────────────────
+  // Global discount: apply to each line
+  function applyQuickDiscount() {
+    const pctStr = window.prompt('Global discount % (0–100)', '10')
+    if (pctStr == null) return
+    const pct = Math.max(0, Math.min(100, Number(pctStr)))
+    if (!Number.isFinite(pct)) return
+    setCart(prev => prev.map(l => ({ ...l, discount: pct })))
+  }
 
-  const subtotal = cart.reduce((sum, l) => sum + l.price * l.qty, 0)
-  const tax = subtotal * 0.15
-  const total = subtotal + tax
-  const orderTotal = cart.length > 0 ? formatCurrency(total) : formatCurrency(0)
+  function saveDraft() {
+    if (cart.length === 0) return
+    toast.success('Draft saved', 'Order is preserved for this register.')
+  }
 
-  const totalReceived = paymentLines.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const change = Math.max(0, totalReceived - total)
-  const remaining = Math.max(0, total - totalReceived)
+  // ── Totals ─────────────────────────────────────────────────────────────────
 
-  // ── payment dialog handlers ──────────────────────────────────────────────
+  const { subtotal, discount, tax, total } = useMemo(() => {
+    const gross = cart.reduce((s, l) => s + l.price * l.qty, 0)
+    const disc = cart.reduce((s, l) => s + l.price * l.qty * (l.discount / 100), 0)
+    const net = gross - disc
+    const t = net * TAX_RATE
+    return { subtotal: gross, discount: disc, tax: t, total: net + t }
+  }, [cart])
+
+  const cartCount = cart.reduce((s, l) => s + l.qty, 0)
+
+  // ── Payment ────────────────────────────────────────────────────────────────
 
   function openPayment() {
-    if (cart.length === 0) return
-    // Seed with first method = total amount
+    if (cart.length === 0 || !activeSession) return
     const first = paymentMethods[0]
     if (first) {
       setPaymentLines([{
@@ -242,569 +315,535 @@ export default function PosTerminal() {
     setPaymentOpen(true)
   }
 
-  function addPaymentLine(methodId: number) {
-    const m = paymentMethods.find(pm => pm.id === methodId)
-    if (!m) return
-    setPaymentLines(prev => [
-      ...prev,
-      {
-        payment_method_id: m.id,
-        payment_method_name: m.name,
-        amount: remaining,
-        is_cash: !!m.is_cash_count,
-      },
-    ])
-  }
-
-  function updatePaymentAmount(idx: number, amount: number) {
-    setPaymentLines(prev => prev.map((p, i) => i === idx ? { ...p, amount } : p))
-  }
-
-  function removePaymentLine(idx: number) {
-    setPaymentLines(prev => prev.filter((_, i) => i !== idx))
-  }
-
   async function validatePayment() {
     if (cart.length === 0) return
-    if (totalReceived + 0.001 < total) {
-      toast.warning('Underpaid', `Need ${formatCurrency(remaining)} more`)
+    const received = paymentLines.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    if (received + 0.001 < total) {
+      toast.warning('Underpaid', `Need ${fmtMoney(total - received)} more`)
       return
     }
     if (!activeSession?.id) {
-      toast.error('No active session', 'Open a POS session before charging orders.')
+      toast.error('No active session')
       return
     }
 
     setSubmitting(true)
-    try {
-      const partnerId = Array.isArray(customer) ? customer[0] : null
+    const partnerId = Array.isArray(customer) ? customer[0] : null
+    const change = Math.max(0, received - total)
 
-      // Queue order to IndexedDB first (works offline)
-      const uuid = await queueOrder({
-        session_id: activeSession.id,
-        config_id: Number(configId) || 0,
-        partner_id: partnerId,
-        table_id: tableId ? Number(tableId) : null,
-        lines: cart.map(l => ({
-          product_id: l.productId,
-          qty: l.qty,
-          price_unit: l.price,
-          product_name: l.name,
-        })),
-        payments: paymentLines.map(p => ({
+    const payload = {
+      session_id: activeSession.id,
+      partner_id: partnerId,
+      table_id: tableId ? Number(tableId) : null,
+      lines: cart.map(l => ({
+        product_id: l.productId,
+        name: l.name,
+        qty: l.qty,
+        price_unit: l.price,
+        discount: l.discount,
+      })),
+      payments: paymentLines
+        .filter(p => p.payment_method_id > 0)
+        .map(p => ({
           payment_method_id: p.payment_method_id,
-          method_name: p.payment_method_name,
           amount: Number(p.amount),
         })),
-        amount_total: total,
-        amount_tax: tax,
-        amount_paid: totalReceived,
-        amount_return: change,
+    }
+
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine
+
+    try {
+      if (!isOnline) throw new Error('offline')
+      const { data } = await erpClient.raw.post('/pos/orders', payload)
+      finishOrder({
+        orderId: data?.id ?? 0,
+        orderName: data?.name ?? `#${data?.id ?? ''}`,
+        received, change,
       })
-
-      // Stash receipt immediately (don't block on sync)
-      setReceipt({
-        orderId: 0,  // Will update if sync succeeds
-        orderName: `LOCAL-${uuid.slice(-6).toUpperCase()}`,
-        lines: cart,
-        payments: paymentLines,
-        subtotal,
-        tax,
-        total,
-        paid: totalReceived,
-        change,
-        customer: Array.isArray(customer) ? customer[1] : undefined,
-        date: new Date().toLocaleString(),
-      })
-
-      const isOnline = typeof navigator === 'undefined' || navigator.onLine
-      if (isOnline) {
-        // Best-effort immediate sync (fire-and-forget)
-        syncAllPending().then(({ succeeded, failed }) => {
-          if (succeeded > 0) toast.success(`Order completed`, `${succeeded} synced to server`)
-          if (failed > 0) toast.warning('Some orders failed to sync', 'Will retry automatically')
-        }).catch(() => {})
-        toast.success('Order saved', 'Syncing to server...')
-      } else {
-        toast.warning('Order saved offline', 'Will sync when connection returns')
-      }
-
-      // Reset cart
-      setCart([])
-      setCustomer(false)
-      setPaymentLines([])
-      setPaymentOpen(false)
+      toast.success('Order completed', data?.name ?? 'Saved to server')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to record order'
-      toast.error('Payment failed', msg)
+      try {
+        const uuidStr = await queueOrder({
+          session_id: activeSession.id,
+          config_id: configIdNum,
+          partner_id: partnerId,
+          table_id: tableId ? Number(tableId) : null,
+          lines: cart.map(l => ({
+            product_id: l.productId,
+            qty: l.qty,
+            price_unit: l.price,
+            product_name: l.name,
+          })),
+          payments: paymentLines.map(p => ({
+            payment_method_id: p.payment_method_id,
+            method_name: p.payment_method_name,
+            amount: Number(p.amount),
+          })),
+          amount_total: total,
+          amount_tax: tax,
+          amount_paid: received,
+          amount_return: change,
+        })
+        finishOrder({
+          orderId: 0,
+          orderName: `LOCAL-${uuidStr.slice(-6).toUpperCase()}`,
+          received, change,
+        })
+        if (isOnline) {
+          toast.error('Payment failed', extractErrorMessage(err))
+          syncAllPending().catch(() => {})
+        } else {
+          toast.warning('Order saved offline', 'Will sync when connection returns')
+        }
+      } catch (queueErr) {
+        toast.error('Payment failed', extractErrorMessage(queueErr ?? err))
+      }
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Cache products to IndexedDB whenever they load (for offline use)
-  useEffect(() => {
-    if (allProducts.length > 0) {
-      const cached: PosProductCache[] = allProducts.map(p => ({
-        id: p.id,
-        name: p.name,
-        list_price: p.price,
-      }))
-      cacheProducts(cached).catch(() => {})
-    }
-  }, [allProducts])
-
-  // Reset payment lines when closing dialog
-  useEffect(() => {
-    if (!paymentOpen) setPaymentLines([])
-  }, [paymentOpen])
-
-  function printReceipt() {
-    if (!receipt) return
-    // Print stub — opens browser print dialog with the receipt panel
-    window.print()
+  function finishOrder({ orderId, orderName, received, change }: { orderId: number; orderName: string; received: number; change: number }) {
+    setReceipt({
+      orderId, orderName,
+      lines: cart,
+      payments: paymentLines,
+      subtotal, discount, tax, total,
+      paid: received, change,
+      customer: Array.isArray(customer) ? customer[1] : undefined,
+      date: new Date().toLocaleString(),
+    })
+    setCart([])
+    setCustomer(false)
+    setPaymentLines([])
+    setPaymentOpen(false)
+    if (configIdNum) clearCartStorage(configIdNum)
   }
 
-  // ── render ────────────────────────────────────────────────────────────────
+  // ── Keyboard shortcuts + barcode ───────────────────────────────────────────
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // Don't hijack typing inside inputs for most shortcuts
+      const target = e.target as HTMLElement | null
+      const inInput = !!target && (
+        target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.isContentEditable
+      )
+
+      if (e.key === '/' && !inInput) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        return
+      }
+      if (e.key === 'Escape') {
+        // Close any sheet/drawer — dialogs handle their own Escape
+        if (mobileCartOpen) setMobileCartOpen(false)
+        if (variantProduct) setVariantProduct(null)
+        if (confirmClear) setConfirmClear(false)
+        // Also clear search when focused
+        if (inInput && target === searchInputRef.current) {
+          setSearch('')
+          ;(target as HTMLInputElement).blur()
+        }
+        return
+      }
+      if (e.key === 'F2') {
+        e.preventDefault()
+        if (cart.length > 0) setConfirmClear(true)
+        return
+      }
+
+      // Barcode heuristic: rapid printable char bursts terminated by Enter
+      if (!inInput && e.key.length === 1) {
+        const now = Date.now()
+        const buf = barcodeBuf.current
+        if (now - buf.lastAt > 100) buf.chars = ''
+        buf.chars += e.key
+        buf.lastAt = now
+      } else if (!inInput && e.key === 'Enter') {
+        const buf = barcodeBuf.current
+        if (buf.chars.length >= 4) {
+          setSearch(buf.chars)
+          buf.chars = ''
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileCartOpen, variantProduct, confirmClear, cart.length])
+
+  // ── Guards / loading states ────────────────────────────────────────────────
+
+  if (!configIdNum) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-6 bg-background">
+        <div className="text-center space-y-3">
+          <p className="text-base font-semibold">Invalid register</p>
+          <Button onClick={() => navigate('/admin/pos')}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (sessionLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="h-8 w-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+          <p className="text-sm">Loading register…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!activeSession) {
+    return (
+      <SessionGuard
+        configId={configIdNum}
+        configName={configData?.name}
+        onOpened={() => { refetchSession() }}
+      />
+    )
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  const orderCountLabel = receipt ? receipt.orderName ?? '' : 'New order'
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground">
+      {/* Header */}
+      <TerminalHeader
+        ref={searchInputRef}
+        registerName={configData?.name ?? activeSession.name}
+        sessionName={activeSession.name}
+        online={online}
+        search={search}
+        onSearchChange={setSearch}
+        onExit={() => navigate('/admin/pos')}
+        onCloseSession={() => navigate(`/admin/pos/sessions/${activeSession.id}`)}
+        onOpenFloors={() => navigate(`/admin/pos/restaurant/${configIdNum}`)}
+        hasRestaurant={configData?.module_pos_restaurant}
+        user={user ? { name: user.name, email: user.email } : undefined}
+      />
 
-      {/* ── LEFT PANEL: Product Grid ────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 min-w-0 bg-background overflow-hidden">
-
-        {/* Category tabs + search */}
-        <div className="shrink-0 border-b border-border/30 px-4 pt-3 pb-0 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            {tableId ? (
-              <div className="text-xs text-primary font-medium">Table #{tableId}</div>
-            ) : <div />}
-            <PosOfflineBadge />
-          </div>
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-full rounded-xl border border-border/40 bg-muted/30 py-2 pl-9 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+      {/* Main two-column layout */}
+      <div className="flex-1 flex min-h-0">
+        {/* ── LEFT: products ───────────────────────────────────────────────── */}
+        <section className="flex-1 min-w-0 flex flex-col">
+          {/* Category pill row */}
+          <div className="h-12 shrink-0 flex items-center gap-2 px-4 border-b border-border/30 overflow-x-auto scrollbar-none">
+            <CategoryPill
+              label="All"
+              active={selectedCategory === null}
+              onClick={() => setSelectedCategory(null)}
             />
+            {catsLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-20 rounded-xl shrink-0" />
+              ))
+            ) : (
+              categories.map(c => (
+                <CategoryPill
+                  key={c.id}
+                  label={c.name}
+                  active={selectedCategory === c.id}
+                  onClick={() => setSelectedCategory(c.id)}
+                  color={categoryColor(c.color)}
+                />
+              ))
+            )}
+            {tableId && (
+              <div className="ml-auto shrink-0 flex items-center gap-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold px-3 py-1.5">
+                Table #{tableId}
+              </div>
+            )}
           </div>
 
-          {/* Category tabs */}
-          {!catsLoading && (
-            <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-none">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={[
-                  'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                  selectedCategory === null
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted/30 text-muted-foreground hover:bg-muted/60',
-                ].join(' ')}
-              >
-                All
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={[
-                    'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                    selectedCategory === cat.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/30 text-muted-foreground hover:bg-muted/60',
-                  ].join(' ')}
+          {/* Product grid */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {prodsLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                <PackageOpen className="h-12 w-12 opacity-30" />
+                <p className="text-sm">No products found</p>
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => navigate('/admin/products/new')}
                 >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  <Plus className="h-4 w-4 mr-1.5" /> Create product
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {filteredProducts.map(p => {
+                  const categId = p.categ_id
+                    ? (Array.isArray(p.categ_id) ? p.categ_id[0] : p.categ_id)
+                    : undefined
+                  const cat = categId ? categoriesById.get(categId as number) ?? null : null
+                  return (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      category={cat}
+                      onClick={() => onProductClick(p)}
+                      onContextMenu={e => onProductContext(e, p)}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
-        {/* Product grid */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {prodsLoading ? (
-            <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <Skeleton key={i} className="h-28 rounded-xl" />
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              No products found
-            </div>
+        {/* ── RIGHT: cart ───────────────────────────────────────────────────── */}
+        <aside
+          className={`${mobileCartOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+            fixed md:relative inset-y-0 right-0 z-50 md:z-auto
+            w-full md:w-[400px] xl:w-[460px]
+            bg-card border-l border-border/40 flex flex-col
+            transition-transform duration-200 shadow-2xl md:shadow-none`}
+        >
+          {receipt ? (
+            <ReceiptScreen
+              receipt={receipt}
+              onNewOrder={() => setReceipt(null)}
+            />
           ) : (
-            <div className="grid grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredProducts.map(product => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="rounded-xl border border-border/30 bg-card/50 p-3 hover:bg-muted/20 cursor-pointer transition-all text-left space-y-2 active:scale-95"
-                >
-                  {/* Image placeholder */}
-                  <div className="w-full aspect-square rounded-lg bg-muted/40 flex items-center justify-center">
-                    <ShoppingCart className="h-6 w-6 text-muted-foreground/40" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium leading-tight line-clamp-2">{product.name}</p>
-                    <p className="text-xs font-semibold text-primary mt-0.5">
-                      {formatCurrency(product.price ?? 0)}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            <>
+              {/* Cart header */}
+              <div className="h-14 shrink-0 px-5 flex items-center justify-between border-b border-border/30">
+                <div>
+                  <h2 className="text-base font-bold">Current Order</h2>
+                  <p className="text-[11px] text-muted-foreground">{orderCountLabel}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => cart.length > 0 && setConfirmClear(true)}
+                    disabled={cart.length === 0}
+                    className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all duration-200 disabled:opacity-30"
+                    aria-label="Clear cart"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setMobileCartOpen(false)}
+                    className="md:hidden h-9 w-9 rounded-lg text-muted-foreground hover:bg-muted/40 flex items-center justify-center"
+                    aria-label="Close cart"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
 
-        {/* Receipt area below grid */}
-        {receipt && (
-          <div className="shrink-0 border-t border-border/30 bg-card/40 max-h-[40%] overflow-y-auto print:max-h-none print:overflow-visible">
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Printer className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold">
-                    Receipt {receipt.orderName ?? `#${receipt.orderId}`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 print:hidden">
-                  <Button size="sm" variant="outline" className="rounded-xl" onClick={printReceipt}>
-                    <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
-                  </Button>
-                  <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setReceipt(null)}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">{receipt.date}</div>
-              {receipt.customer && (
-                <div className="text-xs">Customer: <span className="font-medium">{receipt.customer}</span></div>
-              )}
-              <div className="rounded-xl border border-border/40 divide-y divide-border/20">
-                {receipt.lines.map(l => (
-                  <div key={l.productId} className="flex justify-between px-3 py-1.5 text-xs">
-                    <span className="truncate flex-1">{l.qty} × {l.name}</span>
-                    <span className="font-mono shrink-0 ml-2">{formatCurrency(l.price * l.qty)}</span>
-                  </div>
+              {/* Mode tabs */}
+              <div className="h-11 shrink-0 px-4 flex gap-1 border-b border-border/20">
+                {(['dine_in', 'takeout', 'delivery'] as ServiceMode[]).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`flex-1 text-xs font-medium rounded-lg transition-all duration-200 ${
+                      mode === m
+                        ? 'bg-muted/60 text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/40'
+                    }`}
+                  >
+                    {m === 'dine_in' ? 'Dine-in' : m === 'takeout' ? 'Takeout' : 'Delivery'}
+                  </button>
                 ))}
               </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(receipt.subtotal)}</span></div>
-                <div className="flex justify-between"><span>Tax</span><span className="font-mono">{formatCurrency(receipt.tax)}</span></div>
-                <div className="flex justify-between font-semibold border-t border-border/30 pt-1 mt-1">
-                  <span>Total</span><span className="font-mono">{formatCurrency(receipt.total)}</span>
-                </div>
-                {receipt.payments.map((p, i) => (
-                  <div key={i} className="flex justify-between text-muted-foreground">
-                    <span>{p.payment_method_name}</span>
-                    <span className="font-mono">{formatCurrency(p.amount)}</span>
+
+              {/* Lines */}
+              <div className="flex-1 overflow-y-auto px-3 py-3">
+                {cart.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <ShoppingCart className="h-10 w-10 opacity-30" />
+                    <p className="text-sm font-medium">Cart is empty</p>
+                    <p className="text-xs">Tap a product to start</p>
                   </div>
-                ))}
-                {receipt.change > 0 && (
-                  <div className="flex justify-between text-emerald-500 font-semibold">
-                    <span>Change</span><span className="font-mono">{formatCurrency(receipt.change)}</span>
+                ) : (
+                  <div className="space-y-2">
+                    {cart.map(l => (
+                      <CartLineRow
+                        key={l.uid}
+                        line={l}
+                        onQtyChange={setQtyDelta}
+                        onQtySet={setQty}
+                        onRemove={removeLine}
+                        onDiscountChange={setDiscount}
+                        onNoteChange={setNote}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        )}
+
+              {/* Customer */}
+              <div className="shrink-0 px-4 py-3 border-t border-border/30 flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-muted/40 flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <M2OInput
+                    value={customer}
+                    model="res.partner"
+                    onChange={v => setCustomer(v || false)}
+                    placeholder="Walk-in customer"
+                  />
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="shrink-0 px-6 py-4 border-t border-border/30 bg-muted/20 space-y-1.5 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{fmtMoney(subtotal)}</span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-rose-400">
+                    <span>Discount</span>
+                    <span className="tabular-nums">− {fmtMoney(discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax ({Math.round(TAX_RATE * 100)}%)</span>
+                  <span className="tabular-nums">{fmtMoney(tax)}</span>
+                </div>
+                <div className="border-t border-border/30 pt-2 flex justify-between items-baseline">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-2xl font-bold tabular-nums text-emerald-400">{fmtMoney(total)}</span>
+                </div>
+              </div>
+
+              {/* Pay + actions */}
+              <div className="shrink-0 p-4 space-y-2 border-t border-border/30">
+                <button
+                  onClick={openPayment}
+                  disabled={cart.length === 0}
+                  className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-lg font-semibold transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                >
+                  <span>Pay {fmtMoney(total)}</span>
+                  <span aria-hidden>→</span>
+                </button>
+                <div className="grid grid-cols-3 gap-2">
+                  <SecondaryAction icon={<Bookmark className="h-4 w-4" />} label="Save" onClick={saveDraft} />
+                  <SecondaryAction icon={<Printer className="h-4 w-4" />} label="Reprint" onClick={() => window.print()} />
+                  <SecondaryAction icon={<Percent className="h-4 w-4" />} label="Discount" onClick={applyQuickDiscount} />
+                </div>
+              </div>
+            </>
+          )}
+        </aside>
       </div>
 
-      {/* ── Mobile cart toggle (visible < md) ─────────────────────────────── */}
-      {cart.length > 0 && !mobileCartOpen && (
+      {/* Mobile bottom "view cart" bar */}
+      {cart.length > 0 && !mobileCartOpen && !receipt && (
         <button
           onClick={() => setMobileCartOpen(true)}
-          className="md:hidden fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-5 py-3 shadow-lg font-semibold"
+          className="md:hidden fixed bottom-4 left-4 right-4 z-30 flex items-center gap-3 rounded-2xl bg-emerald-500 text-white px-5 h-14 shadow-2xl font-semibold transition-all duration-200"
         >
-          <ShoppingCart className="h-5 w-5" />
-          <span>{cart.length}</span>
-          <span>·</span>
-          <span>{orderTotal}</span>
+          <span className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-xs">
+            {cartCount}
+          </span>
+          <span>View cart</span>
+          <span className="ml-auto tabular-nums">{fmtMoney(total)}</span>
         </button>
       )}
-
-      {/* Mobile cart overlay backdrop */}
       {mobileCartOpen && (
-        <button
-          type="button"
-          aria-label="Close cart"
-          className="md:hidden fixed inset-0 z-40 bg-black/50 cursor-default"
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/50"
           onClick={() => setMobileCartOpen(false)}
         />
       )}
 
-      {/* ── RIGHT PANEL: Cart ───────────────────────────────────────────────── */}
-      <div
-        className={`flex flex-col w-full md:w-[40%] md:min-w-[320px] bg-card border-l border-border/30 overflow-hidden fixed md:relative inset-y-0 right-0 z-50 md:z-auto transform transition-transform md:translate-x-0 ${mobileCartOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}
-        role={mobileCartOpen ? 'dialog' : undefined}
-        aria-modal={mobileCartOpen ? true : undefined}
-        aria-labelledby={mobileCartOpen ? 'pos-cart-title' : undefined}
-        onKeyDown={(e) => { if (mobileCartOpen && e.key === 'Escape') setMobileCartOpen(false) }}
-      >
+      {/* Dialogs */}
+      <VariantPicker
+        product={variantProduct}
+        open={!!variantProduct}
+        onClose={() => setVariantProduct(null)}
+        onAdd={({ variantId, variantName, price, qty, image_1920 }) => {
+          if (!variantProduct) return
+          addProductToCart(variantProduct, {
+            variantId,
+            variantName,
+            price,
+            qty,
+            image: image_1920,
+          })
+        }}
+      />
 
-        {/* Cart header */}
-        <div className="shrink-0 px-4 py-3 border-b border-border/30 flex items-center justify-between">
-          <span id="pos-cart-title" className="text-sm font-semibold">Current Order</span>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-primary">{orderTotal}</span>
-            <button
-              type="button"
-              onClick={() => setMobileCartOpen(false)}
-              aria-label="Close cart"
-              className="md:hidden h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted/40"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      <PaymentDialog
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        total={total}
+        lineCount={cart.reduce((s, l) => s + l.qty, 0)}
+        methods={paymentMethods}
+        payments={paymentLines}
+        onChangePayments={setPaymentLines}
+        onValidate={validatePayment}
+        submitting={submitting}
+      />
 
-        {/* Line items */}
-        <div className="flex-1 overflow-y-auto">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-              <ShoppingCart className="h-8 w-8 opacity-30" />
-              <p className="text-sm">Cart is empty</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/20">
-              {cart.map(line => (
-                <div key={line.productId} className="flex items-center gap-2 px-4 py-2.5">
-                  {/* Name + price */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{line.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(line.price)}</p>
-                  </div>
-
-                  {/* Qty controls */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => setQty(line.productId, -1)}
-                      className="h-6 w-6 rounded-md border border-border/40 bg-muted/30 flex items-center justify-center hover:bg-muted/60 transition-colors"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="w-6 text-center text-xs font-semibold">{line.qty}</span>
-                    <button
-                      onClick={() => setQty(line.productId, 1)}
-                      className="h-6 w-6 rounded-md border border-border/40 bg-muted/30 flex items-center justify-center hover:bg-muted/60 transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                  </div>
-
-                  {/* Line total */}
-                  <span className="text-xs font-semibold w-16 text-right shrink-0">
-                    {formatCurrency(line.price * line.qty)}
-                  </span>
-
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeLine(line.productId)}
-                    className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Customer chip */}
-        {Array.isArray(customer) && (
-          <div className="shrink-0 px-4 py-2 border-t border-border/30 flex items-center justify-between bg-muted/10">
-            <div className="flex items-center gap-2 text-xs">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="font-medium">{customer[1]}</span>
-            </div>
-            <button
-              onClick={() => setCustomer(false)}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Totals */}
-        <div className="shrink-0 border-t border-border/30 px-4 py-3 space-y-1.5">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Tax (15%)</span>
-            <span>{formatCurrency(tax)}</span>
-          </div>
-          <div className="flex justify-between text-sm font-bold pt-1 border-t border-border/20">
-            <span>Total</span>
-            <span className="text-lg">{formatCurrency(total)}</span>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="shrink-0 px-4 pb-4 pt-2 space-y-2">
-          <button
-            onClick={openPayment}
-            disabled={cart.length === 0}
-            className="w-full h-14 text-lg rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Pay {cart.length > 0 ? formatCurrency(total) : ''}
-          </button>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <M2OInput
-                value={customer}
-                model="res.partner"
-                onChange={v => setCustomer(v || false)}
-                placeholder="Customer"
-                className="h-9"
-              />
-            </div>
-            <button
-              onClick={clearCart}
-              disabled={cart.length === 0}
-              className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-border/40 bg-transparent text-sm font-medium text-muted-foreground hover:bg-muted/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── PAYMENT DIALOG ──────────────────────────────────────────────────── */}
-      <Dialog open={paymentOpen} onOpenChange={v => !submitting && setPaymentOpen(v)}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Payment</span>
-              <span className="text-2xl font-bold text-primary">{formatCurrency(total)}</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid sm:grid-cols-2 gap-6">
-            {/* Order summary */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Order Summary
-              </h3>
-              <div className="rounded-xl border border-border/40 max-h-48 overflow-y-auto divide-y divide-border/20">
-                {cart.map(l => (
-                  <div key={l.productId} className="flex justify-between px-3 py-2 text-xs">
-                    <span className="truncate flex-1">{l.qty} × {l.name}</span>
-                    <span className="font-mono shrink-0 ml-2">{formatCurrency(l.price * l.qty)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span className="font-mono">{formatCurrency(tax)}</span></div>
-                <div className="flex justify-between font-semibold pt-1 border-t border-border/30">
-                  <span>Total</span><span className="font-mono">{formatCurrency(total)}</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer</label>
-                <M2OInput
-                  value={customer}
-                  model="res.partner"
-                  onChange={v => setCustomer(v || false)}
-                  placeholder="Walk-in customer"
-                />
-              </div>
-            </div>
-
-            {/* Payment lines */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Payment Methods
-              </h3>
-
-              <div className="flex flex-wrap gap-2">
-                {paymentMethods.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => addPaymentLine(m.id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-muted/20 px-3 py-1.5 text-xs font-medium hover:bg-muted/40 transition-colors"
-                  >
-                    {m.is_cash_count
-                      ? <Wallet className="h-3.5 w-3.5" />
-                      : <CreditCard className="h-3.5 w-3.5" />}
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {paymentLines.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No payment lines yet — pick a method above.</p>
-                ) : paymentLines.map((p, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="flex-1 text-xs font-medium truncate flex items-center gap-1.5">
-                      {p.is_cash
-                        ? <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                        : <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />}
-                      {p.payment_method_name}
-                    </div>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={p.amount}
-                      onChange={e => updatePaymentAmount(i, Number(e.target.value))}
-                      className="w-28 h-8 rounded-lg text-right font-mono text-xs"
-                    />
-                    <button
-                      onClick={() => removePaymentLine(i)}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-1 pt-2 border-t border-border/30 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Received</span>
-                  <span className="font-mono">{formatCurrency(totalReceived)}</span>
-                </div>
-                {remaining > 0.001 ? (
-                  <div className="flex justify-between text-amber-500 font-semibold">
-                    <span>Remaining</span>
-                    <span className="font-mono">{formatCurrency(remaining)}</span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between text-emerald-500 font-semibold">
-                    <span>Change Due</span>
-                    <span className="font-mono">{formatCurrency(change)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" className="rounded-xl" onClick={() => setPaymentOpen(false)} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={validatePayment}
-              disabled={submitting || cart.length === 0 || remaining > 0.001}
-            >
-              {submitting ? 'Processing...' : `Validate ${formatCurrency(total)}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmClear}
+        onClose={() => setConfirmClear(false)}
+        onConfirm={() => { clearCart(); setConfirmClear(false) }}
+        title="Clear cart?"
+        message="All items in the current order will be removed. This can't be undone."
+        confirmLabel="Clear"
+        variant="danger"
+      />
     </div>
+  )
+}
+
+// ── Small inline subcomponents ──────────────────────────────────────────────
+
+function CategoryPill({
+  label, active, onClick, color,
+}: { label: string; active: boolean; onClick: () => void; color?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 h-8 rounded-xl px-3 text-xs font-semibold transition-all duration-200 flex items-center gap-2 ${
+        active
+          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+          : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+      }`}
+    >
+      {color && (
+        <span
+          className="h-2 w-2 rounded-full"
+          style={{ background: color }}
+          aria-hidden
+        />
+      )}
+      {label}
+    </button>
+  )
+}
+
+function SecondaryAction({
+  icon, label, onClick,
+}: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="h-10 rounded-xl bg-muted/30 border border-border/30 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground flex items-center justify-center gap-1.5 transition-all duration-200"
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

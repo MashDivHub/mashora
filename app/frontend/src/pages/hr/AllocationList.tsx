@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
@@ -57,6 +58,7 @@ function fmtDate(value: string | false): string {
 const PAGE_SIZE = 40
 
 export default function AllocationList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<TabKey>('all')
   const [page, setPage] = useState(0)
@@ -129,6 +131,8 @@ export default function AllocationList() {
       <PageHeader
         title="Leave Allocations"
         subtitle={isLoading ? undefined : `${total} record${total !== 1 ? 's' : ''}`}
+        onNew={() => navigate('/admin/hr/allocations/new')}
+        newLabel="New Allocation"
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

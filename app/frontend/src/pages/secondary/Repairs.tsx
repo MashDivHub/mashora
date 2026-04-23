@@ -121,12 +121,18 @@ export default function Repairs() {
               <TableSkeleton cols={5} />
             ) : records.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="h-40 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-                      <Wrench className="h-6 w-6 text-muted-foreground" />
+                <TableCell colSpan={5} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                      <Wrench className="h-6 w-6" />
                     </div>
-                    <p className="text-sm text-muted-foreground">No repair orders found.</p>
+                    <div>
+                      <p className="text-sm font-semibold">No repair orders yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Open a repair order to track products coming in for service.</p>
+                    </div>
+                    <Button size="sm" onClick={() => navigate('/admin/repairs/new')} className="rounded-xl gap-2">
+                      <Plus className="h-4 w-4" /> New Repair Order
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>

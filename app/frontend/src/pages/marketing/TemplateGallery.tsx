@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Skeleton } from '@mashora/design-system'
-import { LayoutTemplate } from 'lucide-react'
+import { Button, Skeleton } from '@mashora/design-system'
+import { LayoutTemplate, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -57,12 +57,25 @@ export default function TemplateGallery() {
       <PageHeader
         title="Email Templates"
         subtitle={total > 0 ? `${total} template${total !== 1 ? 's' : ''}` : undefined}
+        onNew={() => navigate('/admin/model/mailing.mailing/new')}
+        newLabel="New Template"
       />
 
       {records.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
-          <LayoutTemplate className="h-10 w-10" />
-          <p className="text-sm">No templates found</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <LayoutTemplate className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No email templates yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Create a reusable template so you can reuse the same design across campaigns.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/mailing.mailing/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Template
+          </Button>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">

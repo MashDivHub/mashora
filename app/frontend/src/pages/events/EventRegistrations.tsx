@@ -1,7 +1,7 @@
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
-import { Users } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { Users, Plus } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -35,8 +35,10 @@ function fmtDateTime(dt: string): string {
 }
 
 export default function EventRegistrations() {
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const eventId = parseInt(id || '0')
+  const newRegistrationUrl = `/admin/model/event.registration/new?event_id=${eventId}`
 
   const { data, isLoading } = useQuery({
     queryKey: ['event-registrations', eventId],
@@ -90,21 +92,45 @@ export default function EventRegistrations() {
     },
   ]
 
+  const records = data?.records ?? []
+  const showEmptyCta = !isLoading && records.length === 0
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Event Registrations"
         backTo={`/admin/events/${eventId}`}
         subtitle={data?.total != null ? `${data.total} registration${data.total !== 1 ? 's' : ''}` : undefined}
+        onNew={() => navigate(newRegistrationUrl)}
+        newLabel="Register Attendee"
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        loading={isLoading}
-        emptyMessage="No registrations found"
-        emptyIcon={<Users className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No registrations yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Attendees will appear here once they register for this event. You can also add one manually.
+            </p>
+          </div>
+          <Button onClick={() => navigate(newRegistrationUrl)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Register Attendee
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          loading={isLoading}
+          rowLink={row => `/admin/model/event.registration/${row.id}`}
+          emptyMessage="No registrations found"
+          emptyIcon={<Users className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

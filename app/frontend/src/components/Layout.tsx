@@ -35,6 +35,7 @@ import {
   Bell,
   ChevronDown,
   CalendarCheck,
+  HardHat,
 } from 'lucide-react'
 import {
   Button,
@@ -113,6 +114,7 @@ const navSections = [
     label: 'Other',
     items: [
       { name: 'Fleet', href: '/admin/fleet', icon: Car },
+      { name: 'Maintenance', href: '/admin/maintenance', icon: HardHat },
       { name: 'Repairs', href: '/admin/repairs', icon: Wrench },
       { name: 'Events', href: '/admin/events', icon: CalendarDays },
       { name: 'Surveys', href: '/admin/surveys', icon: ClipboardList },

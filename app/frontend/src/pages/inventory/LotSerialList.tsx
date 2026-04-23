@@ -83,7 +83,7 @@ export default function LotSerialList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        emptyMessage="No lots or serial numbers found"
+        emptyMessage='No lots or serial numbers yet. These appear once you receive products configured with tracking ("By Lots" or "By Unique Serial Number").'
         emptyIcon={<ScanBarcode className="h-10 w-10" />}
         rowLink={(row) => `/admin/inventory/lots/${row.id}`}
       />

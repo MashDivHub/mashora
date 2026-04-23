@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { DataTable, PageHeader } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
 import { Badge } from '@mashora/design-system'
@@ -95,6 +96,7 @@ const columns: Column<FleetContract>[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FleetContracts() {
+  const navigate = useNavigate()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['fleet-contracts'],
     queryFn: () =>
@@ -129,6 +131,8 @@ export default function FleetContracts() {
       <PageHeader
         title="Fleet Contracts"
         subtitle={isLoading ? undefined : `${total} contract${total !== 1 ? 's' : ''}`}
+        onNew={() => navigate('/admin/model/fleet.vehicle.log.contract/new')}
+        newLabel="New Contract"
       />
 
       <DataTable
@@ -139,6 +143,7 @@ export default function FleetContracts() {
         pageSize={100}
         onPageChange={() => {}}
         loading={isLoading}
+        rowLink={row => `/admin/fleet/contracts/${row.id}`}
         emptyMessage="No contracts found"
         emptyIcon={<FileText className="h-10 w-10" />}
       />

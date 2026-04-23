@@ -271,7 +271,7 @@ export default function HrDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Human Resources" subtitle="Today's overview" />
+      <PageHeader title="Human Resources" subtitle="Today's overview" onNew="/admin/hr/employees/new" newLabel="New Employee" />
 
       <StatCards stats={stats} columns={4} />
 

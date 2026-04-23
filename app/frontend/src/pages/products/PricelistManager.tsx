@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Button, Input, Label, Badge, Card, CardContent, cn,
+  Button, Input, Label, Badge, Card, CardContent,
 } from '@mashora/design-system'
 import { DollarSign, Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 import { PageHeader, SearchBar } from '@/components/shared'
@@ -172,10 +172,20 @@ export default function PricelistManager() {
         {isLoading ? (
           <div className="flex items-center justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
         ) : records.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-            <DollarSign className="h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No pricelists found</p>
-            <p className="text-xs">Create your first pricelist to manage pricing rules.</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+              <DollarSign className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">No pricelists yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Create your first pricelist to manage tiered or customer-specific pricing.</p>
+            </div>
+            <Button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="rounded-xl gap-2 mt-1"
+            >
+              <Plus className="h-4 w-4" /> Create First Pricelist
+            </Button>
           </div>
         ) : (
           <table className="w-full text-sm">

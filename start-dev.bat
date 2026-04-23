@@ -9,14 +9,14 @@ echo.
 echo  Local:
 echo    Frontend:   http://localhost:3000
 echo    Admin:      http://localhost:3000/admin
-echo    Backend:    http://localhost:8001
-echo    API Docs:   http://localhost:8001/docs
+echo    Backend:    http://localhost:8002
+echo    API Docs:   http://localhost:8002/docs
 echo.
 echo  Starting backend, frontend, and Cloudflare tunnel...
 echo.
 
 :: Start backend
-start "Mashora Backend" cmd /k "cd /d %~dp0app\backend && pip install -r requirements.txt -q 2>nul && echo. && echo [Backend] Port 8001 && echo. && uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
+start "Mashora Backend" cmd /k "cd /d %~dp0app\backend && pip install -r requirements.txt -q 2>nul && echo. && echo [Backend] Port 8002 && echo. && uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload"
 
 timeout /t 4 /nobreak >nul
 

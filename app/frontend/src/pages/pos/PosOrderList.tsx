@@ -3,26 +3,26 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
-import { Badge } from '@mashora/design-system'
+import { Badge, Button } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
-import { Receipt } from 'lucide-react'
+import { Receipt, Monitor } from 'lucide-react'
+import { fmtMoney, fmtRelativeTime } from './utils'
 
-/* ── Types ── */
 type OrderState = 'draft' | 'paid' | 'done' | 'cancel'
 
 interface PosOrder {
   id: number
   name: string
   state: OrderState
-  session_id: [number, string]
-  partner_id: [number, string] | false
+  session_id: [number, string] | number | false
+  partner_id: [number, string] | number | false | null
   date_order: string
   amount_total: number
   amount_tax: number
   amount_paid: number
   amount_return: number
   pos_reference: string
-  employee_id: [number, string] | false
+  user_id?: [number, string] | number | false
 }
 
 interface PosOrdersResponse {
@@ -30,7 +30,6 @@ interface PosOrdersResponse {
   total: number
 }
 
-/* ── Helpers ── */
 const STATE_LABELS: Record<OrderState, string> = {
   draft: 'New',
   paid: 'Paid',
@@ -45,58 +44,56 @@ const STATE_VARIANTS: Record<OrderState, 'success' | 'default' | 'secondary' | '
   cancel: 'destructive',
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(value)
-}
-
-/* ── Columns ── */
 const columns: Column<PosOrder>[] = [
   {
     key: 'name',
     label: 'Order',
     className: 'font-mono',
+    render: (val: string) => <span className="font-mono font-medium text-sm">{val}</span>,
   },
   {
     key: 'pos_reference',
     label: 'Reference',
-    render: (val: string) => val || <span className="text-muted-foreground/50">—</span>,
+    render: (val: string) => val
+      ? <span className="text-xs font-mono text-muted-foreground">{val}</span>
+      : <span className="text-muted-foreground/50">—</span>,
+  },
+  {
+    key: 'session_id',
+    label: 'Session',
+    render: (val: [number, string] | number | false) =>
+      Array.isArray(val)
+        ? <span className="text-sm">{val[1]}</span>
+        : val
+          ? <span className="text-sm">#{val}</span>
+          : <span className="text-muted-foreground/50">—</span>,
   },
   {
     key: 'partner_id',
     label: 'Customer',
-    render: (val: [number, string] | false) =>
-      val ? val[1] : <span className="text-muted-foreground/60">Walk-in</span>,
-  },
-  {
-    key: 'employee_id',
-    label: 'Cashier',
-    render: (val: [number, string] | false) =>
-      val ? val[1] : <span className="text-muted-foreground/50">—</span>,
+    render: (val: [number, string] | number | false | null) =>
+      Array.isArray(val)
+        ? val[1]
+        : val
+          ? `#${val}`
+          : <span className="text-muted-foreground/60">Walk-in</span>,
   },
   {
     key: 'date_order',
     label: 'Date',
-    format: (val: string) => formatDate(val),
+    render: (val: string) => (
+      <span title={val ? new Date(val).toLocaleString() : ''} className="text-sm text-muted-foreground">
+        {fmtRelativeTime(val)}
+      </span>
+    ),
   },
   {
     key: 'amount_total',
     label: 'Total',
     align: 'right',
-    className: 'font-mono',
+    className: 'tabular-nums font-medium',
     render: (val: number) => (
-      <span className="tabular-nums">{formatCurrency(val)}</span>
+      <span className="tabular-nums">{fmtMoney(val)}</span>
     ),
   },
   {
@@ -110,17 +107,16 @@ const columns: Column<PosOrder>[] = [
   },
 ]
 
-/* ── Component ── */
 export default function PosOrderList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [tab, setTab] = useState<string>('all')
+  const [sessionFilter, setSessionFilter] = useState<number | null>(null)
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>('date_order')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  /* debounce search */
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => {
     clearTimeout(debounceRef.current)
@@ -131,7 +127,6 @@ export default function PosOrderList() {
     return () => clearTimeout(debounceRef.current)
   }, [search])
 
-  /* reset page on filter/tab change */
   const handleTabToggle = (key: string) => {
     setTab(prev => (prev === key ? 'all' : key))
     setPage(0)
@@ -139,17 +134,39 @@ export default function PosOrderList() {
 
   const stateFilter = tab !== 'all' ? [tab] : []
 
+  const { data: sessionsData } = useQuery<{ records?: { id: number; name: string }[] }>({
+    queryKey: ['pos-sessions', 'for-filter'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.get('/pos/sessions', { params: { limit: 100 } })
+      return data
+    },
+    staleTime: 60_000,
+  })
+  const sessions = sessionsData?.records ?? []
+
   const { data, isLoading } = useQuery<PosOrdersResponse>({
-    queryKey: ['pos-orders', tab, debouncedSearch, page, sortField, sortDir],
+    queryKey: ['pos-orders', tab, debouncedSearch, page, sortField, sortDir, sessionFilter],
     queryFn: () =>
       erpClient.raw
-        .post('/pos/orders', {
-          state: stateFilter,
-          search: debouncedSearch,
-          offset: page * 40,
-          limit: 40,
+        .get('/pos/orders', {
+          params: {
+            ...(stateFilter.length === 1 ? { state: stateFilter[0] } : {}),
+            ...(sessionFilter ? { session_id: sessionFilter } : {}),
+            offset: page * 40,
+            limit: 40,
+          },
         })
-        .then(r => r.data),
+        .then(r => {
+          const records = (r.data?.records ?? []) as PosOrder[]
+          const q = debouncedSearch.trim().toLowerCase()
+          const filtered = q
+            ? records.filter(o =>
+                (o.name || '').toLowerCase().includes(q) ||
+                (o.pos_reference || '').toLowerCase().includes(q)
+              )
+            : records
+          return { records: filtered, total: q ? filtered.length : (r.data?.total ?? 0) }
+        }),
     staleTime: 30_000,
   })
 
@@ -162,39 +179,74 @@ export default function PosOrderList() {
     setPage(0)
   }
 
-  const subtitleText = isLoading ? 'loading…' : `${total.toLocaleString()} order${total !== 1 ? 's' : ''}`
+  const subtitleText = isLoading ? 'Loading…' : `${total.toLocaleString()} order${total !== 1 ? 's' : ''}`
+
+  const showGuidedEmpty = !isLoading && total === 0 && tab === 'all' && !debouncedSearch && !sessionFilter
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader title="POS Orders" subtitle={subtitleText} />
 
-      <SearchBar
-        placeholder="Search orders..."
-        onSearch={(q) => { setSearch(q); setPage(0) }}
-        filters={[
-          { key: 'paid', label: 'Paid', domain: [['state', '=', 'paid']] },
-          { key: 'done', label: 'Posted', domain: [['state', '=', 'done']] },
-          { key: 'draft', label: 'Draft', domain: [['state', '=', 'draft']] },
-        ]}
-        activeFilters={tab !== 'all' ? [tab] : []}
-        onFilterToggle={handleTabToggle}
-      />
+      {/* Filter card */}
+      <div className="rounded-2xl border border-border/40 bg-card p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[240px]">
+            <SearchBar
+              placeholder="Search orders..."
+              onSearch={(q) => { setSearch(q); setPage(0) }}
+              filters={[
+                { key: 'paid', label: 'Paid', domain: [['state', '=', 'paid']] },
+                { key: 'done', label: 'Posted', domain: [['state', '=', 'done']] },
+                { key: 'draft', label: 'Draft', domain: [['state', '=', 'draft']] },
+              ]}
+              activeFilters={tab !== 'all' ? [tab] : []}
+              onFilterToggle={handleTabToggle}
+            />
+          </div>
+          <select
+            value={sessionFilter ?? ''}
+            onChange={e => { setSessionFilter(e.target.value ? Number(e.target.value) : null); setPage(0) }}
+            className="h-9 rounded-xl border border-border/40 bg-background px-3 text-sm transition-colors hover:bg-muted/30"
+          >
+            <option value="">All sessions</option>
+            {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      </div>
 
-      <DataTable
-        columns={columns}
-        data={records}
-        total={total}
-        page={page}
-        pageSize={40}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={handleSort}
-        loading={isLoading}
-        emptyIcon={<Receipt className="h-8 w-8 text-muted-foreground/40" />}
-        emptyMessage="No orders found"
-        onRowClick={(row) => navigate(`/admin/pos/orders/${row.id}`)}
-      />
+      {showGuidedEmpty ? (
+        <div className="rounded-3xl border border-dashed border-border/40 bg-gradient-to-br from-primary/5 via-background to-emerald-500/5 p-12 text-center space-y-5">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Receipt className="h-8 w-8" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-bold tracking-tight">No POS orders yet</p>
+            <p className="text-sm text-muted-foreground">
+              Orders appear here after being rung up on a register.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/pos')} className="gap-2 rounded-xl">
+            <Monitor className="h-4 w-4" />
+            Go to POS Dashboard
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={total}
+          page={page}
+          pageSize={40}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={handleSort}
+          loading={isLoading}
+          emptyIcon={<Receipt className="h-8 w-8 text-muted-foreground/40" />}
+          emptyMessage="No orders match the current filter"
+          onRowClick={(row) => navigate(`/admin/pos/orders/${row.id}`)}
+        />
+      )}
     </div>
   )
 }

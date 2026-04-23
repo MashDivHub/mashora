@@ -119,6 +119,7 @@ export default function SurveyResponses() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
+        rowLink={row => `/admin/model/survey.user_input/${row.id}`}
         emptyMessage="No responses yet"
         emptyIcon={<MessageSquare className="h-10 w-10" />}
       />

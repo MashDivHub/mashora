@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { Layers } from 'lucide-react'
@@ -93,6 +94,7 @@ const columns: Column<BomRecord>[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BomList() {
+  const navigate = useNavigate()
   const [search, setSearch]         = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [page, setPage]             = useState(0)
@@ -118,7 +120,12 @@ export default function BomList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Bills of Materials" subtitle="manufacturing" />
+      <PageHeader
+        title="Bills of Materials"
+        subtitle="manufacturing"
+        onNew={() => navigate('/admin/manufacturing/bom/new')}
+        newLabel="New BoM"
+      />
 
       <div className="flex items-center gap-3">
         <div className="flex-1">
@@ -159,7 +166,7 @@ export default function BomList() {
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
         rowLink={(row) => `/admin/manufacturing/bom/${row.id}`}
-        emptyMessage="No bills of materials found"
+        emptyMessage="No bills of materials yet. Define a BoM to describe how a product is built from components."
         emptyIcon={<Layers className="h-10 w-10" />}
       />
     </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
-import { Landmark } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { Landmark, Plus } from 'lucide-react'
 import { DataTable, PageHeader, type Column } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -26,6 +27,7 @@ const fmt = (v: number) =>
   `$${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export default function BankStatements() {
+  const navigate = useNavigate()
   const [page, setPage]           = useState(0)
   const [sortField, setSortField] = useState<string | null>('date')
   const [sortDir, setSortDir]     = useState<'asc' | 'desc'>('desc')
@@ -87,26 +89,54 @@ export default function BankStatements() {
     },
   ]
 
+  const records = data?.records ?? []
+  const showEmptyCta = !isLoading && records.length === 0 && page === 0
+  const handleCreate = () => navigate('/admin/model/account.bank.statement/new')
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Bank Statements"
         subtitle="accounting"
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" /> New Statement
+          </Button>
+        }
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        emptyMessage="No bank statements found"
-        emptyIcon={<Landmark className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Landmark className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No bank statements yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Import or create a statement to begin reconciliation.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Statement
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={row => `/admin/model/account.bank.statement/${row.id}`}
+          emptyMessage="No bank statements found"
+          emptyIcon={<Landmark className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
-import { Mail, AlertCircle } from 'lucide-react'
+import { Badge, Button, cn, type BadgeVariant } from '@mashora/design-system'
+import { Mail, AlertCircle, Plus, Users, ArrowRight } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -36,12 +37,27 @@ const FILTERS: FilterOption[] = [
 
 export default function CampaignList() {
   useDocumentTitle('Campaigns')
+  const navigate = useNavigate()
   const [search, setSearch]           = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage]               = useState(0)
   const [sortField, setSortField]     = useState<string | null>('create_date')
   const [sortDir, setSortDir]         = useState<'asc' | 'desc'>('desc')
   const pageSize = 40
+
+  // Check if any mailing lists exist — campaigns need at least one
+  const { data: listsData } = useQuery({
+    queryKey: ['mailing-lists-count'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/mailing.list', {
+        fields: ['id'],
+        limit: 1,
+      })
+      return data as { records: Array<{ id: number }>; total: number }
+    },
+    staleTime: 60_000,
+  })
+  const hasMailingLists = (listsData?.total ?? 0) > 0
 
   // Build state array from active filters
   const stateValues: string[] = []
@@ -145,13 +161,35 @@ export default function CampaignList() {
   ]
 
   const total = data?.total ?? 0
+  const records = data?.records ?? []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Email Campaigns"
         subtitle={total > 0 ? `${total} campaign${total !== 1 ? 's' : ''}` : undefined}
+        onNew={() => navigate('/admin/model/mailing.mailing/new')}
+        newLabel="New Campaign"
       />
+
+      {!hasMailingLists && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+          <Users className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Create a mailing list first</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Email campaigns need at least one mailing list of recipients before they can be sent.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" className="rounded-xl gap-1.5 shrink-0"
+            onClick={() => navigate('/admin/marketing/mailing-lists')}>
+            Go to Mailing Lists <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       <SearchBar
         placeholder="Search campaigns..."
         onSearch={v => { setSearch(v); setPage(0) }}
@@ -162,21 +200,39 @@ export default function CampaignList() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        rowLink={row => `/admin/email-marketing/${row.id}`}
-        emptyMessage="No campaigns found"
-        emptyIcon={<Mail className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Mail className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No email campaigns yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Design your first email campaign to reach customers on your mailing lists.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/mailing.mailing/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Campaign
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={row => `/admin/email-marketing/${row.id}`}
+          emptyMessage="No campaigns found"
+          emptyIcon={<Mail className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

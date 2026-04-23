@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader, EmptyState } from '@/components/shared'
 import { Badge } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
@@ -29,7 +30,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 // ─── Job card ─────────────────────────────────────────────────────────────────
 
-function JobCard({ job }: { job: JobRecord }) {
+function JobCard({ job, onClick }: { job: JobRecord; onClick: () => void }) {
   const isHiring = job.no_of_recruitment > 0
 
   // Strip HTML tags from Mashora description field
@@ -38,7 +39,11 @@ function JobCard({ job }: { job: JobRecord }) {
     : ''
 
   return (
-    <div className="rounded-2xl border border-border/30 bg-card/50 p-5 flex flex-col gap-4 transition-all duration-150 hover:border-border/60 hover:bg-card/70">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-2xl border border-border/30 bg-card/50 p-5 flex flex-col gap-4 transition-all duration-150 hover:border-border/60 hover:bg-card/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -76,13 +81,14 @@ function JobCard({ job }: { job: JobRecord }) {
           {plainDescription}
         </p>
       )}
-    </div>
+    </button>
   )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function JobList() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['job-list'],
     queryFn: () => erpClient.raw.get('/hr/jobs').then(r => r.data),
@@ -90,12 +96,15 @@ export default function JobList() {
 
   const records: JobRecord[] = data?.records ?? []
   const total: number = data?.total ?? 0
+  const handleCreate = () => navigate('/admin/model/hr.job/new')
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Job Positions"
         subtitle={isLoading ? undefined : `${total} position${total !== 1 ? 's' : ''}`}
+        onNew={handleCreate}
+        newLabel="New Job Position"
       />
 
       {isLoading ? (
@@ -123,11 +132,17 @@ export default function JobList() {
           icon={<Briefcase className="h-12 w-12" />}
           title="No job positions yet"
           description="Create job positions to start posting openings."
+          actionLabel="New Job Position"
+          onAction={handleCreate}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {records.map(job => (
-            <JobCard key={job.id} job={job} />
+            <JobCard
+              key={job.id}
+              job={job}
+              onClick={() => navigate(`/admin/model/hr.job/${job.id}`)}
+            />
           ))}
         </div>
       )}

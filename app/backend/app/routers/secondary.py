@@ -26,9 +26,46 @@ from app.services.secondary_service import (
     list_surveys, get_survey, update_survey, survey_action, list_survey_answers,
     list_mailings, get_mailing, update_mailing, mailing_action, get_mailing_stats,
     list_workcenters, list_workorders, get_mrp_dashboard,
-    list_pos_sessions, get_pos_session, list_pos_orders, get_pos_order, pos_session_action,
-    get_pos_dashboard, list_pos_configs,
+    list_pos_orders, get_pos_order,
     list_calendar_events, get_calendar_event, update_calendar_event, delete_calendar_event, calendar_event_action,
+)
+from app.services.pos_session_service import (
+    list_sessions as list_pos_sessions,
+    get_session as get_pos_session,
+    open_session as open_pos_session_service,
+    close_session as close_pos_session_service,
+    update_session_state as update_pos_session_state,
+)
+from app.services.pos_service import (
+    list_pos_configs as pos_list_configs,
+    get_pos_config as pos_get_config,
+    create_pos_config as pos_create_config,
+    update_pos_config as pos_update_config,
+    delete_pos_config as pos_delete_config,
+    get_pos_dashboard as pos_get_dashboard,
+    list_payment_methods as pos_list_payment_methods,
+    get_payment_method as pos_get_payment_method,
+    create_payment_method as pos_create_payment_method,
+    update_payment_method as pos_update_payment_method,
+    delete_payment_method as pos_delete_payment_method,
+    list_pos_categories as pos_list_categories,
+    get_pos_category as pos_get_category,
+    create_pos_category as pos_create_category,
+    update_pos_category as pos_update_category,
+    delete_pos_category as pos_delete_category,
+)
+from app.services.pos_restaurant_service import (
+    list_floors, get_floor, list_tables,
+    create_floor, update_floor, delete_floor,
+    create_table, update_table, delete_table,
+)
+from app.services.pos_order_service import (
+    list_orders as pos_order_list,
+    get_order as pos_order_get,
+    create_order as pos_order_create_svc,
+    cancel_order as pos_order_cancel_svc,
+    invoice_order as pos_order_invoice_svc,
+    delete_order as pos_order_delete_svc,
 )
 
 router = APIRouter(tags=["secondary modules"])
@@ -365,17 +402,31 @@ async def get_mailing_statistics(mailing_id: int, user: CurrentUser | None = Dep
 # POS
 # ============================================
 
-@router.post("/pos/sessions")
-async def get_pos_sessions(params: PosSessionListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
-    p = params or PosSessionListParams()
-    return await list_pos_sessions(params=p.model_dump())
+@router.get("/pos/sessions")
+async def pos_sessions(
+    config_id: int | None = None,
+    state: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    return await list_pos_sessions(config_id=config_id, state=state, limit=limit, offset=offset)
 
 @router.get("/pos/sessions/{session_id}")
-async def get_pos_session_detail(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+async def pos_session_detail(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     result = await get_pos_session(session_id=session_id)
     if result is None:
-        raise HTTPException(status_code=404, detail="POS session not found")
+        raise HTTPException(status_code=404, detail="Session not found")
     return result
+
+@router.post("/pos/sessions")
+async def pos_session_create(body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await open_pos_session_service(
+        config_id=body["config_id"],
+        uid=(user.uid if user else 1),
+        opening_cash=body.get("opening_cash", 0.0),
+        opening_notes=body.get("opening_notes", ""),
+    )
 
 @router.get("/pos/sessions/{session_id}/orders")
 async def get_session_orders(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
@@ -383,32 +434,204 @@ async def get_session_orders(session_id: int, user: CurrentUser | None = Depends
     return await list_pos_orders(params=params)
 
 @router.post("/pos/sessions/{session_id}/open")
-async def open_pos_session(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
-    return await pos_session_action(session_id=session_id, action="action_pos_session_open")
+async def pos_session_open(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    # Re-open a paused session — flip state back to 'opened'.
+    return await update_pos_session_state(session_id, "opened", uid=(user.uid if user else 1))
 
 @router.post("/pos/sessions/{session_id}/close")
-async def close_pos_session(session_id: int, user: CurrentUser | None = Depends(get_optional_user)):
-    return await pos_session_action(session_id=session_id, action="action_pos_session_close")
+async def pos_session_close(session_id: int, body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await close_pos_session_service(
+        session_id,
+        closing_cash=body.get("closing_cash", 0.0),
+        closing_notes=body.get("closing_notes", ""),
+        uid=(user.uid if user else 1),
+    )
 
-@router.post("/pos/orders")
-async def get_pos_orders(params: PosOrderListParams | None = None, user: CurrentUser | None = Depends(get_optional_user)):
-    p = params or PosOrderListParams()
-    return await list_pos_orders(params=p.model_dump())
+@router.get("/pos/orders")
+async def pos_orders(
+    session_id: int | None = None,
+    config_id: int | None = None,
+    state: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    return await pos_order_list(session_id, config_id, state, limit, offset)
 
 @router.get("/pos/orders/{order_id}")
-async def get_pos_order_detail(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
-    result = await get_pos_order(order_id=order_id)
+async def pos_order_detail(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    result = await pos_order_get(order_id)
     if result is None:
-        raise HTTPException(status_code=404, detail="POS order not found")
+        raise HTTPException(404, "Order not found")
     return result
+
+@router.post("/pos/orders")
+async def pos_order_create(body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    session_id = body.get("session_id")
+    if not session_id:
+        raise HTTPException(400, "session_id required")
+    return await pos_order_create_svc(int(session_id), (user.uid if user else 1), body)
+
+@router.post("/pos/orders/{order_id}/cancel")
+async def pos_order_cancel(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_order_cancel_svc(order_id)
+
+@router.post("/pos/orders/{order_id}/invoice")
+async def pos_order_invoice(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_order_invoice_svc(order_id)
+
+@router.delete("/pos/orders/{order_id}")
+async def pos_order_delete(order_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_order_delete_svc(order_id)
 
 @router.get("/pos/dashboard")
 async def pos_dashboard(user: CurrentUser | None = Depends(get_optional_user)):
-    return await get_pos_dashboard()
+    return await pos_get_dashboard()
 
 @router.get("/pos/configs")
 async def pos_configs(user: CurrentUser | None = Depends(get_optional_user)):
-    return await list_pos_configs()
+    return await pos_list_configs(uid=_uid(user), ctx=_ctx(user))
+
+
+# ---- POS config CRUD ----
+
+class PosConfigBody(BaseModel):
+    name: str | None = None
+    active: bool | None = None
+    currency_id: int | None = None
+    warehouse_id: int | None = None
+    journal_id: int | None = None
+    pricelist_id: int | None = None
+    module_pos_restaurant: bool | None = None
+    iface_tax_included: str | None = None
+    iface_tipproduct: bool | None = None
+    iface_print_auto: bool | None = None
+    iface_cashdrawer: bool | None = None
+    cash_rounding: bool | None = None
+    limit_categories: bool | None = None
+    payment_method_ids: list[int] | None = None
+
+
+@router.get("/pos/configs/{config_id}")
+async def pos_config_detail(config_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_get_config(config_id)
+
+@router.post("/pos/configs", status_code=201)
+async def pos_config_create(body: PosConfigBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_create_config(body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.put("/pos/configs/{config_id}")
+async def pos_config_update(config_id: int, body: PosConfigBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_update_config(config_id, body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.delete("/pos/configs/{config_id}")
+async def pos_config_delete(config_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_delete_config(config_id)
+
+
+# ---- POS payment method CRUD ----
+
+class PosPaymentMethodBody(BaseModel):
+    name: str | None = None
+    active: bool | None = None
+    is_cash_count: bool | None = None
+    journal_id: int | None = None
+    use_payment_terminal: bool | None = None
+    split_transactions: bool | None = None
+    sequence: int | None = None
+
+
+@router.get("/pos/payment-methods")
+async def pos_payment_methods_list(active_only: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_list_payment_methods(active_only=active_only)
+
+@router.get("/pos/payment-methods/{pm_id}")
+async def pos_payment_method_detail(pm_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_get_payment_method(pm_id)
+
+@router.post("/pos/payment-methods", status_code=201)
+async def pos_payment_method_create(body: PosPaymentMethodBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_create_payment_method(body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.put("/pos/payment-methods/{pm_id}")
+async def pos_payment_method_update(pm_id: int, body: PosPaymentMethodBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_update_payment_method(pm_id, body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.delete("/pos/payment-methods/{pm_id}")
+async def pos_payment_method_delete(pm_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_delete_payment_method(pm_id)
+
+
+# ---- POS category CRUD ----
+
+class PosCategoryBody(BaseModel):
+    name: str | None = None
+    parent_id: int | None = None
+    sequence: int | None = None
+    color: int | None = None
+
+
+@router.get("/pos/categories")
+async def pos_categories_list(user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_list_categories()
+
+@router.get("/pos/categories/{cat_id}")
+async def pos_category_detail(cat_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_get_category(cat_id)
+
+@router.post("/pos/categories", status_code=201)
+async def pos_category_create(body: PosCategoryBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_create_category(body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.put("/pos/categories/{cat_id}")
+async def pos_category_update(cat_id: int, body: PosCategoryBody, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_update_category(cat_id, body.model_dump(exclude_none=True), uid=_uid(user))
+
+@router.delete("/pos/categories/{cat_id}")
+async def pos_category_delete(cat_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await pos_delete_category(cat_id)
+
+
+# ---- POS restaurant floors / tables CRUD ----
+
+@router.get("/pos/floors")
+async def pos_floors(config_id: int | None = None, user: CurrentUser | None = Depends(get_optional_user)):
+    return await list_floors(config_id)
+
+@router.get("/pos/floors/{floor_id}")
+async def pos_floor_detail(floor_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    result = await get_floor(floor_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Floor not found")
+    return result
+
+@router.post("/pos/floors")
+async def pos_floor_create(body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await create_floor(body)
+
+@router.put("/pos/floors/{floor_id}")
+async def pos_floor_update(floor_id: int, body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await update_floor(floor_id, body)
+
+@router.delete("/pos/floors/{floor_id}")
+async def pos_floor_delete(floor_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await delete_floor(floor_id)
+
+@router.get("/pos/tables")
+async def pos_tables(floor_id: int | None = None, active_only: bool = True, user: CurrentUser | None = Depends(get_optional_user)):
+    return await list_tables(floor_id, active_only)
+
+@router.post("/pos/tables")
+async def pos_table_create(body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await create_table(body)
+
+@router.put("/pos/tables/{table_id}")
+async def pos_table_update(table_id: int, body: dict, user: CurrentUser | None = Depends(get_optional_user)):
+    return await update_table(table_id, body)
+
+@router.delete("/pos/tables/{table_id}")
+async def pos_table_delete(table_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    return await delete_table(table_id)
 
 
 # ============================================

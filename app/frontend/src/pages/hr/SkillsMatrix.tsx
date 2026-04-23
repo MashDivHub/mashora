@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { DataTable, PageHeader } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
 import { Badge } from '@mashora/design-system'
@@ -53,6 +54,7 @@ const columns: Column<SkillRecord>[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SkillsMatrix() {
+  const navigate = useNavigate()
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['skills-matrix'],
     queryFn: () =>
@@ -95,6 +97,8 @@ export default function SkillsMatrix() {
       <PageHeader
         title="Skills Matrix"
         subtitle={isLoading ? undefined : `${total} skill${total !== 1 ? 's' : ''}`}
+        onNew={() => navigate('/admin/model/hr.skill/new')}
+        newLabel="New Skill"
       />
 
       <DataTable
@@ -105,6 +109,7 @@ export default function SkillsMatrix() {
         pageSize={500}
         onPageChange={() => {}}
         loading={isLoading}
+        rowLink={row => `/admin/model/hr.employee.skill/${row.id}`}
         emptyMessage="No skills recorded"
         emptyIcon={<Layers className="h-10 w-10" />}
       />

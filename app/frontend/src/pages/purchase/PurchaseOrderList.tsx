@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
-import { Package, CheckCircle2, XCircle, Mail, ThumbsUp, X } from 'lucide-react'
+import { Badge, Button, cn, type BadgeVariant } from '@mashora/design-system'
+import { Package, CheckCircle2, XCircle, Mail, ThumbsUp, X, Plus } from 'lucide-react'
 import {
   DataTable, PageHeader, SearchBar, BulkActionBar,
   toast,
@@ -147,6 +147,9 @@ export default function PurchaseOrderList() {
 
   const records = data?.records || []
   const selectedSet = new Set(selected)
+  const hasFilters = !!search || activeFilters.length > 0 || !!productTmplId
+  const showEmptyCta = !isLoading && !isError && records.length === 0 && page === 0 && !hasFilters
+  const handleCreate = () => navigate('/admin/purchase/orders/new')
 
   return (
     <div className="space-y-4">
@@ -163,15 +166,33 @@ export default function PurchaseOrderList() {
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
       <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
-      <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
-        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        isError={isError} error={error} onRetry={() => refetch()}
-        rowLink={row => `/admin/purchase/orders/${row.id}`}
-        selectable
-        selectedIds={selectedSet}
-        onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
-        emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Package className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No purchase orders yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Create a request for quotation to start procuring from vendors.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First RFQ
+          </Button>
+        </div>
+      ) : (
+        <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
+          onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+          isError={isError} error={error} onRetry={() => refetch()}
+          rowLink={row => `/admin/purchase/orders/${row.id}`}
+          selectable
+          selectedIds={selectedSet}
+          onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+          emptyMessage="No purchase orders found" emptyIcon={<Package className="h-10 w-10" />} />
+      )}
     </div>
   )
 }

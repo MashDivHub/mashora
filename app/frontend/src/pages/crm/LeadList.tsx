@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { Star, Target, Trophy, ThumbsDown, Archive, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import { Badge, Button, cn } from '@mashora/design-system'
+import { Star, Target, Trophy, ThumbsDown, Archive, AlertCircle, Clock, CheckCircle2, Plus } from 'lucide-react'
 import {
   DataTable, PageHeader, SearchBar, BulkActionBar,
   toast,
@@ -157,6 +157,8 @@ export default function LeadList() {
 
   const records = data?.records || []
   const selectedSet = new Set(selected)
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && !isError && records.length === 0 && !hasFilters
 
   return (
     <div className="space-y-4">
@@ -165,15 +167,33 @@ export default function LeadList() {
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
       <BulkActionBar selected={selected} onClear={clear} actions={bulkActions} />
-      <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
-        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        isError={isError} error={error} onRetry={() => refetch()}
-        rowLink={row => `/admin/crm/leads/${row.id}`}
-        selectable
-        selectedIds={selectedSet}
-        onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
-        emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Target className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No leads yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Capture your first lead or opportunity to start building the pipeline.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/crm/leads/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Lead
+          </Button>
+        </div>
+      ) : (
+        <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
+          onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+          isError={isError} error={error} onRetry={() => refetch()}
+          rowLink={row => `/admin/crm/leads/${row.id}`}
+          selectable
+          selectedIds={selectedSet}
+          onSelectionChange={(ids) => setSelected(Array.from(ids) as number[])}
+          emptyMessage="No leads found" emptyIcon={<Target className="h-10 w-10" />} />
+      )}
     </div>
   )
 }

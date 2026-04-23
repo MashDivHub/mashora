@@ -1,7 +1,7 @@
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, Skeleton } from '@mashora/design-system'
-import { Mic } from 'lucide-react'
+import { Badge, Button, Skeleton } from '@mashora/design-system'
+import { Mic, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -63,8 +63,10 @@ function groupByDate(tracks: EventTrack[]): Map<string, EventTrack[]> {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function EventTracks() {
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const eventId = parseInt(id || '0')
+  const newTrackUrl = `/admin/model/event.track/new?event_id=${eventId}`
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['event-tracks', eventId],
@@ -113,12 +115,25 @@ export default function EventTracks() {
         title="Event Tracks"
         backTo={`/admin/events/${eventId}`}
         subtitle={`${tracks.length} track${tracks.length !== 1 ? 's' : ''}`}
+        onNew={() => navigate(newTrackUrl)}
+        newLabel="New Track"
       />
 
       {tracks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/30 bg-card/50 py-20 text-muted-foreground">
-          <Mic className="h-10 w-10" />
-          <p className="text-sm font-medium">No tracks scheduled</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Mic className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No tracks scheduled</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Tracks are individual sessions or talks within an event. Add speakers, times, and rooms.
+            </p>
+          </div>
+          <Button onClick={() => navigate(newTrackUrl)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add First Track
+          </Button>
         </div>
       ) : (
         Array.from(grouped.entries()).map(([dateLabel, dateTracks]) => (
@@ -128,9 +143,11 @@ export default function EventTracks() {
             </h2>
             <div className="space-y-3">
               {dateTracks.map(track => (
-                <div
+                <button
+                  type="button"
                   key={track.id}
-                  className="rounded-2xl border border-border/30 bg-card/50 p-5"
+                  onClick={() => navigate(`/admin/model/event.track/${track.id}`)}
+                  className="rounded-2xl border border-border/30 bg-card/50 p-5 w-full text-left hover:bg-card/80 hover:-translate-y-0.5 transition-all"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1 min-w-0">
@@ -154,7 +171,7 @@ export default function EventTracks() {
                       <span>{track.location_id[1]}</span>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

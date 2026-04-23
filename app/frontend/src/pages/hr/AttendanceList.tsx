@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
@@ -88,6 +89,7 @@ const columns: Column<AttendanceRecord>[] = [
 const PAGE_SIZE = 40
 
 export default function AttendanceList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
 
@@ -117,6 +119,8 @@ export default function AttendanceList() {
       <PageHeader
         title="Attendance"
         subtitle={isLoading ? 'Loading…' : `${total} records`}
+        onNew={() => navigate('/admin/model/hr.attendance/new')}
+        newLabel="New Entry"
       />
 
       <SearchBar
@@ -132,6 +136,7 @@ export default function AttendanceList() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
         loading={isLoading}
+        rowLink={row => `/admin/model/hr.attendance/${row.id}`}
         emptyMessage="No attendance records found"
         emptyIcon={<Clock className="size-6" />}
       />

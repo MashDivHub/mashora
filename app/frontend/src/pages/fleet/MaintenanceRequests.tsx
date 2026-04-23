@@ -161,6 +161,8 @@ export default function MaintenanceRequests() {
       <PageHeader
         title="Maintenance Requests"
         subtitle={`${data?.total ?? '—'} requests`}
+        onNew={() => navigate('/admin/model/maintenance.request/new')}
+        newLabel="New Request"
       />
 
       <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4 flex items-center justify-between gap-3 flex-wrap">
@@ -209,18 +211,27 @@ export default function MaintenanceRequests() {
                 <TableSkeleton cols={7} />
               ) : records.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="h-40 text-center">
-                    <div className="flex flex-col items-center gap-2">
+                  <TableCell colSpan={7} className="h-48 text-center">
+                    <div className="flex flex-col items-center gap-3">
                       <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
                         <Wrench className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="text-sm text-muted-foreground">No maintenance requests found.</p>
+                      <div>
+                        <p className="text-sm font-semibold">No maintenance requests yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Create a request to track repairs or planned preventive work.
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 records.map(row => (
-                  <TableRow key={row.id} className="border-border/40 hover:bg-muted/50 transition-colors">
+                  <TableRow
+                    key={row.id}
+                    className="border-border/40 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/admin/maintenance/${row.id}`)}
+                  >
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm">{row.name}</p>

@@ -102,13 +102,26 @@ export default function MrpDashboard() {
   const statCards = isLoading
     ? null
     : [
-        { label: 'Draft Orders', value: data?.draft ?? 0, icon: <ClipboardList className="h-4 w-4" />, color: 'default' as const },
-        { label: 'Confirmed', value: data?.confirmed ?? 0, icon: <CheckCircle className="h-4 w-4" />, color: 'info' as const },
-        { label: 'In Progress', value: data?.in_progress ?? 0, icon: <PlayCircle className="h-4 w-4" />, color: 'success' as const },
+        {
+          label: 'Draft Orders', value: data?.draft ?? 0,
+          icon: <ClipboardList className="h-4 w-4" />, color: 'default' as const,
+          onClick: () => navigate('/admin/manufacturing/orders?state=draft'),
+        },
+        {
+          label: 'Confirmed', value: data?.confirmed ?? 0,
+          icon: <CheckCircle className="h-4 w-4" />, color: 'info' as const,
+          onClick: () => navigate('/admin/manufacturing/orders?state=confirmed'),
+        },
+        {
+          label: 'In Progress', value: data?.in_progress ?? 0,
+          icon: <PlayCircle className="h-4 w-4" />, color: 'success' as const,
+          onClick: () => navigate('/admin/manufacturing/orders?state=progress'),
+        },
         {
           label: 'Late', value: data?.late ?? 0,
           icon: <AlertTriangle className="h-4 w-4" />,
           color: ((data?.late ?? 0) > 0 ? 'danger' : 'default') as 'danger' | 'default',
+          onClick: () => navigate('/admin/manufacturing/orders?filter=late'),
         },
       ]
 
@@ -129,9 +142,33 @@ export default function MrpDashboard() {
     }))
     .slice(0, 10)
 
+  const needsWorkcenters = !isLoading && (data?.workcenter_count ?? 0) === 0
+
   return (
     <div className="space-y-6">
       <PageHeader title="Manufacturing" subtitle="Today's overview" />
+
+      {needsWorkcenters && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+          <div className="rounded-xl bg-amber-500/15 p-2 text-amber-500 shrink-0">
+            <Wrench className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">No workcenters configured</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Work orders and production routing require at least one workcenter.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/manufacturing/workcenters')}
+            className="gap-1.5 rounded-xl shrink-0"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Configure Workcenters
+          </Button>
+        </div>
+      )}
 
       {/* Per-operation Kanban cards */}
       <section className="space-y-3">
@@ -149,11 +186,36 @@ export default function MrpDashboard() {
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
           </div>
         ) : (pickingTypes?.length ?? 0) === 0 ? (
-          <Card className="rounded-2xl">
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              No manufacturing operations configured —
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+            <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+              <Factory className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">No manufacturing operations configured yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Manufacturing operations (mrp_operation picking types) are normally auto-seeded
+                when you create a warehouse. Set up a warehouse to get started, or add an
+                operation type manually.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                onClick={() => navigate('/admin/inventory/warehouses')}
+                className="gap-2 rounded-xl"
+              >
+                <Plus className="h-4 w-4" />
+                Set Up Warehouse
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin/model/stock.picking.type/new')}
+                className="gap-2 rounded-xl"
+              >
+                <Plus className="h-4 w-4" />
+                New Operation Type
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {pickingTypes!.map(pt => (
@@ -190,8 +252,18 @@ export default function MrpDashboard() {
           {wcLoading ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : oeeData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
-              No workcenter data —
+            <div className="h-64 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+              <Wrench className="h-8 w-8 opacity-40" />
+              <p>No workcenter data yet</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 rounded-xl"
+                onClick={() => navigate('/admin/manufacturing/workcenters')}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Configure Workcenters
+              </Button>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(200, oeeData.length * 32)}>

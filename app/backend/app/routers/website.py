@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.middleware.auth import get_current_user, get_optional_user, CurrentUser
+from app.core.model_registry import get_model_class
 from app.schemas.website import (
     ProductListParams,
     CategoryListParams,
@@ -64,6 +65,59 @@ def _ctx(user: CurrentUser | None) -> dict | None:
 async def website_config(website_id: int | None = Query(default=None), user: CurrentUser | None = Depends(get_optional_user)):
     """Get website configuration (name, domain, languages, social links)."""
     return await get_website_config(website_id=website_id)
+
+
+@router.get("/contact-info")
+async def website_contact_info(user: CurrentUser | None = Depends(get_optional_user)):
+    """Return public company contact info (email, phone, address, socials)."""
+    from app.services.base import async_search_read
+    # Get the first website
+    website_result = await async_search_read(
+        "website",
+        [],
+        ["id", "name", "company_id",
+         "social_facebook", "social_twitter", "social_instagram",
+         "social_linkedin", "social_youtube", "social_tiktok"],
+        limit=1,
+    )
+    website_records = website_result.get("records", [])
+    if not website_records:
+        return {"company": None, "social": {}}
+    website = website_records[0]
+
+    company_id = website.get("company_id")
+    if isinstance(company_id, list) and company_id:
+        company_id_int = company_id[0]
+    elif isinstance(company_id, int):
+        company_id_int = company_id
+    else:
+        company_id_int = None
+
+    company: dict = {}
+    if company_id_int:
+        company_result = await async_search_read(
+            "res.company",
+            [["id", "=", company_id_int]],
+            ["id", "name", "email", "phone", "mobile",
+             "street", "street2", "city", "zip", "state_id", "country_id",
+             "website"],
+            limit=1,
+        )
+        company_records = company_result.get("records", [])
+        if company_records:
+            company = company_records[0]
+
+    return {
+        "company": company or None,
+        "social": {
+            "facebook": website.get("social_facebook") or None,
+            "twitter": website.get("social_twitter") or None,
+            "instagram": website.get("social_instagram") or None,
+            "linkedin": website.get("social_linkedin") or None,
+            "youtube": website.get("social_youtube") or None,
+            "tiktok": website.get("social_tiktok") or None,
+        },
+    }
 
 
 @router.get("/homepage")
@@ -275,6 +329,52 @@ async def blog_posts(params: dict | None = None, user: CurrentUser | None = Depe
     """List blog posts."""
     return await list_blog_posts(params=params or {})
 
+
+@router.get("/blog/posts/{post_id}/cover-image")
+async def get_blog_post_cover_image_endpoint(post_id: int, user: CurrentUser | None = Depends(get_optional_user)):
+    """Stream the blog post cover image bytes. 404 if unset."""
+    from fastapi.responses import Response as FastapiResponse
+    from app.services.website_service import get_blog_post_cover_image
+    blob = await get_blog_post_cover_image(post_id=post_id)
+    if not blob:
+        return FastapiResponse(status_code=404)
+    # Try to detect the mime type from magic bytes; fall back to octet-stream.
+    media_type = "application/octet-stream"
+    if len(blob) >= 4:
+        if blob[:8] == b"\x89PNG\r\n\x1a\n":
+            media_type = "image/png"
+        elif blob[:3] == b"\xff\xd8\xff":
+            media_type = "image/jpeg"
+        elif blob[:6] in (b"GIF87a", b"GIF89a"):
+            media_type = "image/gif"
+        elif blob[:4] == b"RIFF" and len(blob) >= 12 and blob[8:12] == b"WEBP":
+            media_type = "image/webp"
+    return FastapiResponse(content=blob, media_type=media_type)
+
+
+class BlogCoverImagePut(BaseModel):
+    image: str | None = None  # base64; null/empty to clear
+
+
+@router.put("/blog/posts/{post_id}/cover-image")
+async def set_blog_post_cover_image_endpoint(
+    post_id: int,
+    body: BlogCoverImagePut,
+    user: CurrentUser | None = Depends(get_optional_user),
+):
+    """Upsert (or clear) the blog post cover image. Accepts base64 in `image`."""
+    import base64
+    from app.services.website_service import set_blog_post_cover_image
+    image_bytes: bytes | None = None
+    if body.image:
+        try:
+            image_bytes = base64.b64decode(body.image)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 image data")
+    await set_blog_post_cover_image(post_id=post_id, image_bytes=image_bytes)
+    return {"ok": True, "has_cover_image": image_bytes is not None}
+
+
 @router.get("/blog/posts/{post_id}")
 async def blog_post_detail(post_id: int, user: CurrentUser | None = Depends(get_optional_user)):
     """Get a single blog post."""
@@ -287,6 +387,72 @@ async def blog_post_detail(post_id: int, user: CurrentUser | None = Depends(get_
 async def blog_categories(user: CurrentUser | None = Depends(get_optional_user)):
     """List blog categories."""
     return await list_blogs()
+
+
+# ============================================
+# Newsletter
+# ============================================
+
+@router.post("/newsletter/subscribe")
+async def newsletter_subscribe(
+    body: dict,
+    user: CurrentUser | None = Depends(get_optional_user)
+):
+    """Subscribe an email to the default newsletter mailing list."""
+    from app.services.base import async_search_read, async_create
+    email = (body.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+
+    # Find or create the default "Newsletter" mailing list
+    if get_model_class("mailing.list") is None:
+        # Fallback: create a CRM lead so the signup isn't lost
+        if get_model_class("crm.lead") is not None:
+            await async_create("crm.lead", {
+                "name": f"Newsletter signup: {email}",
+                "email_from": email,
+                "type": "lead",
+                "description": "Subscribed via website newsletter form.",
+            })
+            return {"success": True, "method": "lead_fallback"}
+        raise HTTPException(status_code=503, detail="Newsletter service unavailable")
+
+    list_result = await async_search_read(
+        "mailing.list",
+        [["name", "=", "Newsletter"]],
+        ["id", "name"],
+        limit=1,
+    )
+    list_records = list_result.get("records", [])
+    if list_records:
+        list_id = list_records[0]["id"]
+    else:
+        created_list = await async_create("mailing.list", {"name": "Newsletter"})
+        list_id = created_list["id"] if isinstance(created_list, dict) else created_list
+
+    # Check if the contact already exists
+    if get_model_class("mailing.contact") is None:
+        raise HTTPException(status_code=503, detail="mailing.contact not available")
+
+    existing = await async_search_read(
+        "mailing.contact",
+        [["email", "=", email]],
+        ["id", "list_ids"],
+        limit=1,
+    )
+    existing_records = existing.get("records", [])
+    if existing_records:
+        # Already subscribed -- idempotent success.
+        # async_write is not available in app.services.base, so we cannot
+        # mutate list_ids here; treat as already subscribed.
+        return {"success": True, "already_subscribed": True}
+
+    # Create new contact with list
+    await async_create("mailing.contact", {
+        "email": email,
+        "list_ids": [[6, 0, [list_id]]],
+    })
+    return {"success": True, "created": True}
 
 
 # ============================================

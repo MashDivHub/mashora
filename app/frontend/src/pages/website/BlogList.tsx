@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
-import { FileText } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { FileText, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -90,12 +90,17 @@ export default function BlogList() {
   ]
 
   const total = data?.total ?? 0
+  const records = data?.records ?? []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Blog Posts"
         subtitle={total > 0 ? `${total} post${total === 1 ? '' : 's'}` : 'Blog'}
+        onNew={() => navigate('/admin/model/blog.post/new')}
+        newLabel="New Post"
       />
       <SearchBar
         placeholder="Search posts…"
@@ -111,18 +116,36 @@ export default function BlogList() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-        loading={isLoading}
-        onRowClick={row => navigate(`/admin/website/blog/${row.id}`)}
-        emptyMessage="No blog posts found"
-        emptyIcon={<FileText className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <FileText className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No blog posts yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Publish your first blog post to engage visitors and boost SEO.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/blog.post/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Blog Post
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={total}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          loading={isLoading}
+          onRowClick={row => navigate(`/admin/website/blog/${row.id}`)}
+          emptyMessage="No blog posts found"
+          emptyIcon={<FileText className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

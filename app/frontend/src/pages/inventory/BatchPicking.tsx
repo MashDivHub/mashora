@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { DataTable, PageHeader } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
@@ -73,6 +74,7 @@ const columns: Column<BatchTransfer>[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BatchPicking() {
+  const navigate = useNavigate()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['batch-picking'],
     queryFn: () =>
@@ -107,6 +109,8 @@ export default function BatchPicking() {
       <PageHeader
         title="Batch Transfers"
         subtitle={isLoading ? undefined : `${total} batch${total !== 1 ? 'es' : ''}`}
+        onNew={() => navigate('/admin/model/stock.picking.batch/new')}
+        newLabel="New Batch"
       />
 
       <DataTable
@@ -117,7 +121,8 @@ export default function BatchPicking() {
         pageSize={50}
         onPageChange={() => {}}
         loading={isLoading}
-        emptyMessage="No batch transfers found"
+        rowLink={(row) => `/admin/model/stock.picking.batch/${row.id}`}
+        emptyMessage="No batch transfers yet. Group multiple picks into a single batch to process them together."
         emptyIcon={<Layers className="h-10 w-10" />}
       />
     </div>

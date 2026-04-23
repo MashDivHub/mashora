@@ -102,7 +102,7 @@ export default function ProjectDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Projects" subtitle="overview" />
+      <PageHeader title="Projects" subtitle="overview" onNew="/admin/projects/new" newLabel="New Project" />
       <StatCards stats={stats} columns={4} />
       <div className="space-y-4">
         {groups.map(group => (

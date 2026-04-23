@@ -116,6 +116,7 @@ export default function ProjectBilling() {
         data={data?.records ?? []}
         total={data?.total}
         loading={isLoading}
+        rowLink={row => `/admin/projects/${row.id}`}
         emptyMessage="No projects found"
         emptyIcon={<DollarSign className="h-10 w-10" />}
       />

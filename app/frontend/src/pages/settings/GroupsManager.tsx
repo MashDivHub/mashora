@@ -146,7 +146,22 @@ function GroupList() {
               {isLoading ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center"><LoadingState label="Loading groups..." /></td></tr>
               ) : groups.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No groups found</td></tr>
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                        <Shield className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">No groups yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Groups bundle permissions together for easier role assignment.</p>
+                      </div>
+                      <Button size="sm" onClick={() => setShowCreate(true)} className="rounded-xl gap-2">
+                        <Plus className="h-4 w-4" /> Create First Group
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 groups.map(g => (
                   <tr key={g.id} className="border-b last:border-0 hover:bg-muted/10 transition-colors group">
@@ -318,7 +333,10 @@ function GroupDetail({ groupId }: { groupId: number }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeUserMut.mutate(u.id)}
+                            onClick={() => {
+                              if (!window.confirm(`Remove ${u.name || u.login} from this group? This will take effect immediately.`)) return
+                              removeUserMut.mutate(u.id)
+                            }}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />

@@ -1,6 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
 import { MapPin } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -31,6 +31,7 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function LocationList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
@@ -99,7 +100,12 @@ export default function LocationList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Stock Locations" subtitle="inventory" />
+      <PageHeader
+        title="Stock Locations"
+        subtitle="inventory"
+        onNew={() => navigate('/admin/model/stock.location/new')}
+        newLabel="New Location"
+      />
       <SearchBar
         placeholder="Search locations..."
         onSearch={v => { setSearch(v); setPage(0) }}
@@ -121,7 +127,8 @@ export default function LocationList() {
         sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }}
         loading={isLoading}
-        emptyMessage="No locations found"
+        rowLink={(row) => `/admin/model/stock.location/${row.id}`}
+        emptyMessage="No locations yet. Locations define where products live — create one to start stocking."
         emptyIcon={<MapPin className="h-10 w-10" />}
       />
     </div>

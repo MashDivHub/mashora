@@ -397,7 +397,10 @@ function ChoiceEditor({ questionId }: { questionId: number }) {
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0 rounded-lg text-destructive"
-                onClick={() => deleteAnswer(a.id)}
+                onClick={() => {
+                  if (!window.confirm(`Delete "${a.value}"? This action cannot be undone.`)) return
+                  deleteAnswer(a.id)
+                }}
                 disabled={busy}
               >
                 <Trash2 className="h-3.5 w-3.5" />

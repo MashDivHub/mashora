@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn } from '@mashora/design-system'
-import { Globe, Eye, EyeOff } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { Globe, Eye, EyeOff, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -14,6 +15,7 @@ const FILTERS: FilterOption[] = [
 ]
 
 export default function CmsPages() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
@@ -63,17 +65,45 @@ export default function CmsPages() {
     { key: 'website_id', label: 'Website', format: v => Array.isArray(v) ? v[1] : '' },
   ]
 
+  const records = data?.records || []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && !isError && records.length === 0 && !hasFilters
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Website Pages" subtitle="website" />
+      <PageHeader
+        title="Website Pages"
+        subtitle="website"
+        onNew={() => navigate('/admin/model/website.page/new')}
+        newLabel="New Page"
+      />
       <SearchBar placeholder="Search pages..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
-      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={40}
-        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        isError={isError} error={error} onRetry={() => refetch()}
-        emptyMessage="No pages found" emptyIcon={<Globe className="h-10 w-10" />} />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Globe className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No website pages yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Create your first CMS page to start building out your website content.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/website.page/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Page
+          </Button>
+        </div>
+      ) : (
+        <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={40}
+          onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+          isError={isError} error={error} onRetry={() => refetch()}
+          rowLink={row => `/admin/model/website.page/${row.id}`}
+          emptyMessage="No pages found" emptyIcon={<Globe className="h-10 w-10" />} />
+      )}
     </div>
   )
 }

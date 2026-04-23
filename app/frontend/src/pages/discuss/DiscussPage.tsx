@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Input, Button, Badge, Skeleton, cn } from '@mashora/design-system'
 import { Hash, MessageSquare, Plus, Send, Users, Circle } from 'lucide-react'
-import { PageHeader } from '@/components/shared'
+import { PageHeader, toast } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
+import { extractErrorMessage } from '@/lib/errors'
 import { sanitizedHtml } from '@/lib/sanitize'
 import { useBusSubscription } from '@/lib/websocket'
 
@@ -104,6 +105,7 @@ export default function DiscussPage() {
       queryClient.invalidateQueries({ queryKey: ['discuss-messages', activeChannel] })
       setNewMsg('')
     },
+    onError: (e: unknown) => toast.error('Message failed', extractErrorMessage(e)),
   })
 
   const handleSend = () => {

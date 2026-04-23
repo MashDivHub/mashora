@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Input, Badge, Skeleton } from '@mashora/design-system'
 import { PageHeader, EmptyState } from '@/components/shared'
@@ -22,13 +23,17 @@ const FIELDS = [
   'equipment_assign_to', 'location', 'period', 'next_action_date',
 ]
 
-function EquipmentCard({ eq }: { eq: Equipment }) {
+function EquipmentCard({ eq, onClick }: { eq: Equipment; onClick: () => void }) {
   const isOverdue = eq.next_action_date
     ? new Date(eq.next_action_date) < new Date()
     : false
 
   return (
-    <div className="rounded-2xl border border-border/30 bg-card/50 p-6 space-y-4 hover:border-border/60 transition-colors">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-2xl border border-border/30 bg-card/50 p-6 space-y-4 hover:border-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="rounded-xl bg-primary/10 p-2 shrink-0">
@@ -76,7 +81,7 @@ function EquipmentCard({ eq }: { eq: Equipment }) {
           </div>
         )}
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -99,6 +104,7 @@ function CardSkeleton() {
 }
 
 export default function EquipmentList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -115,12 +121,15 @@ export default function EquipmentList() {
   })
 
   const records: Equipment[] = data?.records ?? []
+  const handleCreate = () => navigate('/admin/model/maintenance.equipment/new')
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Equipment"
         subtitle={`${data?.total ?? '—'} items`}
+        onNew={handleCreate}
+        newLabel="New Equipment"
       />
 
       <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4">
@@ -144,10 +153,18 @@ export default function EquipmentList() {
           icon={<Package className="h-12 w-12" />}
           title="No equipment yet"
           description="Register equipment to track maintenance and assignments."
+          actionLabel="New Equipment"
+          onAction={handleCreate}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {records.map(eq => <EquipmentCard key={eq.id} eq={eq} />)}
+          {records.map(eq => (
+            <EquipmentCard
+              key={eq.id}
+              eq={eq}
+              onClick={() => navigate(`/admin/model/maintenance.equipment/${eq.id}`)}
+            />
+          ))}
         </div>
       )}
     </div>

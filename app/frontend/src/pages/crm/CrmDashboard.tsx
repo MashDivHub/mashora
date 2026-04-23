@@ -344,7 +344,7 @@ export default function CrmDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="CRM" subtitle="overview" />
+      <PageHeader title="CRM" subtitle="overview" onNew="/admin/crm/leads/new" newLabel="New Lead" />
       <StatCards stats={stats} columns={4} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

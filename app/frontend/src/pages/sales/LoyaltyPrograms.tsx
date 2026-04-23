@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader, SearchBar } from '@/components/shared'
-import { Badge, Skeleton } from '@mashora/design-system'
+import { Badge, Button, Skeleton } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
-import { Gift, Tag, Percent, CreditCard, Star, Ticket } from 'lucide-react'
+import { Gift, Tag, Percent, CreditCard, Star, Ticket, Plus } from 'lucide-react'
 
 const PROGRAM_TYPES: Record<string, string> = {
   loyalty: 'Loyalty Cards',
@@ -84,12 +84,18 @@ export default function LoyaltyPrograms() {
 
   const records = data?.records ?? []
   const total = data?.total ?? 0
+  const handleCreate = () => navigate('/admin/model/loyalty.program/new')
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Loyalty & Promotions"
         subtitle={isLoading ? 'Loading...' : `${total} program${total !== 1 ? 's' : ''}`}
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" /> New Program
+          </Button>
+        }
       />
 
       <SearchBar
@@ -121,9 +127,20 @@ export default function LoyaltyPrograms() {
           ))}
         </div>
       ) : records.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-          <Gift className="h-12 w-12 opacity-30" />
-          <p className="text-sm">No programs found</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Gift className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No loyalty programs yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Reward repeat customers with loyalty cards, coupons, or promotions.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Program
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

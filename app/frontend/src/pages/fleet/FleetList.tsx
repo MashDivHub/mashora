@@ -51,10 +51,16 @@ export default function FleetList() {
   })
 
   const records: Vehicle[] = data?.records ?? []
+  const handleCreate = () => navigate('/admin/model/fleet.vehicle/new')
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fleet Vehicles" subtitle={`${data?.total ?? '—'} vehicles`} />
+      <PageHeader
+        title="Fleet Vehicles"
+        subtitle={`${data?.total ?? '—'} vehicles`}
+        onNew={handleCreate}
+        newLabel="New Vehicle"
+      />
 
       <div className="rounded-3xl border border-border/60 bg-card shadow-panel p-4">
         <div className="relative max-w-sm">
@@ -90,6 +96,8 @@ export default function FleetList() {
                     icon={<Car className="h-12 w-12" />}
                     title="No vehicles yet"
                     description="Add vehicles to manage your fleet."
+                    actionLabel="New Vehicle"
+                    onAction={handleCreate}
                   />
                 </TableCell>
               </TableRow>

@@ -116,6 +116,7 @@ const columns: Column<ExpenseSheetRecord>[] = [
 const PAGE_SIZE = 40
 
 export default function ExpenseSheetList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
@@ -155,6 +156,8 @@ export default function ExpenseSheetList() {
       <PageHeader
         title="Expense Reports"
         subtitle={isLoading ? 'Loading…' : `${total} report${total !== 1 ? 's' : ''}`}
+        onNew={() => navigate('/admin/hr/expense-sheets/new')}
+        newLabel="New Report"
       />
 
       <SearchBar
@@ -173,6 +176,7 @@ export default function ExpenseSheetList() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
         loading={isLoading}
+        rowLink={row => `/admin/hr/expense-sheets/${row.id}`}
         emptyMessage="No expense reports found"
         emptyIcon={<Briefcase className="size-6" />}
       />

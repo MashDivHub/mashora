@@ -193,6 +193,7 @@ export default function CalendarPage() {
       setNewName('')
       setNewRecurrence(r => ({ ...r, enabled: false }))
     },
+    onError: (e: unknown) => toast.error('Failed to create event', extractErrorMessage(e)),
   })
 
   const acceptMut = useMutation({

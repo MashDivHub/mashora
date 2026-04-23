@@ -16,6 +16,8 @@ import {
   Clock, AlertTriangle, CalendarDays, UserCircle2,
 } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
+import { toast } from '@/components/shared'
+import { extractErrorMessage } from '@/lib/errors'
 
 interface ChatterProps {
   model: string
@@ -254,6 +256,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
       setNewMessage('')
       queryClient.invalidateQueries({ queryKey: ['chatter-messages', model, resId] })
     },
+    onError: (e: unknown) => toast.error('Failed to send message', extractErrorMessage(e)),
   })
 
   // Complete activity
@@ -263,6 +266,7 @@ export default function Chatter({ model, resId, className }: ChatterProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatter-activities', model, resId] })
     },
+    onError: (e: unknown) => toast.error('Failed to complete activity', extractErrorMessage(e)),
   })
 
   const messages = messagesData?.messages ?? []

@@ -477,11 +477,23 @@ async def get_website_dashboard(uid: int = 1, context: Optional[dict] = None) ->
 
 # --- Blog ---
 
+# Keep list/detail fields lean — we never ship the cover_image bytes over
+# JSON. The frontend fetches the image via the dedicated
+# /website/blog/posts/{id}/cover-image endpoint, and we expose a
+# cover_image_url pointing at it on every returned record.
 BLOG_POST_FIELDS = [
     "id", "name", "subtitle", "author_id", "blog_id",
-    "content", "website_published", "post_date",
-    "visits", "tag_ids", "create_date", "write_date",
+    "content", "teaser", "website_published", "post_date",
+    "visits", "create_date", "write_date",
 ]
+
+
+def _attach_cover_url(record: dict) -> dict:
+    """Add a cover_image_url pointing at the binary endpoint."""
+    post_id = record.get("id")
+    if post_id is not None:
+        record["cover_image_url"] = f"/api/v1/website/blog/posts/{post_id}/cover-image"
+    return record
 
 
 async def list_blog_posts(params: dict, uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -497,21 +509,27 @@ async def list_blog_posts(params: dict, uid: int = 1, context: Optional[dict] = 
     if get_model_class("blog.post") is None:
         return {"records": [], "total": 0, "warning": "website_blog module not installed"}
 
-    return await async_search_read(
+    # Use a safe default order: post_date may be NULL for drafts, fall back to id
+    result = await async_search_read(
         "blog.post",
         domain,
         BLOG_POST_FIELDS,
         offset=params.get("offset", 0),
         limit=params.get("limit", 20),
-        order=params.get("order", "post_date desc"),
+        order=params.get("order", "post_date desc nulls last, id desc"),
     )
+    result["records"] = [_attach_cover_url(r) for r in result.get("records", [])]
+    return result
 
 
 async def get_blog_post(post_id: int, uid: int = 1, context: Optional[dict] = None) -> Optional[dict]:
     """Get a single blog post."""
     if get_model_class("blog.post") is None:
         return None
-    return await async_get("blog.post", post_id, BLOG_POST_FIELDS)
+    record = await async_get("blog.post", post_id, BLOG_POST_FIELDS)
+    if record is None:
+        return None
+    return _attach_cover_url(record)
 
 
 async def list_blogs(uid: int = 1, context: Optional[dict] = None) -> dict:
@@ -519,6 +537,41 @@ async def list_blogs(uid: int = 1, context: Optional[dict] = None) -> dict:
     if get_model_class("blog.blog") is None:
         return {"records": [], "total": 0}
     return await async_search_read("blog.blog", [], ["id", "name", "subtitle", "active"], limit=1000, order="name asc")
+
+
+# ─── Blog post cover image (stored inline on blog_post.cover_image) ──────────
+
+async def get_blog_post_cover_image(post_id: int) -> Optional[bytes]:
+    """Return the raw cover image bytes for a blog post (or None if unset)."""
+    from sqlalchemy import select
+    from app.models.website.blog_post import BlogPost
+    from app.services.base import get_session
+
+    async with await get_session() as session:
+        row = (
+            await session.execute(
+                select(BlogPost.cover_image).where(BlogPost.id == post_id)
+            )
+        ).first()
+        if not row:
+            return None
+        blob = row[0]
+        return bytes(blob) if blob is not None else None
+
+
+async def set_blog_post_cover_image(post_id: int, image_bytes: Optional[bytes]) -> None:
+    """Upsert (or clear) the cover image for a blog post."""
+    from sqlalchemy import update as sql_update
+    from app.models.website.blog_post import BlogPost
+    from app.services.base import get_session
+
+    async with await get_session() as session:
+        await session.execute(
+            sql_update(BlogPost)
+            .where(BlogPost.id == post_id)
+            .values(cover_image=image_bytes if image_bytes else None)
+        )
+        await session.commit()
 
 
 async def publish_page(page_id: int, publish: bool, uid: int = 1, context: Optional[dict] = None) -> dict:

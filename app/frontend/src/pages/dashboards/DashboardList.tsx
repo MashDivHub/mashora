@@ -34,7 +34,11 @@ export default function DashboardList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Dashboards" />
+      <PageHeader
+        title="Dashboards"
+        onNew={() => navigate('/admin/model/spreadsheet.dashboard/new')}
+        newLabel="New Dashboard"
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -47,6 +51,8 @@ export default function DashboardList() {
           icon={<LayoutDashboard className="h-12 w-12" />}
           title="No dashboards yet"
           description="Create your first dashboard to start visualizing your data."
+          actionLabel="New Dashboard"
+          onAction={() => navigate('/admin/model/spreadsheet.dashboard/new')}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

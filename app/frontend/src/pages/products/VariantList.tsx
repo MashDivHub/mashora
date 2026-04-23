@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Card, Input, Badge } from '@mashora/design-system'
 import { Layers, Search } from 'lucide-react'
@@ -19,6 +20,7 @@ interface VariantRecord {
 }
 
 export default function VariantList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -35,7 +37,13 @@ export default function VariantList() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Product Variants" subtitle="products" backTo="/admin/products" />
+      <PageHeader
+        title="Product Variants"
+        subtitle="products"
+        backTo="/admin/products"
+        onNew={() => navigate('/admin/model/product.product/new')}
+        newLabel="New Variant"
+      />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -51,7 +59,9 @@ export default function VariantList() {
           <EmptyState
             icon={<Layers className="h-12 w-12" />}
             title="No variants found"
-            description="Variants are created automatically from product templates."
+            description="Variants are created automatically from product templates with attributes. You can also create a single product directly."
+            actionLabel="New Product"
+            onAction={() => navigate('/admin/model/product.product/new')}
           />
         ) : (
           <table className="w-full text-sm">
@@ -68,7 +78,11 @@ export default function VariantList() {
               {records.map((v) => {
                 const tmplName = Array.isArray(v.product_tmpl_id) ? v.product_tmpl_id[1] : `#${v.product_tmpl_id}`
                 return (
-                  <tr key={v.id} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={v.id}
+                    onClick={() => navigate(`/admin/model/product.product/${v.id}`)}
+                    className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors"
+                  >
                     <td className="px-4 py-3 font-mono text-muted-foreground">{v.id}</td>
                     <td className="px-4 py-3 font-medium">{tmplName}</td>
                     <td className="px-4 py-3 font-mono text-muted-foreground">{v.default_code || '—'}</td>

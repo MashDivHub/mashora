@@ -190,11 +190,21 @@ export default function AccountingDashboard() {
       ))}
 
       {journals.length === 0 && (
-        <Card className="rounded-2xl">
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No journals configured yet.
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <BookMarked className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No journals configured yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Set up a journal to post invoices, payments, and bank statements.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/accounting/journals')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create your first journal
+          </Button>
+        </div>
       )}
 
       {/* Revenue chart */}

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge } from '@mashora/design-system'
-import { CalendarDays } from 'lucide-react'
+import { Badge, Button } from '@mashora/design-system'
+import { CalendarDays, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -130,6 +130,10 @@ export default function EventList() {
     },
   ]
 
+  const records = data?.records ?? []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -147,21 +151,39 @@ export default function EventList() {
           setPage(0)
         }}
       />
-      <DataTable
-        columns={columns}
-        data={data?.records ?? []}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        rowLink={row => `/admin/events/${row.id}`}
-        emptyMessage="No events found"
-        emptyIcon={<CalendarDays className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <CalendarDays className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No events yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Create your first event to start managing tickets, sessions, and registrations.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/events/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Event
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          rowLink={row => `/admin/events/${row.id}`}
+          emptyMessage="No events found"
+          emptyIcon={<CalendarDays className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }

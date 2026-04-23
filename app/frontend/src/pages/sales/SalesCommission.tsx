@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared'
-import { Skeleton } from '@mashora/design-system'
+import { Button, Skeleton } from '@mashora/design-system'
+import { BarChart3, ArrowRight } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 const fmt = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -22,6 +24,7 @@ interface SalespersonSummary {
 }
 
 export default function SalesCommission() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery<SaleOrder[]>({
     queryKey: ['sales-commission-orders'],
     queryFn: async () => {
@@ -69,7 +72,21 @@ export default function SalesCommission() {
       <PageHeader title="Sales Commission" />
 
       {summaries.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">No confirmed orders found.</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <BarChart3 className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No commissions yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Commission appears after orders are confirmed. Confirm your first sale to see commissions.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/sales/orders')} className="gap-2">
+            Go to Sales Orders
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {summaries.map((sp, rank) => (

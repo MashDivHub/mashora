@@ -101,7 +101,7 @@ export default function WebsiteDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Website" subtitle="overview" />
+      <PageHeader title="Website" subtitle="overview" onNew="/admin/website/products/new" newLabel="New Product" />
       <StatCards stats={stats} columns={4} />
       <div className="space-y-4">
         {groups.map(group => (

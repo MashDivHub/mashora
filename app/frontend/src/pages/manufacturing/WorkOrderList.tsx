@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
+import { Badge, type BadgeVariant } from '@mashora/design-system'
 import { ClipboardList } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
@@ -51,6 +52,7 @@ function formatDuration(minutes: number): string {
 }
 
 export default function WorkOrderList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [page, setPage] = useState(0)
@@ -128,7 +130,12 @@ export default function WorkOrderList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Work Orders" subtitle="manufacturing" />
+      <PageHeader
+        title="Work Orders"
+        subtitle="manufacturing"
+        onNew={() => navigate('/admin/model/mrp.workorder/new')}
+        newLabel="New Work Order"
+      />
       <SearchBar
         placeholder="Search work orders..."
         onSearch={(v) => { setSearch(v); setPage(0) }}
@@ -149,7 +156,8 @@ export default function WorkOrderList() {
         pageSize={pageSize}
         onPageChange={setPage}
         loading={isLoading}
-        emptyMessage="No work orders found"
+        rowLink={(row) => `/admin/model/mrp.workorder/${row.id}`}
+        emptyMessage="No work orders yet. Work orders are usually generated from a production order with routing steps."
         emptyIcon={<ClipboardList className="h-10 w-10" />}
       />
     </div>

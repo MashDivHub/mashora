@@ -206,6 +206,11 @@ const PosSessionDetail = lazy(() => import('./pages/pos/PosSessionDetail'))
 const PosOrderList = lazy(() => import('./pages/pos/PosOrderList'))
 const PosOrderDetail = lazy(() => import('./pages/pos/PosOrderDetail'))
 const PosConfig = lazy(() => import('./pages/pos/PosConfig'))
+const PosConfigForm = lazy(() => import('./pages/pos/PosConfigForm'))
+const PaymentMethodList = lazy(() => import('./pages/pos/PaymentMethodList'))
+const PaymentMethodForm = lazy(() => import('./pages/pos/PaymentMethodForm'))
+const PosCategoryList = lazy(() => import('./pages/pos/PosCategoryList'))
+const PosCategoryForm = lazy(() => import('./pages/pos/PosCategoryForm'))
 const PosTerminal = lazy(() => import('./pages/pos/PosTerminal'))
 const PosRestaurant = lazy(() => import('./pages/pos/PosRestaurant'))
 
@@ -217,6 +222,9 @@ const ShopProduct = lazy(() => import('./pages/public/ShopProduct'))
 const Blog = lazy(() => import('./pages/public/Blog'))
 const BlogPost = lazy(() => import('./pages/public/BlogPost'))
 const ContactUs = lazy(() => import('./pages/public/ContactUs'))
+const Cart = lazy(() => import('./pages/public/Cart'))
+const Checkout = lazy(() => import('./pages/public/Checkout'))
+const OrderSuccess = lazy(() => import('./pages/public/OrderSuccess'))
 
 // Module pages — Settings
 const SettingsDashboard = lazy(() => import('./pages/settings/SettingsDashboard'))
@@ -392,7 +400,13 @@ export default function App() {
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/contactus" element={<ContactUs />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-success" element={<OrderSuccess />} />
         </Route>
+
+        {/* POS Terminal — fullscreen, no admin chrome */}
+        <Route path="/admin/pos/terminal/:configId" element={<ProtectedRoute><PosTerminal /></ProtectedRoute>} />
 
         {/* Admin */}
         <Route path="/admin" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
@@ -616,7 +630,14 @@ export default function App() {
           <Route path="pos/orders" element={<PosOrderList />} />
           <Route path="pos/orders/:id" element={<PosOrderDetail />} />
           <Route path="pos/config" element={<PosConfig />} />
-          <Route path="pos/terminal/:configId" element={<PosTerminal />} />
+          <Route path="pos/config/new" element={<PosConfigForm />} />
+          <Route path="pos/config/:id" element={<PosConfigForm />} />
+          <Route path="pos/payment-methods" element={<PaymentMethodList />} />
+          <Route path="pos/payment-methods/new" element={<PaymentMethodForm />} />
+          <Route path="pos/payment-methods/:id" element={<PaymentMethodForm />} />
+          <Route path="pos/categories" element={<PosCategoryList />} />
+          <Route path="pos/categories/new" element={<PosCategoryForm />} />
+          <Route path="pos/categories/:id" element={<PosCategoryForm />} />
           <Route path="pos/restaurant" element={<PosRestaurant />} />
 
           {/* Dashboards & Spreadsheets */}

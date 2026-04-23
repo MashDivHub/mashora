@@ -154,6 +154,22 @@ export default function SubscriptionTemplateList() {
 
       {isLoading ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : records.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <FileText className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No subscription templates yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Define a recurring plan preset to power your subscriptions.
+            </p>
+          </div>
+          <Button onClick={() => { setForm(emptyForm()); setOpen(true) }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Template
+          </Button>
+        </div>
       ) : (
         <DataTable
           columns={columns}

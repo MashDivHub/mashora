@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { DataTable, PageHeader, SearchBar } from '@/components/shared'
 import type { Column } from '@/components/shared/DataTable'
 import type { FilterOption } from '@/components/shared/SearchBar'
-import { Badge, cn } from '@mashora/design-system'
+import { Badge, Button, cn } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
-import { CalendarCheck, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import { CalendarCheck, AlertCircle, Clock, CheckCircle2, Plus } from 'lucide-react'
 
 type ActivityState = 'overdue' | 'today' | 'planned'
 
@@ -155,12 +155,20 @@ export default function CrmActivities() {
   ]
 
   const total = data?.total ?? 0
+  const records = data?.records ?? []
+  const hasFilters = search.length > 0 || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && !hasFilters
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="CRM Activities"
         subtitle={total > 0 ? `${total} activit${total === 1 ? 'y' : 'ies'}` : undefined}
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={() => navigate('/admin/crm/leads')}>
+            <Plus className="h-3.5 w-3.5" /> Schedule Activity
+          </Button>
+        }
       />
       <SearchBar
         placeholder="Search activities..."
@@ -172,22 +180,41 @@ export default function CrmActivities() {
           setPage(0)
         }}
       />
-      <DataTable<Activity>
-        columns={columns}
-        data={data?.records ?? []}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        emptyMessage="No activities found"
-        emptyIcon={<CalendarCheck className="h-10 w-10" />}
-        rowKey={row => row.id}
-        className={undefined}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <CalendarCheck className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No activities scheduled</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Activities are scheduled from a lead or opportunity. Open a lead to schedule calls, meetings, or to-dos.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/crm/leads')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Go to Leads
+          </Button>
+        </div>
+      ) : (
+        <DataTable<Activity>
+          columns={columns}
+          data={records}
+          total={total}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          onRowClick={row => navigate(`/admin/crm/leads/${row.res_id}`)}
+          emptyMessage="No activities found"
+          emptyIcon={<CalendarCheck className="h-10 w-10" />}
+          rowKey={row => row.id}
+          className={undefined}
+        />
+      )}
     </div>
   )
 }

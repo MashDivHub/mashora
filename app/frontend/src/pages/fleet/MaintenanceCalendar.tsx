@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Badge, Skeleton } from '@mashora/design-system'
+import { useNavigate } from 'react-router-dom'
+import { Badge, Button, Skeleton } from '@mashora/design-system'
 import { PageHeader } from '@/components/shared'
-import { Calendar, Wrench, ChevronRight } from 'lucide-react'
+import { Calendar, Wrench, ChevronRight, Plus } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 interface MaintenanceRequest {
@@ -60,12 +61,16 @@ function groupByMonth(records: MaintenanceRequest[]): Map<string, MaintenanceReq
   return sorted
 }
 
-function RequestCard({ req }: { req: MaintenanceRequest }) {
+function RequestCard({ req, onClick }: { req: MaintenanceRequest; onClick: () => void }) {
   const dateStr = (req.request_date || req.close_date) as string | false
   const isUrgent = req.priority === '1' || req.priority === '2' || req.priority === '3'
 
   return (
-    <div className="flex items-start gap-4 rounded-2xl border border-border/30 bg-card/50 p-4 hover:border-border/60 transition-colors">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left flex items-start gap-4 rounded-2xl border border-border/30 bg-card/50 p-4 hover:border-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
       {/* Date pill */}
       <div className="shrink-0 text-center min-w-[52px]">
         {dateStr ? (
@@ -119,7 +124,7 @@ function RequestCard({ req }: { req: MaintenanceRequest }) {
           )}
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -145,6 +150,7 @@ function SkeletonList() {
 }
 
 export default function MaintenanceCalendar() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['maintenance-calendar'],
     queryFn: () =>
@@ -160,12 +166,15 @@ export default function MaintenanceCalendar() {
 
   const records: MaintenanceRequest[] = data?.records ?? []
   const grouped = groupByMonth(records)
+  const handleCreate = () => navigate('/admin/model/maintenance.request/new')
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Maintenance Schedule"
         subtitle={`${data?.total ?? '—'} requests`}
+        onNew={handleCreate}
+        newLabel="New Request"
       />
 
       {/* Legend */}
@@ -185,7 +194,15 @@ export default function MaintenanceCalendar() {
           <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
             <Calendar className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-sm text-muted-foreground">No maintenance requests scheduled.</p>
+          <div className="text-center">
+            <p className="text-sm font-semibold">No maintenance requests scheduled</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Schedule preventive or corrective maintenance to populate the calendar.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="rounded-xl gap-1.5" size="sm">
+            <Plus className="h-3.5 w-3.5" /> New Request
+          </Button>
         </div>
       ) : (
         <div className="space-y-8">
@@ -202,7 +219,11 @@ export default function MaintenanceCalendar() {
               {/* Request cards */}
               <div className="space-y-3">
                 {reqs.map(req => (
-                  <RequestCard key={req.id} req={req} />
+                  <RequestCard
+                    key={req.id}
+                    req={req}
+                    onClick={() => navigate(`/admin/maintenance/${req.id}`)}
+                  />
                 ))}
               </div>
             </div>

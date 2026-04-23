@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Input, Badge, Tabs, TabsList, TabsTrigger,
+  Input, Badge, Button, Tabs, TabsList, TabsTrigger,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
   Skeleton, CardTitle,
 } from '@mashora/design-system'
 import { PageHeader } from '@/components/shared'
-import { Search, BookOpen, CheckCircle2, Circle } from 'lucide-react'
+import { Search, BookOpen, CheckCircle2, Circle, Plus } from 'lucide-react'
 import { erpClient } from '@/lib/erp-api'
 
 interface Account {
@@ -56,6 +57,7 @@ function TableSkeleton() {
 }
 
 export default function ChartOfAccounts() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [group, setGroup] = useState<GroupTab>('all')
 
@@ -75,6 +77,15 @@ export default function ChartOfAccounts() {
       <PageHeader
         title="Chart of Accounts"
         subtitle={isLoading ? 'Loading...' : `${data?.total ?? 0} accounts`}
+        actions={
+          <Button
+            size="sm"
+            className="rounded-xl gap-1.5"
+            onClick={() => navigate('/admin/model/account.account/new')}
+          >
+            <Plus className="h-3.5 w-3.5" /> New Account
+          </Button>
+        }
       />
 
       {/* Search */}
@@ -133,12 +144,24 @@ export default function ChartOfAccounts() {
                 <TableSkeleton />
               ) : records.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="h-40 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
-                        <BookOpen className="h-6 w-6 text-muted-foreground" />
+                  <TableCell colSpan={5} className="p-0">
+                    <div className="flex flex-col items-center gap-4 py-12 text-center">
+                      <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                        <BookOpen className="h-6 w-6" />
                       </div>
-                      <p className="text-sm text-muted-foreground">No accounts found.</p>
+                      <div>
+                        <p className="text-sm font-semibold">No accounts yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Add your first account to start recording journal entries.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => navigate('/admin/model/account.account/new')}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add First Account
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -146,7 +169,8 @@ export default function ChartOfAccounts() {
                 records.map((row) => (
                   <TableRow
                     key={row.id}
-                    className="border-border/40 hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/admin/model/account.account/${row.id}`)}
+                    className="border-border/40 hover:bg-muted/50 transition-colors cursor-pointer"
                   >
                     <TableCell>
                       <span className="font-mono text-sm font-semibold tracking-wide">

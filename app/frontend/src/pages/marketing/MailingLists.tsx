@@ -1,6 +1,7 @@
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, Skeleton } from '@mashora/design-system'
-import { Users } from 'lucide-react'
+import { Badge, Button, Skeleton } from '@mashora/design-system'
+import { Users, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -14,6 +15,7 @@ interface MailingList {
 }
 
 export default function MailingLists() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['mailing-lists'],
     queryFn: async () => {
@@ -45,19 +47,34 @@ export default function MailingLists() {
       <PageHeader
         title="Mailing Lists"
         subtitle={total > 0 ? `${total} list${total !== 1 ? 's' : ''}` : undefined}
+        onNew={() => navigate('/admin/model/mailing.list/new')}
+        newLabel="New List"
       />
 
       {records.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
-          <Users className="h-10 w-10" />
-          <p className="text-sm">No mailing lists found</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No mailing lists yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Create your first mailing list to group contacts for email campaigns.
+            </p>
+          </div>
+          <Button onClick={() => navigate('/admin/model/mailing.list/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First List
+          </Button>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {records.map(list => (
-            <div
+            <button
+              type="button"
               key={list.id}
-              className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-3"
+              onClick={() => navigate(`/admin/model/mailing.list/${list.id}`)}
+              className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-3 text-left hover:bg-muted/20 hover:-translate-y-0.5 transition-all w-full"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-bold text-sm leading-snug">{list.name}</p>
@@ -81,7 +98,7 @@ export default function MailingLists() {
                   {list.is_public ? 'Public' : 'Private'}
                 </Badge>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

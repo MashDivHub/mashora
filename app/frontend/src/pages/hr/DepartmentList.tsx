@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column } from '@/components/shared'
@@ -7,6 +8,7 @@ import { erpClient } from '@/lib/erp-api'
 const FIELDS = ['id', 'name', 'parent_id', 'manager_id', 'total_employee', 'company_id']
 
 export default function DepartmentList() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [sortField, setSortField] = useState<string | null>(null)
@@ -44,11 +46,18 @@ export default function DepartmentList() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Departments" subtitle="hr" backTo="/admin/hr" />
+      <PageHeader
+        title="Departments"
+        subtitle="hr"
+        backTo="/admin/hr"
+        onNew={() => navigate('/admin/model/hr.department/new')}
+        newLabel="New Department"
+      />
       <SearchBar placeholder="Search departments..." onSearch={v => { setSearch(v); setPage(0) }} />
       <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={40}
         onPageChange={setPage} sortField={sortField} sortDir={sortDir}
         onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+        rowLink={row => `/admin/model/hr.department/${row.id}`}
         emptyMessage="No departments found" emptyIcon={<Building2 className="h-10 w-10" />} />
     </div>
   )

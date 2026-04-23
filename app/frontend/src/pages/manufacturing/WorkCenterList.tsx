@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Skeleton, cn } from '@mashora/design-system'
 import { Wrench } from 'lucide-react'
@@ -47,11 +48,14 @@ function StatItem({ label, value }: { label: string; value: string }) {
   )
 }
 
-function WorkCenterCard({ wc }: { wc: WorkCenter }) {
+function WorkCenterCard({ wc, onClick }: { wc: WorkCenter; onClick: () => void }) {
   const state = STATE_CONFIG[wc.working_state] ?? STATE_CONFIG.normal
 
   return (
-    <div className="rounded-2xl border border-border/30 bg-card/50 p-5 space-y-4">
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-2xl border border-border/30 bg-card/50 p-5 space-y-4 transition-all hover:bg-muted/20 hover:shadow-md">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -80,19 +84,27 @@ function WorkCenterCard({ wc }: { wc: WorkCenter }) {
         <StatItem label="Cleanup Time" value={`${wc.time_stop} min`} />
         <StatItem label="Productive Time" value={`${wc.productive_time}h`} />
       </div>
-    </div>
+    </button>
   )
 }
 
 export default function WorkCenterList() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery<WorkCenterListResponse>({
     queryKey: ['manufacturing', 'workcenters'],
     queryFn: () => erpClient.raw.get('/manufacturing/workcenters').then((r) => r.data).catch(() => ({ records: [], total: 0 })),
   })
 
+  const handleNew = () => navigate('/admin/model/mrp.workcenter/new')
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Work Centers" subtitle="manufacturing" />
+      <PageHeader
+        title="Work Centers"
+        subtitle="manufacturing"
+        onNew={handleNew}
+        newLabel="New Workcenter"
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -105,11 +117,17 @@ export default function WorkCenterList() {
           icon={<Wrench className="h-12 w-12" />}
           title="No work centers yet"
           description="Add a work center to track production capacity and efficiency."
+          actionLabel="New Workcenter"
+          onAction={handleNew}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.records.map((wc) => (
-            <WorkCenterCard key={wc.id} wc={wc} />
+            <WorkCenterCard
+              key={wc.id}
+              wc={wc}
+              onClick={() => navigate(`/admin/model/mrp.workcenter/${wc.id}`)}
+            />
           ))}
         </div>
       )}

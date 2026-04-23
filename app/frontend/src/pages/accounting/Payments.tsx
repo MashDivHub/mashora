@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, cn, type BadgeVariant } from '@mashora/design-system'
-import { CreditCard } from 'lucide-react'
+import { Badge, Button, cn, type BadgeVariant } from '@mashora/design-system'
+import { CreditCard, Plus } from 'lucide-react'
 import { DataTable, PageHeader, SearchBar, type Column, type FilterOption } from '@/components/shared'
 import { erpClient } from '@/lib/erp-api'
 
@@ -70,16 +70,48 @@ export default function Payments() {
     { key: 'amount', label: 'Amount', align: 'right' as const, format: v => v ? `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '' },
   ]
 
+  const records = data?.records || []
+  const hasFilters = !!search || activeFilters.length > 0
+  const showEmptyCta = !isLoading && records.length === 0 && page === 0 && !hasFilters
+  const handleCreate = () => navigate('/admin/model/account.payment/new')
+
   return (
     <div className="space-y-4">
-      <PageHeader title="Payments" subtitle="invoicing" />
+      <PageHeader
+        title="Payments"
+        subtitle="invoicing"
+        actions={
+          <Button size="sm" className="rounded-xl gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" /> Register Payment
+          </Button>
+        }
+      />
       <SearchBar placeholder="Search payments..." onSearch={v => { setSearch(v); setPage(0) }}
         filters={FILTERS} activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }} />
-      <DataTable columns={columns} data={data?.records || []} total={data?.total} page={page} pageSize={pageSize}
-        onPageChange={setPage} sortField={sortField} sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
-        emptyMessage="No payments found" emptyIcon={<CreditCard className="h-10 w-10" />} />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <CreditCard className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No payments yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Register your first payment to reconcile invoices and bills.
+            </p>
+          </div>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Register First Payment
+          </Button>
+        </div>
+      ) : (
+        <DataTable columns={columns} data={records} total={data?.total} page={page} pageSize={pageSize}
+          onPageChange={setPage} sortField={sortField} sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }} loading={isLoading}
+          rowLink={row => `/admin/model/account.payment/${row.id}`}
+          emptyMessage="No payments found" emptyIcon={<CreditCard className="h-10 w-10" />} />
+      )}
     </div>
   )
 }

@@ -297,7 +297,21 @@ export default function SalesTeams() {
       )}
 
       {!isLoading && teams.length === 0 && (
-        <p className="text-sm text-muted-foreground">No sales teams configured</p>
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No sales teams configured</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Group salespeople into teams to track pipelines, quotas, and leaderboards.
+            </p>
+          </div>
+          <Button onClick={() => { setEditing(null); setFormOpen(true) }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create First Team
+          </Button>
+        </div>
       )}
 
       {!isLoading && teams.length > 0 && (

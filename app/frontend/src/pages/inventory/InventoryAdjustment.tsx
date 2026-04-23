@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader, toast } from '@/components/shared'
 import { Button, Input, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@mashora/design-system'
 import { erpClient } from '@/lib/erp-api'
-import { ClipboardCheck, Search, Save } from 'lucide-react'
+import { ClipboardCheck, Search, Save, Package, MapPin } from 'lucide-react'
 
 interface Quant {
   id: number
@@ -16,6 +17,7 @@ interface Quant {
 }
 
 export default function InventoryAdjustment() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [modifiedIds, setModifiedIds] = useState<Set<number>>(new Set())
@@ -134,8 +136,34 @@ export default function InventoryAdjustment() {
             ) : records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
-                  <ClipboardCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p>No stock found in internal locations</p>
+                  <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
+                    <ClipboardCheck className="h-10 w-10 opacity-30" />
+                    <p className="text-sm font-medium">No stock found in internal locations</p>
+                    <p className="text-xs">
+                      Adjustments require products stored in an internal location.
+                      Make sure you have products set up and at least one internal location configured.
+                    </p>
+                    <div className="flex flex-wrap gap-2 justify-center pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate('/admin/products')}
+                        className="gap-1.5 rounded-xl"
+                      >
+                        <Package className="h-3.5 w-3.5" />
+                        View Products
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate('/admin/inventory/locations')}
+                        className="gap-1.5 rounded-xl"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        View Locations
+                      </Button>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

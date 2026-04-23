@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, type BadgeVariant } from '@mashora/design-system'
-import { RefreshCcw } from 'lucide-react'
+import { Badge, Button, type BadgeVariant } from '@mashora/design-system'
+import { RefreshCcw, Plus, FileText } from 'lucide-react'
 import {
   DataTable, PageHeader, SearchBar,
   type Column, type FilterOption,
@@ -76,7 +76,22 @@ export default function SubscriptionList() {
     },
   })
 
+  const { data: templateData } = useQuery({
+    queryKey: ['subscription-template-count'],
+    queryFn: async () => {
+      const { data } = await erpClient.raw.post('/model/sale.subscription.template', {
+        fields: ['id'],
+        limit: 1,
+      })
+      return data
+    },
+    staleTime: 60_000,
+  })
+  const templateCount: number = templateData?.total ?? (templateData?.records?.length ?? 0)
+
   const records: SubRow[] = data?.records || []
+  const hasFilters = !!search || activeFilters.length > 0 || !!partnerFilter
+  const showEmptyCta = !isLoading && !isError && records.length === 0 && page === 0 && !hasFilters
 
   const columns: Column<SubRow>[] = [
     {
@@ -130,22 +145,54 @@ export default function SubscriptionList() {
         activeFilters={activeFilters}
         onFilterToggle={k => { setActiveFilters(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]); setPage(0) }}
       />
-      <DataTable
-        columns={columns}
-        data={records}
-        total={data?.total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortField={sortField}
-        sortDir={sortDir}
-        onSort={(f, d) => { setSortField(f); setSortDir(d) }}
-        loading={isLoading}
-        isError={isError} error={error} onRetry={() => refetch()}
-        rowLink={(row) => `/admin/sales/subscriptions/${row.id}`}
-        emptyMessage="No subscriptions found"
-        emptyIcon={<RefreshCcw className="h-10 w-10" />}
-      />
+      {showEmptyCta ? (
+        <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-12 text-center space-y-4">
+          <div className="mx-auto rounded-2xl bg-primary/10 p-3 w-fit text-primary">
+            {templateCount === 0 ? <FileText className="h-6 w-6" /> : <RefreshCcw className="h-6 w-6" />}
+          </div>
+          <div>
+            {templateCount === 0 ? (
+              <>
+                <p className="text-sm font-semibold">Create a subscription template first</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Subscriptions need a recurring plan template before they can be issued.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold">No subscriptions yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Start a new recurring subscription for a customer.
+                </p>
+              </>
+            )}
+          </div>
+          <Button
+            onClick={() => navigate(templateCount === 0 ? '/admin/sales/subscription-templates' : '/admin/sales/subscriptions/new')}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            {templateCount === 0 ? 'Create First Template' : 'New Subscription'}
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={records}
+          total={data?.total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={(f, d) => { setSortField(f); setSortDir(d) }}
+          loading={isLoading}
+          isError={isError} error={error} onRetry={() => refetch()}
+          rowLink={(row) => `/admin/sales/subscriptions/${row.id}`}
+          emptyMessage="No subscriptions found"
+          emptyIcon={<RefreshCcw className="h-10 w-10" />}
+        />
+      )}
     </div>
   )
 }
